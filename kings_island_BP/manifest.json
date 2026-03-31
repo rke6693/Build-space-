@@ -1,0 +1,17 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Kings Island Theme Park",
+    "description": "A professional to-scale replica of Kings Island with rideable coasters, kinetic water features, and immersive theming.",
+    "uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "version": [1, 0, 0]
+    }
+  ]
+}
