@@ -1,10 +1,167 @@
 /**
  * OmniSight Terminal — Interactive Dashboard
  * Bloomberg Terminal-style UI for prediction market infrastructure.
- * Simulates real-time data feeds for demo purposes.
+ *
+ * Connects to the OmniSight API when available.
+ * Falls back to simulated demo data when the API is unreachable.
  */
 
-// ── Simulated Market Data ─────────────────────────────────────
+// ── API Client ────────────────────────────────────────────────
+
+const API_BASE = window.OMNISIGHT_API_URL || 'http://localhost:8000';
+const API_KEY = window.OMNISIGHT_API_KEY || '';
+
+let apiAvailable = false;
+
+const api = {
+  async _fetch(path, params = {}) {
+    const url = new URL(`${API_BASE}${path}`);
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
+    });
+    const headers = { 'Accept': 'application/json' };
+    if (API_KEY) headers['X-API-Key'] = API_KEY;
+
+    const resp = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) throw new Error(`API ${resp.status}: ${resp.statusText}`);
+    return resp.json();
+  },
+
+  async checkHealth() {
+    try {
+      const data = await this._fetch('/health');
+      apiAvailable = data.status === 'healthy' || data.status === 'degraded';
+      return apiAvailable;
+    } catch {
+      apiAvailable = false;
+      return false;
+    }
+  },
+
+  async getMarkets(platform, limit = 50) {
+    return this._fetch('/v1/markets', { platform, limit });
+  },
+
+  async getNormalizedOdds(category, limit = 50) {
+    return this._fetch('/v1/odds/normalized', { category, limit });
+  },
+
+  async getArbitrageOpportunities(minProfitBps = 10, limit = 20) {
+    return this._fetch('/v1/arbitrage', { min_profit_bps: minProfitBps, limit });
+  },
+
+  async getWhaleAlerts(minUsd = 10000, hours = 24, limit = 50) {
+    return this._fetch('/v1/whales/alerts', { min_usd: minUsd, hours, limit });
+  },
+
+  async getWhaleFlow(hours = 24) {
+    return this._fetch('/v1/whales/flow', { hours });
+  },
+
+  async getMicrostructure(marketId, platform) {
+    return this._fetch(`/v1/microstructure/${marketId}`, { platform });
+  },
+
+  connectPriceStream(marketIds, platform, onMessage) {
+    const wsUrl = API_BASE.replace('http', 'ws');
+    const ws = new WebSocket(`${wsUrl}/v1/ws/prices`);
+    ws.onopen = () => ws.send(JSON.stringify({ subscribe: marketIds, platform }));
+    ws.onmessage = (e) => onMessage(JSON.parse(e.data));
+    ws.onerror = (e) => console.warn('WS price stream error', e);
+    return ws;
+  },
+
+  connectWhaleStream(onMessage) {
+    const wsUrl = API_BASE.replace('http', 'ws');
+    const ws = new WebSocket(`${wsUrl}/v1/ws/whales`);
+    ws.onmessage = (e) => onMessage(JSON.parse(e.data));
+    ws.onerror = (e) => console.warn('WS whale stream error', e);
+    return ws;
+  },
+};
+
+// ── Live Data Loading ─────────────────────────────────────────
+
+async function loadLiveMarkets() {
+  try {
+    const raw = await api.getMarkets(null, 100);
+    DEMO_MARKETS.length = 0;
+    raw.forEach(m => {
+      DEMO_MARKETS.push({
+        id: m.id,
+        title: m.title,
+        platform: m.platform,
+        category: m.category || '',
+        yes: m.yes_price || 0.5,
+        no: m.no_price || 0.5,
+        vol24h: m.volume_24h || 0,
+        liquidity: m.liquidity || 0,
+        status: m.status || 'active',
+      });
+    });
+    return true;
+  } catch { return false; }
+}
+
+async function loadLiveOdds() {
+  try {
+    const raw = await api.getNormalizedOdds(null, 50);
+    CROSS_PLATFORM_EVENTS.length = 0;
+    raw.forEach(e => {
+      const p = e.platforms || {};
+      CROSS_PLATFORM_EVENTS.push({
+        title: e.event_title,
+        poly: p.polymarket ? p.polymarket.yes_price : null,
+        kalshi: p.kalshi ? p.kalshi.yes_price : null,
+        pinnacle: p.pinnacle ? p.pinnacle.yes_price : null,
+        spread: Math.round(e.max_spread),
+      });
+    });
+    return true;
+  } catch { return false; }
+}
+
+async function loadLiveArbitrage() {
+  try {
+    const raw = await api.getArbitrageOpportunities(5, 20);
+    ARB_OPPORTUNITIES.length = 0;
+    raw.forEach(a => {
+      ARB_OPPORTUNITIES.push({
+        event: a.event_title,
+        buyPlatform: a.platform_a,
+        buyPrice: a.price_a,
+        sellPlatform: a.platform_b,
+        sellPrice: a.price_b,
+        spread: Math.round(a.spread_bps),
+        profit: Math.round(a.estimated_profit_bps),
+        liquidity: a.liquidity_available || 0,
+        age: 'live',
+      });
+    });
+    document.getElementById('arb-count').textContent = ARB_OPPORTUNITIES.length;
+    return true;
+  } catch { return false; }
+}
+
+async function loadLiveWhales() {
+  try {
+    const raw = await api.getWhaleAlerts(10000, 24, 20);
+    WHALE_ALERTS.length = 0;
+    raw.forEach(w => {
+      WHALE_ALERTS.push({
+        side: w.side === 'bid' ? 'buy' : 'sell',
+        amount: w.usd_value,
+        market: w.market_title,
+        wallet: w.wallet_address ? w.wallet_address.slice(0, 6) + '...' + w.wallet_address.slice(-4) : '—',
+        platform: w.platform,
+        time: 'live',
+      });
+    });
+    return true;
+  } catch { return false; }
+}
+
+// ── Simulated Market Data (fallback) ──────────────────────────
 
 const DEMO_MARKETS = [
   { id: "poly-1", title: "US Presidential Election 2028 — Republican Nominee", platform: "polymarket", category: "politics", yes: 0.42, no: 0.58, vol24h: 18420000, liquidity: 5200000, status: "active" },
@@ -608,7 +765,63 @@ function simulatePriceUpdates() {
 
 // ── Initialize ────────────────────────────────────────────────
 
-function init() {
+async function init() {
+  // Attempt to connect to live API
+  const live = await api.checkHealth();
+
+  if (live) {
+    console.log('[OmniSight] API connected — loading live data');
+    document.querySelector('.status-indicator').classList.add('live');
+
+    await Promise.allSettled([
+      loadLiveMarkets(),
+      loadLiveOdds(),
+      loadLiveArbitrage(),
+      loadLiveWhales(),
+    ]);
+
+    // Connect WebSocket streams
+    try {
+      const marketIds = DEMO_MARKETS.slice(0, 10).map(m => m.id);
+      api.connectPriceStream(marketIds, 'polymarket', (update) => {
+        const m = DEMO_MARKETS.find(x => x.id === update.market_id);
+        if (m) { m.yes = update.yes_price; m.no = update.no_price; }
+      });
+      api.connectWhaleStream((alert) => {
+        WHALE_ALERTS.unshift({
+          side: alert.side === 'bid' ? 'buy' : 'sell',
+          amount: alert.usd_value,
+          market: alert.market_title,
+          wallet: alert.wallet ? alert.wallet.slice(0, 6) + '...' + alert.wallet.slice(-4) : '—',
+          platform: alert.platform,
+          time: 'now',
+        });
+        if (WHALE_ALERTS.length > 50) WHALE_ALERTS.pop();
+        renderWhaleAlerts('whale-alerts-mini', WHALE_ALERTS, 5);
+      });
+    } catch (e) {
+      console.warn('[OmniSight] WebSocket connection failed, using polling', e);
+    }
+
+    // Periodic live refresh (every 10s)
+    setInterval(async () => {
+      await Promise.allSettled([loadLiveMarkets(), loadLiveOdds()]);
+      renderHotMarkets();
+      renderOddsTable();
+      renderMarketsTable();
+    }, 10000);
+  } else {
+    console.log('[OmniSight] API unreachable — running in demo mode');
+
+    // Simulated updates when API is unavailable
+    setInterval(() => {
+      simulatePriceUpdates();
+      renderHotMarkets();
+      renderOddsTable();
+    }, 2000);
+  }
+
+  // Initial render (works with either live or demo data)
   renderHotMarkets();
   renderOddsTable();
   renderWhaleAlerts('whale-alerts-mini', WHALE_ALERTS, 5);
@@ -624,13 +837,6 @@ function init() {
     drawDepthChart();
     drawVolumeProfileChart();
   });
-
-  // Live updates
-  setInterval(() => {
-    simulatePriceUpdates();
-    renderHotMarkets();
-    renderOddsTable();
-  }, 2000);
 
   // Redraw charts on resize
   window.addEventListener('resize', () => {

@@ -543,10 +543,10 @@ async def ws_price_stream(websocket: WebSocket):
     Receive: {"market_id": "...", "yes_price": 0.65, "no_price": 0.35, ...}
     """
     await websocket.accept()
-    logger.info("ws_connected", client=websocket.client.host)
+    WS_CONNECTIONS_ACTIVE.labels(stream_type="prices").inc()
+    logger.info("ws_prices_connected", client=websocket.client.host)
 
     try:
-        # Wait for subscription message
         data = await websocket.receive_json()
         market_ids = data.get("subscribe", [])
         platform = Platform(data.get("platform", "polymarket"))
@@ -561,12 +561,15 @@ async def ws_price_stream(websocket: WebSocket):
             price_update["platform"] = price_update["platform"].value
             price_update["timestamp"] = price_update["timestamp"].isoformat()
             await websocket.send_json(price_update)
+            WS_MESSAGES_SENT.labels(stream_type="prices").inc()
 
     except WebSocketDisconnect:
-        logger.info("ws_disconnected", client=websocket.client.host)
+        logger.info("ws_prices_disconnected", client=websocket.client.host)
     except Exception as e:
-        logger.error("ws_error", error=str(e))
+        logger.error("ws_prices_error", error=str(e))
         await websocket.close(code=1011)
+    finally:
+        WS_CONNECTIONS_ACTIVE.labels(stream_type="prices").dec()
 
 
 @app.websocket("/v1/ws/whales")
@@ -576,6 +579,7 @@ async def ws_whale_stream(websocket: WebSocket):
     Pushes alerts whenever a whale trade is detected across any platform.
     """
     await websocket.accept()
+    WS_CONNECTIONS_ACTIVE.labels(stream_type="whales").inc()
     queue = whale_tracker.subscribe()
 
     try:
@@ -595,11 +599,14 @@ async def ws_whale_stream(websocket: WebSocket):
                 "tags": alert.tags,
                 "timestamp": alert.timestamp.isoformat(),
             })
+            WS_MESSAGES_SENT.labels(stream_type="whales").inc()
     except WebSocketDisconnect:
-        whale_tracker.unsubscribe(queue)
+        pass
     except Exception as e:
         logger.error("whale_ws_error", error=str(e))
+    finally:
         whale_tracker.unsubscribe(queue)
+        WS_CONNECTIONS_ACTIVE.labels(stream_type="whales").dec()
 
 
 @app.websocket("/v1/ws/arbitrage")
@@ -609,10 +616,10 @@ async def ws_arbitrage_stream(websocket: WebSocket):
     Pushes opportunities as they are detected across platforms.
     """
     await websocket.accept()
+    WS_CONNECTIONS_ACTIVE.labels(stream_type="arbitrage").inc()
 
     try:
         while True:
-            # Poll for arbitrage opportunities every 5 seconds
             opportunities = await normalizer.detect_arbitrage(min_profit_bps=5)
             for opp in opportunities:
                 await websocket.send_json({
@@ -627,21 +634,26 @@ async def ws_arbitrage_stream(websocket: WebSocket):
                     "liquidity": opp.liquidity_available,
                     "detected_at": opp.detected_at.isoformat(),
                 })
+                WS_MESSAGES_SENT.labels(stream_type="arbitrage").inc()
             await asyncio.sleep(5)
     except WebSocketDisconnect:
         pass
     except Exception as e:
         logger.error("arb_ws_error", error=str(e))
+    finally:
+        WS_CONNECTIONS_ACTIVE.labels(stream_type="arbitrage").dec()
 
 
 # ── Run ───────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
+    _settings = get_settings()
     uvicorn.run(
         "api.main:app",
-        host=os.getenv("HOST", "0.0.0.0"),
-        port=int(os.getenv("PORT", "8000")),
-        reload=os.getenv("ENV") == "development",
-        log_level="info",
+        host=_settings.host,
+        port=_settings.port,
+        reload=_settings.is_development,
+        log_level=_settings.log_level,
+        workers=1 if _settings.is_development else _settings.workers,
     )
