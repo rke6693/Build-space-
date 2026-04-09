@@ -42,10 +42,16 @@ def setup_logging(verbose: bool = False):
 
 def cmd_generate(args):
     """Generate the daily newsletter."""
+    Config.log_warnings()
+
     date = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    with NewsletterPipeline() as pipeline:
-        output_path = pipeline.run(date=date)
+    try:
+        with NewsletterPipeline() as pipeline:
+            output_path = pipeline.run(date=date)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print(f"\nNewsletter saved to: {output_path}")
     print(f"Word count: ~{len(output_path.read_text().split())}")

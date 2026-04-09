@@ -1,16 +1,19 @@
 """Configuration management for the newsletter engine."""
 
+import logging
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 
 class Config:
     # API Keys
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    SERPER_API_KEY: str = os.getenv("SERPER_API_KEY", "")  # For web search
+    SERPER_API_KEY: str = os.getenv("SERPER_API_KEY", "")
 
     # Paths
     NEWSLETTER_DIR: Path = Path(os.getenv("NEWSLETTER_DIR", str(Path.home() / "newsletter")))
@@ -35,3 +38,49 @@ class Config:
         """Create required directories if they don't exist."""
         cls.NEWSLETTER_DIR.mkdir(parents=True, exist_ok=True)
         cls.ACCURACY_DIR.mkdir(parents=True, exist_ok=True)
+
+    @classmethod
+    def validate(cls) -> list[str]:
+        """Validate configuration, returning a list of warnings.
+
+        Returns:
+            List of warning strings. Empty if everything looks good.
+        """
+        warnings = []
+
+        if not cls.OPENAI_API_KEY:
+            warnings.append(
+                "OPENAI_API_KEY not set. LLM features disabled — "
+                "research will use heuristic fallback (low quality)."
+            )
+        elif not cls.OPENAI_API_KEY.startswith(("sk-", "sess-")):
+            warnings.append(
+                "OPENAI_API_KEY doesn't look like a valid OpenAI key "
+                "(expected 'sk-...' or 'sess-...')"
+            )
+
+        if not cls.SERPER_API_KEY:
+            warnings.append(
+                "SERPER_API_KEY not set. Web search disabled — "
+                "research will rely on LLM training data only."
+            )
+
+        if cls.RESOLUTION_WINDOW_DAYS < 1 or cls.RESOLUTION_WINDOW_DAYS > 365:
+            warnings.append(
+                f"RESOLUTION_WINDOW_DAYS={cls.RESOLUTION_WINDOW_DAYS} is unusual "
+                f"(expected 1-365)"
+            )
+
+        if cls.TOP_DIVERGENCE_COUNT < 1 or cls.TOP_DIVERGENCE_COUNT > 20:
+            warnings.append(
+                f"TOP_DIVERGENCE_COUNT={cls.TOP_DIVERGENCE_COUNT} is unusual "
+                f"(expected 1-20)"
+            )
+
+        return warnings
+
+    @classmethod
+    def log_warnings(cls):
+        """Validate config and log any warnings."""
+        for warning in cls.validate():
+            logger.warning(f"Config: {warning}")
