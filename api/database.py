@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import structlog
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -125,7 +126,7 @@ async def check_db_health() -> dict:
         return {"status": "not_initialized", "healthy": False}
     try:
         async with _engine.connect() as conn:
-            result = await conn.execute("SELECT 1")  # type: ignore
+            result = await conn.execute(text("SELECT 1"))
             result.close()
         pool = _engine.pool
         return {

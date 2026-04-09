@@ -3,10 +3,8 @@ OmniSight — Test Configuration
 Shared fixtures for unit and integration tests.
 """
 
-import asyncio
 from datetime import datetime, timezone
-from typing import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -16,13 +14,8 @@ from api.models import (
     Platform, ResolutionOutcome,
 )
 
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an event loop for the test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# Note: pytest-asyncio with asyncio_mode="auto" (pyproject.toml) handles
+# event loop creation. No manual event_loop fixture needed.
 
 
 @pytest.fixture
