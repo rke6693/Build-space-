@@ -7,16 +7,13 @@ to measure how well our predictions perform vs the market.
 import json
 import logging
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional
+from typing import Optional, Protocol
 
 from ..config import Config
 from ..models import Prediction, AccuracyReport
-from .tracker import PredictionTracker
 
 logger = logging.getLogger(__name__)
 
-# Calibration buckets: (lower_bound, upper_bound, label)
 CALIBRATION_BUCKETS = [
     (0.0, 0.1, "0-10%"),
     (0.1, 0.2, "10-20%"),
@@ -31,42 +28,46 @@ CALIBRATION_BUCKETS = [
 ]
 
 
+class PredictionStore(Protocol):
+    """Protocol for any backend that can provide predictions."""
+    def get_all_predictions(self) -> list[Prediction]: ...
+
+
 class AccuracyScorer:
     """Generates weekly accuracy reports from tracked predictions."""
 
-    def __init__(self, tracker: Optional[PredictionTracker] = None):
-        self.tracker = tracker or PredictionTracker()
+    def __init__(self, tracker: Optional[PredictionStore] = None, db=None):
+        """Accept either old-style tracker or new SQLite db."""
+        if db is not None:
+            self._store = db
+        elif tracker is not None:
+            self._store = tracker
+        else:
+            from .database import PredictionDB
+            self._store = PredictionDB()
 
     def generate_weekly_report(self, week_ending: Optional[str] = None) -> AccuracyReport:
-        """Generate an accuracy report for the past week.
-
-        Args:
-            week_ending: YYYY-MM-DD of the report end date. Defaults to today.
-
-        Returns:
-            AccuracyReport with scoring and calibration data.
-        """
         if week_ending is None:
             week_ending = datetime.utcnow().strftime("%Y-%m-%d")
 
         end_date = datetime.strptime(week_ending, "%Y-%m-%d")
         start_date = end_date - timedelta(days=7)
 
-        all_preds = self.tracker.get_all_predictions()
+        all_preds = self._store.get_all_predictions()
         resolved = [p for p in all_preds if p.resolved]
 
-        # Predictions that were resolved this week
         week_resolved = []
         for p in resolved:
             if p.resolution_date:
                 try:
-                    res_date = datetime.fromisoformat(p.resolution_date.replace("Z", "+00:00")).replace(tzinfo=None)
+                    res_date = datetime.fromisoformat(
+                        p.resolution_date.replace("Z", "+00:00")
+                    ).replace(tzinfo=None)
                     if start_date <= res_date <= end_date:
                         week_resolved.append(p)
                 except ValueError:
                     pass
 
-        # If no weekly filter, use all resolved
         if not week_resolved:
             week_resolved = resolved
 
@@ -79,7 +80,6 @@ class AccuracyScorer:
         if not week_resolved:
             return report
 
-        # Brier scores
         our_briers = [p.our_brier_score for p in week_resolved if p.our_brier_score is not None]
         market_briers = [p.market_brier_score for p in week_resolved if p.market_brier_score is not None]
 
@@ -88,15 +88,12 @@ class AccuracyScorer:
         if market_briers:
             report.market_avg_brier = sum(market_briers) / len(market_briers)
 
-        # Directional accuracy (did our edge call go the right way?)
         correct = 0
         total = 0
         for p in week_resolved:
             if p.resolution_outcome is not None:
                 total += 1
                 outcome = p.resolution_outcome
-                # If we said underpriced (should be higher) and it resolved YES, correct
-                # If we said overpriced (should be lower) and it resolved NO, correct
                 if p.edge_direction == "underpriced" and outcome == 1.0:
                     correct += 1
                 elif p.edge_direction == "overpriced" and outcome == 0.0:
@@ -106,17 +103,11 @@ class AccuracyScorer:
         report.edge_calls_correct = correct
         report.edge_accuracy_pct = (correct / total * 100) if total > 0 else None
 
-        # Calibration
         report.our_calibration = self._compute_calibration(week_resolved)
 
         return report
 
     def _compute_calibration(self, predictions: list[Prediction]) -> dict[str, dict]:
-        """Compute calibration buckets.
-
-        For each probability range, what was the actual resolution rate?
-        Good calibration means 70% predictions resolve YES ~70% of the time.
-        """
         buckets: dict[str, dict] = {}
 
         for lower, upper, label in CALIBRATION_BUCKETS:
@@ -143,14 +134,12 @@ class AccuracyScorer:
         return buckets
 
     def save_report(self, report: AccuracyReport):
-        """Save a weekly accuracy report to disk."""
         Config.ensure_dirs()
         filepath = Config.ACCURACY_DIR / f"accuracy_{report.week_ending}.json"
         filepath.write_text(json.dumps(report.model_dump(), indent=2, default=str))
         logger.info(f"Saved accuracy report to {filepath}")
 
     def render_accuracy_markdown(self, report: AccuracyReport) -> str:
-        """Render an accuracy report as markdown for standalone publication."""
         lines = [
             f"# Weekly Accuracy Report",
             f"## Week Ending {report.week_ending}\n",

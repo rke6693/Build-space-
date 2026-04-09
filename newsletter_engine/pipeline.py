@@ -5,8 +5,10 @@ This is the core orchestrator that ties together:
 2. Research (web search + LLM analysis)
 3. Divergence analysis
 4. Newsletter generation
-5. Prediction tracking
+5. Prediction tracking (SQLite)
 6. Accuracy scoring
+7. Email delivery (Buttondown / Resend)
+8. Alerting (Slack / Discord webhooks)
 """
 
 import logging
@@ -19,8 +21,11 @@ from .fetchers import MarketAggregator
 from .research import ResearchEngine
 from .analysis import DivergenceAnalyzer
 from .generator import NewsletterWriter
-from .tracker import PredictionTracker, AccuracyScorer
+from .tracker.database import PredictionDB
+from .tracker.accuracy import AccuracyScorer
 from .tracker.resolver import ResolutionChecker
+from .delivery import DeliverySender
+from .alerting import AlertManager
 from .utils import validate_date
 
 logger = logging.getLogger(__name__)
@@ -30,6 +35,7 @@ logger = logging.getLogger(__name__)
 class PipelineStatus:
     """Tracks the outcome of each pipeline step for observability."""
     date: str = ""
+    dry_run: bool = False
     markets_fetched: int = 0
     markets_researched: int = 0
     research_skipped: int = 0
@@ -39,6 +45,7 @@ class PipelineStatus:
     predictions_deduplicated: int = 0
     resolutions_checked: int = 0
     resolutions_found: int = 0
+    delivery_results: dict = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -47,16 +54,25 @@ class PipelineStatus:
         return len(self.errors) > 0
 
     def summary(self) -> str:
+        prefix = "[DRY RUN] " if self.dry_run else ""
         lines = [
-            f"Pipeline run: {self.date}",
+            f"{prefix}Pipeline run: {self.date}",
             f"  Markets: {self.markets_fetched} fetched, {self.markets_researched} researched "
             f"({self.research_skipped} skipped)",
             f"  Divergences: {self.divergences_found}",
             f"  Briefings: {self.briefings_generated}",
-            f"  Predictions: {self.predictions_logged} logged "
-            f"({self.predictions_deduplicated} deduped)",
-            f"  Resolutions: {self.resolutions_found}/{self.resolutions_checked} resolved",
         ]
+        if not self.dry_run:
+            lines.append(
+                f"  Predictions: {self.predictions_logged} logged "
+                f"({self.predictions_deduplicated} deduped)"
+            )
+            lines.append(
+                f"  Resolutions: {self.resolutions_found}/{self.resolutions_checked} resolved"
+            )
+            if self.delivery_results:
+                for backend, result in self.delivery_results.items():
+                    lines.append(f"  Delivery [{backend}]: {result.get('status', 'unknown')}")
         if self.errors:
             lines.append(f"  ERRORS ({len(self.errors)}):")
             for e in self.errors:
@@ -80,15 +96,19 @@ class NewsletterPipeline:
             min_divergence=0.03,
         )
         self.writer = NewsletterWriter()
-        self.tracker = PredictionTracker()
-        self.accuracy = AccuracyScorer(self.tracker)
-        self.resolver = ResolutionChecker(self.tracker)
+        self.db = PredictionDB()
+        self.accuracy = AccuracyScorer(db=self.db)
+        self.resolver = ResolutionChecker(db=self.db)
+        self.delivery = DeliverySender()
+        self.alerts = AlertManager()
 
-    def run(self, date: str = None) -> Path:
+    def run(self, date: str = None, dry_run: bool = False) -> Path:
         """Execute the full pipeline for a given date.
 
         Args:
             date: YYYY-MM-DD override. Defaults to today.
+            dry_run: If True, run full pipeline but don't save predictions
+                     or send delivery. For testing without side effects.
 
         Returns:
             Path to the generated newsletter file.
@@ -101,15 +121,25 @@ class NewsletterPipeline:
         else:
             date = validate_date(date)
 
-        status = PipelineStatus(date=date)
-        logger.info(f"=== Newsletter Pipeline: {date} ===")
+        status = PipelineStatus(date=date, dry_run=dry_run)
 
-        # Step 0: Check resolutions for any prior predictions
-        logger.info("Step 0: Checking prior prediction resolutions...")
-        resolution_stats = self._check_resolutions()
-        status.resolutions_checked = resolution_stats.get("checked", 0)
-        status.resolutions_found = resolution_stats.get("resolved", 0)
-        logger.info(f"Resolutions: {resolution_stats}")
+        if dry_run:
+            logger.info(f"=== Newsletter Pipeline [DRY RUN]: {date} ===")
+        else:
+            logger.info(f"=== Newsletter Pipeline: {date} ===")
+
+        # Step 0: Check resolutions (skip in dry run)
+        if not dry_run:
+            logger.info("Step 0: Checking prior prediction resolutions...")
+            resolution_stats = self._check_resolutions()
+            status.resolutions_checked = resolution_stats.get("checked", 0)
+            status.resolutions_found = resolution_stats.get("resolved", 0)
+            logger.info(f"Resolutions: {resolution_stats}")
+
+            if status.resolutions_found > 0:
+                self.alerts.alert_resolutions(
+                    status.resolutions_found, status.resolutions_checked
+                )
 
         # Step 1: Fetch markets
         logger.info("Step 1: Fetching active markets...")
@@ -125,7 +155,7 @@ class NewsletterPipeline:
             self._log_status(status)
             return self._save_empty_newsletter(date)
 
-        # Step 2: Research top markets (by volume, capped for API budget)
+        # Step 2: Research top markets
         research_pool = markets[:30]
         logger.info(f"Step 2: Researching top {len(research_pool)} markets...")
         research_results = self.researcher.research_markets(research_pool)
@@ -140,6 +170,9 @@ class NewsletterPipeline:
             )
             status.errors.append(msg)
             logger.error(msg)
+            self.alerts.alert_high_failure_rate(
+                status.research_skipped, len(research_pool)
+            )
 
         # Step 3: Find divergences
         logger.info("Step 3: Analyzing divergences...")
@@ -163,24 +196,23 @@ class NewsletterPipeline:
         status.briefings_generated = len(briefings)
         logger.info(f"Generated {len(briefings)} briefings")
 
-        # Step 5: Log predictions (idempotent — won't duplicate on re-run)
-        logger.info("Step 5: Logging predictions...")
-        new_predictions = self.tracker.log_predictions(date, opportunities)
-        status.predictions_logged = len(new_predictions)
-        status.predictions_deduplicated = len(opportunities) - len(new_predictions)
-        if status.predictions_deduplicated > 0:
-            logger.info(
-                f"Idempotency: {status.predictions_deduplicated} predictions already "
-                f"existed for {date}, skipped"
-            )
+        # Step 5: Log predictions (skip in dry run)
+        if not dry_run:
+            logger.info("Step 5: Logging predictions...")
+            new_predictions = self.db.log_predictions(date, opportunities)
+            status.predictions_logged = len(new_predictions)
+            status.predictions_deduplicated = len(opportunities) - len(new_predictions)
+        else:
+            logger.info("Step 5: [DRY RUN] Skipping prediction logging")
 
-        # Step 6: Generate accuracy report (if we have history)
+        # Step 6: Accuracy report
         accuracy_report = None
-        stats = self.tracker.get_stats()
-        if stats.get("resolved", 0) > 0:
-            logger.info("Step 6: Generating accuracy report...")
-            accuracy_report = self.accuracy.generate_weekly_report(date)
-            self.accuracy.save_report(accuracy_report)
+        if not dry_run:
+            stats = self.db.get_stats()
+            if stats.get("resolved", 0) > 0:
+                logger.info("Step 6: Generating accuracy report...")
+                accuracy_report = self.accuracy.generate_weekly_report(date)
+                self.accuracy.save_report(accuracy_report)
 
         # Step 7: Render and save newsletter
         logger.info("Step 7: Rendering newsletter...")
@@ -194,9 +226,29 @@ class NewsletterPipeline:
         output_path.write_text(newsletter_md)
         logger.info(f"Newsletter saved to {output_path}")
 
-        # Summary
+        # Step 8: Deliver (skip in dry run)
+        if not dry_run:
+            logger.info("Step 8: Delivering newsletter...")
+            try:
+                status.delivery_results = self.delivery.send(date, output_path)
+            except Exception as e:
+                msg = f"Delivery failed: {e}"
+                status.errors.append(msg)
+                logger.error(msg)
+        else:
+            logger.info("Step 8: [DRY RUN] Skipping delivery")
+
+        # Summary and alerts
         self._log_status(status)
-        self._print_summary(date, opportunities, stats, status)
+        self._print_summary(date, opportunities, status)
+
+        if not dry_run:
+            if status.has_errors:
+                self.alerts.alert_pipeline_error(date, status.errors)
+            else:
+                self.alerts.alert_pipeline_success(
+                    date, len(opportunities), status.predictions_logged
+                )
 
         return output_path
 
@@ -239,17 +291,16 @@ We'll be back tomorrow with fresh analysis.
         return output_path
 
     def _log_status(self, status: PipelineStatus):
-        """Log the full pipeline status for monitoring."""
         summary = status.summary()
         if status.has_errors:
             logger.error(f"Pipeline completed with errors:\n{summary}")
         else:
             logger.info(f"Pipeline completed:\n{summary}")
 
-    def _print_summary(self, date: str, opportunities, stats: dict, status: PipelineStatus):
-        """Print a summary to the console."""
+    def _print_summary(self, date: str, opportunities, status: PipelineStatus):
+        prefix = "[DRY RUN] " if status.dry_run else ""
         print(f"\n{'='*60}")
-        print(f"  Market Edge Daily — {date}")
+        print(f"  {prefix}Market Edge Daily — {date}")
         print(f"{'='*60}")
 
         if status.has_errors:
@@ -266,10 +317,18 @@ We'll be back tomorrow with fresh analysis.
                 f"Ours: {opp.research.assessed_probability:.1%} | "
                 f"{arrow} {opp.edge_magnitude:.1%}"
             )
-        print(f"\n  Total predictions tracked: {stats.get('total_predictions', 0)}")
-        print(f"  Resolved: {stats.get('resolved', 0)}")
-        if status.predictions_deduplicated > 0:
-            print(f"  Deduplicated (re-run): {status.predictions_deduplicated}")
+
+        if not status.dry_run:
+            stats = self.db.get_stats()
+            print(f"\n  Total predictions tracked: {stats.get('total_predictions', 0)}")
+            print(f"  Resolved: {stats.get('resolved', 0)}")
+            if status.predictions_deduplicated > 0:
+                print(f"  Deduplicated (re-run): {status.predictions_deduplicated}")
+            for backend, result in status.delivery_results.items():
+                print(f"  Delivery [{backend}]: {result.get('status', 'N/A')}")
+        else:
+            print(f"\n  [DRY RUN] No predictions logged, no delivery sent")
+
         print(f"{'='*60}\n")
 
     def close(self):
@@ -277,6 +336,8 @@ We'll be back tomorrow with fresh analysis.
         self.researcher.close()
         self.writer.close()
         self.resolver.close()
+        self.delivery.close()
+        self.alerts.close()
 
     def __enter__(self):
         return self

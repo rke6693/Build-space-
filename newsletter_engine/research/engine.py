@@ -15,6 +15,7 @@ from openai import OpenAI
 from ..config import Config
 from ..models import Market, ResearchResult
 from ..utils import retry
+from .cache import SearchCache
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class ResearchEngine:
             self.llm_client = OpenAI(api_key=Config.OPENAI_API_KEY)
         self._llm_failures = 0
         self._llm_successes = 0
+        self._cache = SearchCache(default_ttl=Config.SEARCH_CACHE_TTL)
 
     def research_market(self, market: Market) -> ResearchResult:
         """Research a single market and produce an assessed probability.
@@ -104,6 +106,12 @@ class ResearchEngine:
             )
 
         self._log_health()
+        cache_stats = self._cache.stats()
+        logger.info(
+            f"Search cache: {cache_stats['session_hits']} hits, "
+            f"{cache_stats['session_misses']} misses "
+            f"({cache_stats['hit_rate']} hit rate)"
+        )
         return results
 
     def _log_health(self):
@@ -167,12 +175,25 @@ class ResearchEngine:
             return [str(q) for q in queries[:3]]
         raise ValueError("LLM returned no queries")
 
-    @retry(max_attempts=2, base_delay=1.0, retryable_exceptions=(httpx.HTTPError,))
     def _web_search(self, query: str) -> list[dict]:
-        """Execute a web search using Serper API with retry."""
+        """Execute a web search with caching."""
         if not Config.SERPER_API_KEY:
             return []
 
+        # Check cache first
+        cached = self._cache.get(query)
+        if cached is not None:
+            logger.debug(f"Cache hit for: {query[:50]}")
+            return cached
+
+        results = self._web_search_api(query)
+        if results:
+            self._cache.put(query, results)
+        return results
+
+    @retry(max_attempts=2, base_delay=1.0, retryable_exceptions=(httpx.HTTPError,))
+    def _web_search_api(self, query: str) -> list[dict]:
+        """Execute a web search using Serper API with retry."""
         resp = self.search_client.post(
             "https://google.serper.dev/search",
             headers={

@@ -1,34 +1,43 @@
 """Market resolution checker.
 
 Checks prediction market platforms for resolution outcomes and
-updates tracked predictions accordingly.
+updates tracked predictions accordingly. Works with both the
+JSON tracker and SQLite database backends.
 """
 
+import json
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Protocol
 
 import httpx
 
 from ..models import Prediction
-from .tracker import PredictionTracker
 
 logger = logging.getLogger(__name__)
+
+
+class ResolutionStore(Protocol):
+    """Protocol for any backend that can store resolutions."""
+    def get_unresolved(self) -> list[Prediction]: ...
+    def resolve_prediction(self, prediction_id: str, outcome: float) -> None: ...
 
 
 class ResolutionChecker:
     """Checks markets for resolution and updates tracked predictions."""
 
-    def __init__(self, tracker: Optional[PredictionTracker] = None):
-        self.tracker = tracker or PredictionTracker()
+    def __init__(self, tracker=None, db=None):
+        """Accept either old-style tracker or new SQLite db."""
+        if db is not None:
+            self._store = db
+        elif tracker is not None:
+            self._store = tracker
+        else:
+            from .database import PredictionDB
+            self._store = PredictionDB()
         self.client = httpx.Client(timeout=20.0, follow_redirects=True)
 
     def check_polymarket_resolution(self, market_id: str) -> Optional[float]:
-        """Check if a Polymarket market has resolved.
-
-        Returns:
-            1.0 for YES, 0.0 for NO, None if not yet resolved.
-        """
+        """Check if a Polymarket market has resolved."""
         try:
             resp = self.client.get(
                 f"https://gamma-api.polymarket.com/markets/{market_id}",
@@ -43,10 +52,8 @@ class ResolutionChecker:
                 elif outcome == "No":
                     return 0.0
 
-                # Check outcome prices
                 outcome_prices = data.get("outcomePrices")
                 if outcome_prices:
-                    import json
                     try:
                         prices = json.loads(outcome_prices) if isinstance(outcome_prices, str) else outcome_prices
                         if prices and float(prices[0]) >= 0.99:
@@ -62,11 +69,7 @@ class ResolutionChecker:
         return None
 
     def check_kalshi_resolution(self, market_id: str) -> Optional[float]:
-        """Check if a Kalshi market has resolved.
-
-        Returns:
-            1.0 for YES, 0.0 for NO, None if not yet resolved.
-        """
+        """Check if a Kalshi market has resolved."""
         try:
             resp = self.client.get(
                 f"https://api.elections.kalshi.com/trade-api/v2/markets/{market_id}",
@@ -93,12 +96,8 @@ class ResolutionChecker:
         return None
 
     def check_and_resolve_all(self) -> dict:
-        """Check all unresolved predictions and resolve any that have outcomes.
-
-        Returns:
-            Summary dict with counts.
-        """
-        unresolved = self.tracker.get_unresolved()
+        """Check all unresolved predictions and resolve any that have outcomes."""
+        unresolved = self._store.get_unresolved()
         resolved_count = 0
         checked_count = 0
 
@@ -112,7 +111,7 @@ class ResolutionChecker:
                 outcome = self.check_kalshi_resolution(pred.market_id)
 
             if outcome is not None:
-                self.tracker.resolve_prediction(pred.id, outcome)
+                self._store.resolve_prediction(pred.id, outcome)
                 resolved_count += 1
                 logger.info(
                     f"Resolved: {pred.market_title} -> "
