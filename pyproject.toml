@@ -1,0 +1,20 @@
+[project]
+name = "omnisight"
+version = "1.0.0"
+description = "The Bloomberg Terminal for Prediction Markets — Unified cross-platform data infrastructure"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]

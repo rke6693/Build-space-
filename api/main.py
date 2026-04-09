@@ -16,20 +16,32 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
 
 import structlog
-from fastapi import Depends, FastAPI, Query, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
+from api.cache import cache, check_redis_health, init_redis, close_redis
+from api.circuit_breaker import get_all_breaker_metrics
+from api.config import get_settings
 from api.connectors.base import BaseConnector
 from api.connectors.kalshi import KalshiConnector
 from api.connectors.polymarket import PolymarketConnector
 from api.connectors.sportsbook import BetfairConnector, PinnacleConnector
+from api.database import check_db_health, close_db, init_db
+from api.metrics import (
+    HTTP_REQUESTS_TOTAL,
+    HTTP_REQUEST_DURATION,
+    HTTP_REQUESTS_IN_PROGRESS,
+    WS_CONNECTIONS_ACTIVE,
+    WS_MESSAGES_SENT,
+)
 from api.middleware.auth import (
     AuthManager, get_api_key, require_tier, TIER_CONFIG,
 )
@@ -44,6 +56,28 @@ from api.services.whale_tracker import MicrostructureAnalyzer, WhaleTracker
 
 logger = structlog.get_logger(__name__)
 
+# ── Structured Logging Setup ──────────────────────────────────
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.StackInfoRenderer(),
+        structlog.dev.set_exc_info,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer() if get_settings().is_production
+        else structlog.dev.ConsoleRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(
+        {"debug": 10, "info": 20, "warning": 30, "error": 40, "critical": 50}[
+            get_settings().log_level.lower()
+        ]
+    ),
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
 # ── Globals ───────────────────────────────────────────────────
 
 connectors: dict[Platform, BaseConnector] = {}
@@ -56,24 +90,37 @@ auth_manager = AuthManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize connectors and services on startup."""
+    """Initialize all dependencies on startup, tear down on shutdown."""
     global connectors, normalizer, whale_tracker, microstructure, resolution_tracker
+    settings = get_settings()
 
-    # Initialize platform connectors
+    # Initialize infrastructure
+    try:
+        await init_db()
+    except Exception as e:
+        logger.warning("database_init_skipped", error=str(e))
+
+    try:
+        await init_redis()
+    except Exception as e:
+        logger.warning("redis_init_skipped", error=str(e))
+
+    # Initialize platform connectors (from validated config, not raw env)
+    creds = settings.platforms
     connectors[Platform.POLYMARKET] = PolymarketConnector(
-        api_key=os.getenv("POLYMARKET_API_KEY"),
-        api_secret=os.getenv("POLYMARKET_API_SECRET"),
+        api_key=creds.polymarket_api_key,
+        api_secret=creds.polymarket_api_secret,
     )
     connectors[Platform.KALSHI] = KalshiConnector(
-        api_key=os.getenv("KALSHI_API_KEY"),
-        api_secret=os.getenv("KALSHI_API_SECRET"),
+        api_key=creds.kalshi_api_key,
+        api_secret=creds.kalshi_api_secret,
     )
     connectors[Platform.PINNACLE] = PinnacleConnector(
-        api_key=os.getenv("PINNACLE_API_KEY"),
+        api_key=creds.pinnacle_api_key,
     )
     connectors[Platform.BETFAIR] = BetfairConnector(
-        api_key=os.getenv("BETFAIR_API_KEY"),
-        session_token=os.getenv("BETFAIR_SESSION_TOKEN"),
+        api_key=creds.betfair_api_key,
+        session_token=creds.betfair_session_token,
     )
 
     # Initialize services
@@ -82,12 +129,20 @@ async def lifespan(app: FastAPI):
     microstructure = MicrostructureAnalyzer(connectors)
     resolution_tracker = ResolutionTracker(connectors)
 
-    logger.info("omnisight_started", platforms=list(connectors.keys()))
+    logger.info("omnisight_started", platforms=list(connectors.keys()), env=settings.env)
     yield
 
-    # Cleanup
+    # Cleanup — orderly teardown
     for connector in connectors.values():
         await connector.close()
+    try:
+        await close_redis()
+    except Exception:
+        pass
+    try:
+        await close_db()
+    except Exception:
+        pass
     logger.info("omnisight_shutdown")
 
 
@@ -112,16 +167,64 @@ app.add_middleware(
 )
 
 
-# ── Health ────────────────────────────────────────────────────
+# ── Request Metrics Middleware ─────────────────────────────────
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    """Record HTTP request metrics for every request."""
+    method = request.method
+    path = request.url.path
+
+    # Skip metrics endpoint to avoid recursion
+    if path == "/metrics":
+        return await call_next(request)
+
+    HTTP_REQUESTS_IN_PROGRESS.labels(method=method).inc()
+    start = time.monotonic()
+
+    try:
+        response = await call_next(request)
+        duration = time.monotonic() - start
+
+        HTTP_REQUEST_DURATION.labels(method=method, endpoint=path).observe(duration)
+        HTTP_REQUESTS_TOTAL.labels(method=method, endpoint=path, status_code=response.status_code).inc()
+
+        # Add server timing header
+        response.headers["Server-Timing"] = f"total;dur={duration * 1000:.1f}"
+        return response
+    finally:
+        HTTP_REQUESTS_IN_PROGRESS.labels(method=method).dec()
+
+
+# ── Health (deep check — verifies all dependencies) ───────────
 
 @app.get("/health")
 async def health():
+    db_health = await check_db_health()
+    redis_health = await check_redis_health()
+    breakers = get_all_breaker_metrics()
+
+    overall = "healthy" if db_health.get("healthy", False) or redis_health.get("healthy", False) else "degraded"
+
     return {
-        "status": "healthy",
+        "status": overall,
         "version": "1.0.0",
+        "env": get_settings().env,
         "platforms": [p.value for p in connectors],
+        "dependencies": {
+            "database": db_health,
+            "redis": redis_health,
+        },
+        "circuit_breakers": breakers,
+        "cache_stats": cache.stats,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """Prometheus metrics endpoint."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 # ── Markets ───────────────────────────────────────────────────

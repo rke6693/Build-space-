@@ -24,65 +24,211 @@ logger = structlog.get_logger(__name__)
 
 
 class EventMatcher:
-    """Matches equivalent events across different platforms using fuzzy matching."""
+    """
+    Matches equivalent events across different platforms.
 
-    # Known cross-platform event mappings (curated + auto-discovered)
+    Uses a multi-signal approach:
+    1. Exact canonical match (after normalization)
+    2. TF-IDF cosine similarity on title tokens
+    3. Named entity overlap (dates, names, numbers)
+    4. Category + end_date proximity as hard filters
+    5. Manual curated mappings as overrides
+
+    This replaces naive Jaccard with production-grade matching.
+    """
+
+    # Curated cross-platform event mappings (override automatic matching)
     MANUAL_MAPPINGS: dict[str, list[tuple[Platform, str]]] = {}
+
+    # Stop words to remove before TF-IDF
+    STOP_WORDS = frozenset({
+        "a", "an", "the", "is", "are", "was", "were", "will", "would", "be",
+        "been", "being", "have", "has", "had", "do", "does", "did", "to", "of",
+        "in", "for", "on", "with", "at", "by", "from", "or", "and", "not",
+        "this", "that", "it", "its", "as", "if", "but", "about", "than",
+        "before", "after", "above", "below", "between", "who", "what", "which",
+        "when", "where", "how", "whether", "market", "prediction",
+    })
+
+    # Entity patterns for extraction
+    _ENTITY_PATTERNS: list = []
+
+    @classmethod
+    def _get_entity_patterns(cls):
+        """Lazy-compile regex patterns for entity extraction."""
+        if not cls._ENTITY_PATTERNS:
+            import re
+            cls._ENTITY_PATTERNS = [
+                ("date", re.compile(r"\b(20\d{2})\b")),                          # Years
+                ("date", re.compile(r"\b(q[1-4]\s*20\d{2}|20\d{2}\s*q[1-4])\b", re.I)),  # Quarters
+                ("date", re.compile(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*\d{0,4}\b", re.I)),
+                ("number", re.compile(r"\$[\d,.]+[bmk]?\b", re.I)),              # Dollar amounts
+                ("number", re.compile(r"\b\d+[%]\b")),                            # Percentages
+                ("number", re.compile(r"\b\d{1,3}(,\d{3})*(\.\d+)?[kmbt]?\b", re.I)),  # Numbers with suffixes
+                ("entity", re.compile(r"\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)+\b")),    # Proper nouns (pre-lowering)
+            ]
+        return cls._ENTITY_PATTERNS
 
     @staticmethod
     def normalize_title(title: str) -> str:
         """Normalize event title for comparison."""
         import re
         title = title.lower().strip()
-        # Remove common prefixes/suffixes
-        for prefix in ["will ", "will the ", "who will win ", "who wins "]:
+        # Remove common question prefixes
+        for prefix in [
+            "will ", "will the ", "who will win ", "who wins ", "what will ",
+            "how many ", "is ", "does ", "do ", "can ", "could ", "should ",
+        ]:
             if title.startswith(prefix):
                 title = title[len(prefix):]
-        # Remove punctuation
-        title = re.sub(r"[^a-z0-9\s]", "", title)
+        # Remove punctuation except hyphens in compound words
+        title = re.sub(r"[^a-z0-9\s\-]", "", title)
         # Collapse whitespace
         title = re.sub(r"\s+", " ", title).strip()
         return title
 
     @classmethod
-    def compute_similarity(cls, title_a: str, title_b: str) -> float:
-        """Compute similarity score between two event titles (0-1)."""
-        a = cls.normalize_title(title_a)
-        b = cls.normalize_title(title_b)
+    def extract_entities(cls, title: str) -> dict[str, set[str]]:
+        """Extract named entities, dates, and numbers from a title."""
+        entities: dict[str, set[str]] = {"date": set(), "number": set(), "entity": set()}
+        for etype, pattern in cls._get_entity_patterns():
+            for match in pattern.finditer(title):
+                entities[etype].add(match.group().lower().strip())
+        return entities
 
-        if a == b:
-            return 1.0
+    @classmethod
+    def tokenize(cls, text: str) -> list[str]:
+        """Tokenize and remove stop words."""
+        normalized = cls.normalize_title(text)
+        return [w for w in normalized.split() if w not in cls.STOP_WORDS and len(w) > 1]
 
-        # Jaccard similarity on word tokens
-        words_a = set(a.split())
-        words_b = set(b.split())
-        if not words_a or not words_b:
+    @classmethod
+    def compute_tfidf_similarity(cls, tokens_a: list[str], tokens_b: list[str]) -> float:
+        """
+        Compute TF-IDF weighted cosine similarity between two token lists.
+        Uses a simple IDF approximation based on token frequency.
+        """
+        if not tokens_a or not tokens_b:
             return 0.0
 
-        intersection = words_a & words_b
+        # Build term frequency vectors
+        all_tokens = set(tokens_a) | set(tokens_b)
+        tf_a = {t: tokens_a.count(t) / len(tokens_a) for t in all_tokens}
+        tf_b = {t: tokens_b.count(t) / len(tokens_b) for t in all_tokens}
+
+        # Simple IDF: tokens appearing in both get lower weight
+        idf = {}
+        for t in all_tokens:
+            doc_freq = (1 if t in tokens_a else 0) + (1 if t in tokens_b else 0)
+            idf[t] = np.log(3.0 / (doc_freq + 1))  # +1 smoothing, 3 = num docs + 1
+
+        # Cosine similarity with TF-IDF weighting
+        dot_product = sum(tf_a[t] * idf[t] * tf_b[t] * idf[t] for t in all_tokens)
+        norm_a = np.sqrt(sum((tf_a[t] * idf[t]) ** 2 for t in all_tokens))
+        norm_b = np.sqrt(sum((tf_b[t] * idf[t]) ** 2 for t in all_tokens))
+
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+
+        return dot_product / (norm_a * norm_b)
+
+    @classmethod
+    def compute_similarity(cls, title_a: str, title_b: str) -> float:
+        """
+        Multi-signal similarity score between two event titles (0-1).
+
+        Signals:
+        - TF-IDF cosine similarity (40% weight)
+        - Jaccard word overlap (20% weight)
+        - Named entity overlap (25% weight)
+        - Subsequence/containment bonus (15% weight)
+        """
+        norm_a = cls.normalize_title(title_a)
+        norm_b = cls.normalize_title(title_b)
+
+        # Exact match after normalization
+        if norm_a == norm_b:
+            return 1.0
+
+        # Signal 1: TF-IDF cosine similarity
+        tokens_a = cls.tokenize(title_a)
+        tokens_b = cls.tokenize(title_b)
+        tfidf_score = cls.compute_tfidf_similarity(tokens_a, tokens_b)
+
+        # Signal 2: Jaccard word overlap (simple but useful)
+        words_a = set(tokens_a)
+        words_b = set(tokens_b)
         union = words_a | words_b
-        jaccard = len(intersection) / len(union)
+        jaccard = len(words_a & words_b) / len(union) if union else 0
 
-        # Boost if key entities match
-        entity_overlap = len(intersection) / min(len(words_a), len(words_b))
+        # Signal 3: Named entity overlap (dates, numbers, proper nouns)
+        entities_a = cls.extract_entities(title_a)
+        entities_b = cls.extract_entities(title_b)
+        entity_scores = []
+        for etype in ("date", "number", "entity"):
+            ea = entities_a[etype]
+            eb = entities_b[etype]
+            if ea and eb:
+                overlap = len(ea & eb) / len(ea | eb)
+                entity_scores.append(overlap)
+            elif ea or eb:
+                entity_scores.append(0.0)
+            # If neither has entities of this type, don't penalize
+        entity_score = np.mean(entity_scores) if entity_scores else 0.5
 
-        return 0.6 * jaccard + 0.4 * entity_overlap
+        # Signal 4: Containment — one title is a subset of the other
+        containment = 0.0
+        if len(words_a) >= 2 and len(words_b) >= 2:
+            containment_ab = len(words_a & words_b) / len(words_a)
+            containment_ba = len(words_a & words_b) / len(words_b)
+            containment = max(containment_ab, containment_ba)
+
+        # Weighted combination
+        score = (
+            0.40 * tfidf_score +
+            0.20 * jaccard +
+            0.25 * entity_score +
+            0.15 * containment
+        )
+
+        return min(1.0, score)
 
     @classmethod
     def find_matches(
         cls,
         target: MarketResponse,
         candidates: list[MarketResponse],
-        threshold: float = 0.65,
+        threshold: float = 0.55,
     ) -> list[tuple[MarketResponse, float]]:
-        """Find matching markets from other platforms."""
+        """
+        Find matching markets from other platforms.
+
+        Uses category as a hard filter when available, then scores on title similarity.
+        End date proximity is used as a tiebreaker.
+        """
         matches = []
         for candidate in candidates:
             if candidate.platform == target.platform:
                 continue
+
+            # Hard filter: category must match if both have one
+            if (target.category and candidate.category and
+                    target.category.lower() != candidate.category.lower()):
+                continue
+
             score = cls.compute_similarity(target.title, candidate.title)
+
+            # Bonus: end date within 48 hours of each other
+            if target.end_date and candidate.end_date:
+                date_diff = abs((target.end_date - candidate.end_date).total_seconds())
+                if date_diff < 172800:  # 48 hours
+                    score = min(1.0, score + 0.05)
+                elif date_diff > 604800:  # 7 days apart — likely different events
+                    score *= 0.7
+
             if score >= threshold:
                 matches.append((candidate, score))
+
         return sorted(matches, key=lambda x: -x[1])
 
 
