@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniSight API Documentation</title>
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --bg2: #0f1420;
+      --bg3: #131924;
+      --border: #1e2a3a;
+      --text: #e8ecf1;
+      --text2: #8892a4;
+      --text3: #5a6478;
+      --accent: #3b82f6;
+      --green: #22c55e;
+      --purple: #8b5cf6;
+      --cyan: #06b6d4;
+      --yellow: #f59e0b;
+      --orange: #f97316;
+      --red: #ef4444;
+      --mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+      --sans: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.7; }
+
+    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .sidebar-logo a {
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 1.5px;
+    }
+    .sidebar-logo span { color: var(--accent); font-size: 18px; margin-right: 8px; }
+    .sidebar-section { padding: 0 12px; margin-bottom: 20px; }
+    .sidebar-section-title {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+      padding: 0 8px 6px;
+    }
+    .sidebar a {
+      display: block;
+      padding: 5px 8px;
+      color: var(--text2);
+      text-decoration: none;
+      font-size: 13px;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+    .sidebar a:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+    .sidebar a.active { background: rgba(59,130,246,0.1); color: var(--accent); }
+
+    .method-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-right: 6px;
+    }
+    .method-badge.get { background: rgba(34,197,94,0.15); color: var(--green); }
+    .method-badge.post { background: rgba(59,130,246,0.15); color: var(--accent); }
+    .method-badge.ws { background: rgba(139,92,246,0.15); color: var(--purple); }
+
+    /* Content */
+    .content { padding: 40px 60px; max-width: 900px; }
+    .content h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.5px; }
+    .content h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 48px 0 16px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .content h3 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; }
+    .content p { color: var(--text2); margin-bottom: 16px; }
+
+    .base-url {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--accent);
+      margin: 16px 0 24px;
+    }
+
+    .endpoint {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 16px 0 32px;
+      overflow: hidden;
+    }
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg3);
+    }
+    .endpoint-method {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .endpoint-method.get { background: rgba(34,197,94,0.15); color: var(--green); }
+    .endpoint-method.post { background: rgba(59,130,246,0.15); color: var(--accent); }
+    .endpoint-method.ws { background: rgba(139,92,246,0.15); color: var(--purple); }
+    .endpoint-path { font-family: var(--mono); font-size: 14px; color: var(--text); }
+    .endpoint-tier {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: rgba(245,158,11,0.15);
+      color: var(--yellow);
+    }
+    .endpoint-body { padding: 16px; }
+    .endpoint-desc { color: var(--text2); font-size: 13px; margin-bottom: 12px; }
+
+    .params-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+    .params-table th {
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text3);
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .params-table td {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-size: 13px;
+    }
+    .params-table td:first-child {
+      font-family: var(--mono);
+      color: var(--text);
+      font-weight: 500;
+    }
+    .params-table td:nth-child(2) { color: var(--cyan); font-family: var(--mono); font-size: 12px; }
+    .params-table td:nth-child(3) { color: var(--text2); }
+    .param-required { color: var(--red); font-size: 10px; font-weight: 600; margin-left: 4px; }
+
+    pre.response {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text2);
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+    pre.response .k { color: var(--accent); }
+    pre.response .s { color: var(--green); }
+    pre.response .n { color: var(--cyan); }
+    pre.response .b { color: var(--yellow); }
+
+    .tier-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin-left: 6px;
+    }
+    .tier-badge.free { background: rgba(34,197,94,0.15); color: var(--green); }
+    .tier-badge.pro { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .tier-badge.inst { background: rgba(249,115,22,0.15); color: var(--orange); }
+
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .content { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <a href="../index.html"><span>&#9678;</span>OMNISIGHT</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Getting Started</div>
+        <a href="#auth" class="active">Authentication</a>
+        <a href="#rate-limits">Rate Limits</a>
+        <a href="#errors">Errors</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Markets</div>
+        <a href="#list-markets"><span class="method-badge get">GET</span>List Markets</a>
+        <a href="#get-market"><span class="method-badge get">GET</span>Get Market</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Odds</div>
+        <a href="#normalized-odds"><span class="method-badge get">GET</span>Normalized Odds</a>
+        <a href="#event-odds"><span class="method-badge get">GET</span>Event Odds</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Order Book</div>
+        <a href="#order-book"><span class="method-badge get">GET</span>Order Book</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Whale Tracking</div>
+        <a href="#whale-alerts"><span class="method-badge get">GET</span>Whale Alerts</a>
+        <a href="#whale-flow"><span class="method-badge get">GET</span>Whale Flow</a>
+        <a href="#wallet-profile"><span class="method-badge get">GET</span>Wallet Profile</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Arbitrage</div>
+        <a href="#arbitrage"><span class="method-badge get">GET</span>Opportunities</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Analytics</div>
+        <a href="#microstructure"><span class="method-badge get">GET</span>Microstructure</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">WebSocket</div>
+        <a href="#ws-prices"><span class="method-badge ws">WS</span>Price Stream</a>
+        <a href="#ws-whales"><span class="method-badge ws">WS</span>Whale Stream</a>
+        <a href="#ws-arb"><span class="method-badge ws">WS</span>Arbitrage Stream</a>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="content">
+      <h1>OmniSight API Reference</h1>
+      <p>Unified prediction market data infrastructure. REST API + WebSocket streaming.</p>
+
+      <div class="base-url">https://api.omnisight.dev/v1</div>
+
+      <h2 id="auth">Authentication</h2>
+      <p>Include your API key in the <code>X-API-Key</code> header. Free tier endpoints work without authentication (rate-limited).</p>
+      <pre class="response">curl -H <span class="s">"X-API-Key: sk-your-key"</span> https://api.omnisight.dev/v1/markets</pre>
+
+      <h2 id="rate-limits">Rate Limits</h2>
+      <p>Rate limits are enforced per API key. Response headers include current usage:</p>
+      <pre class="response">X-RateLimit-Limit: <span class="n">600</span>
+X-RateLimit-Remaining: <span class="n">594</span>
+X-RateLimit-Reset: <span class="n">1712688000</span></pre>
+
+      <!-- Markets -->
+      <h2 id="list-markets">List Markets <span class="tier-badge free">FREE</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method get">GET</span>
+          <span class="endpoint-path">/v1/markets</span>
+        </div>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">List markets across all platforms or filter by platform, category, and status.</p>
+          <table class="params-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>platform</td><td>string</td><td>Filter by platform (polymarket, kalshi, pinnacle, betfair)</td></tr>
+              <tr><td>category</td><td>string</td><td>Filter by category (politics, crypto, sports, economics)</td></tr>
+              <tr><td>status</td><td>string</td><td>Market status: active, closed, resolved (default: active)</td></tr>
+              <tr><td>limit</td><td>integer</td><td>Max results (default: 50, max: 500)</td></tr>
+              <tr><td>offset</td><td>integer</td><td>Pagination offset (default: 0)</td></tr>
+            </tbody>
+          </table>
+          <h3>Response</h3>
+          <pre class="response">[
+  {
+    <span class="k">"id"</span>: <span class="s">"poly-abc123"</span>,
+    <span class="k">"platform"</span>: <span class="s">"polymarket"</span>,
+    <span class="k">"title"</span>: <span class="s">"US Presidential Election 2028"</span>,
+    <span class="k">"yes_price"</span>: <span class="n">0.42</span>,
+    <span class="k">"no_price"</span>: <span class="n">0.58</span>,
+    <span class="k">"volume_24h"</span>: <span class="n">18420000</span>,
+    <span class="k">"liquidity"</span>: <span class="n">5200000</span>,
+    <span class="k">"status"</span>: <span class="s">"active"</span>
+  }
+]</pre>
+        </div>
+      </div>
+
+      <!-- Normalized Odds -->
+      <h2 id="normalized-odds">Normalized Odds <span class="tier-badge free">FREE</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method get">GET</span>
+          <span class="endpoint-path">/v1/odds/normalized</span>
+        </div>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">Cross-platform normalized odds with consensus probability, vig removal, and arbitrage detection.</p>
+          <h3>Response</h3>
+          <pre class="response">[
+  {
+    <span class="k">"event_id"</span>: <span class="s">"a1b2c3d4e5f6"</span>,
+    <span class="k">"event_title"</span>: <span class="s">"US Presidential Election 2028 — Republican"</span>,
+    <span class="k">"consensus_probability"</span>: <span class="n">0.4218</span>,
+    <span class="k">"platforms"</span>: {
+      <span class="k">"polymarket"</span>: {<span class="k">"yes_price"</span>: <span class="n">0.42</span>, <span class="k">"spread"</span>: <span class="n">0.02</span>},
+      <span class="k">"kalshi"</span>: {<span class="k">"yes_price"</span>: <span class="n">0.44</span>, <span class="k">"spread"</span>: <span class="n">0.03</span>},
+      <span class="k">"pinnacle"</span>: {<span class="k">"yes_price"</span>: <span class="n">0.40</span>, <span class="k">"spread"</span>: <span class="n">0.02</span>}
+    },
+    <span class="k">"max_spread"</span>: <span class="n">40</span>,
+    <span class="k">"arbitrage_opportunity"</span>: <span class="b">true</span>,
+    <span class="k">"arbitrage_profit_bps"</span>: <span class="n">38</span>
+  }
+]</pre>
+        </div>
+      </div>
+
+      <!-- Order Book -->
+      <h2 id="order-book">Order Book <span class="tier-badge pro">PRO</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method get">GET</span>
+          <span class="endpoint-path">/v1/orderbook/{market_id}</span>
+          <span class="endpoint-tier">PRO</span>
+        </div>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">Real-time order book snapshot with bid/ask depth, imbalance, and spread analytics.</p>
+          <table class="params-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>market_id<span class="param-required">required</span></td><td>string</td><td>Market identifier (path param)</td></tr>
+              <tr><td>platform<span class="param-required">required</span></td><td>string</td><td>Platform name</td></tr>
+            </tbody>
+          </table>
+          <h3>Response</h3>
+          <pre class="response">{
+  <span class="k">"market_id"</span>: <span class="s">"abc123"</span>,
+  <span class="k">"bids"</span>: [{<span class="k">"price"</span>: <span class="n">0.64</span>, <span class="k">"size"</span>: <span class="n">5200</span>}, ...],
+  <span class="k">"asks"</span>: [{<span class="k">"price"</span>: <span class="n">0.66</span>, <span class="k">"size"</span>: <span class="n">4800</span>}, ...],
+  <span class="k">"mid_price"</span>: <span class="n">0.65</span>,
+  <span class="k">"spread"</span>: <span class="n">0.02</span>,
+  <span class="k">"imbalance"</span>: <span class="n">0.12</span>
+}</pre>
+        </div>
+      </div>
+
+      <!-- Whale Alerts -->
+      <h2 id="whale-alerts">Whale Alerts <span class="tier-badge pro">PRO</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method get">GET</span>
+          <span class="endpoint-path">/v1/whales/alerts</span>
+          <span class="endpoint-tier">PRO</span>
+        </div>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">Recent whale trade alerts across all platforms. Filter by market, platform, or minimum USD value.</p>
+          <table class="params-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>market_id</td><td>string</td><td>Filter by market ID</td></tr>
+              <tr><td>platform</td><td>string</td><td>Filter by platform</td></tr>
+              <tr><td>min_usd</td><td>number</td><td>Minimum USD value (default: 10000)</td></tr>
+              <tr><td>hours</td><td>integer</td><td>Lookback window in hours (default: 24)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Arbitrage -->
+      <h2 id="arbitrage">Arbitrage Opportunities <span class="tier-badge pro">PRO</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method get">GET</span>
+          <span class="endpoint-path">/v1/arbitrage</span>
+          <span class="endpoint-tier">PRO</span>
+        </div>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">Scan for cross-platform arbitrage opportunities, sorted by estimated profit.</p>
+          <table class="params-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>category</td><td>string</td><td>Filter by category</td></tr>
+              <tr><td>min_profit_bps</td><td>number</td><td>Minimum profit in basis points (default: 10)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Microstructure -->
+      <h2 id="microstructure">Market Microstructure <span class="tier-badge pro">PRO</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method get">GET</span>
+          <span class="endpoint-path">/v1/microstructure/{market_id}</span>
+          <span class="endpoint-tier">PRO</span>
+        </div>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">Full microstructure analytics: spread, depth, fill rates, slippage, VWAP, whale flow.</p>
+        </div>
+      </div>
+
+      <!-- WebSocket -->
+      <h2 id="ws-prices">WebSocket: Price Stream <span class="tier-badge pro">PRO</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method ws">WS</span>
+          <span class="endpoint-path">/v1/ws/prices</span>
+          <span class="endpoint-tier">PRO</span>
+        </div>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">Real-time price streaming. Send subscription message, receive continuous updates.</p>
+          <h3>Subscribe</h3>
+          <pre class="response">{<span class="k">"subscribe"</span>: [<span class="s">"market-id-1"</span>, <span class="s">"market-id-2"</span>], <span class="k">"platform"</span>: <span class="s">"polymarket"</span>}</pre>
+          <h3>Message Format</h3>
+          <pre class="response">{
+  <span class="k">"market_id"</span>: <span class="s">"abc123"</span>,
+  <span class="k">"platform"</span>: <span class="s">"polymarket"</span>,
+  <span class="k">"yes_price"</span>: <span class="n">0.6523</span>,
+  <span class="k">"no_price"</span>: <span class="n">0.3477</span>,
+  <span class="k">"timestamp"</span>: <span class="s">"2026-04-09T14:23:00Z"</span>
+}</pre>
+        </div>
+      </div>
+
+      <h2 id="ws-whales">WebSocket: Whale Alert Stream <span class="tier-badge pro">PRO</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method ws">WS</span>
+          <span class="endpoint-path">/v1/ws/whales</span>
+          <span class="endpoint-tier">PRO</span>
+        </div>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">Real-time whale trade alerts. No subscription needed — all alerts are streamed automatically.</p>
+        </div>
+      </div>
+
+      <h2 id="ws-arb">WebSocket: Arbitrage Stream <span class="tier-badge pro">PRO</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method ws">WS</span>
+          <span class="endpoint-path">/v1/ws/arbitrage</span>
+          <span class="endpoint-tier">PRO</span>
+        </div>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">Real-time arbitrage opportunity streaming as they are detected across platforms.</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>

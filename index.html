@@ -1,682 +1,792 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Space Runner 3D</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniSight — The Bloomberg Terminal for Prediction Markets</title>
   <style>
+    :root {
+      --bg: #0a0e17;
+      --bg2: #0f1420;
+      --bg3: #131924;
+      --border: #1e2a3a;
+      --text: #e8ecf1;
+      --text2: #8892a4;
+      --text3: #5a6478;
+      --accent: #3b82f6;
+      --accent2: #2563eb;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --purple: #8b5cf6;
+      --cyan: #06b6d4;
+      --orange: #f97316;
+      --mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+      --sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
     body {
-      background: #000;
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-      touch-action: none;
-      -webkit-user-select: none;
-      user-select: none;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      overflow-x: hidden;
     }
-    canvas { display: block; }
 
-    #ui {
+    /* ── Nav ─────────────────────────────────── */
+    nav {
       position: fixed;
-      top: 0; left: 0; right: 0;
-      padding: env(safe-area-inset-top, 20px) 20px 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 60px;
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: flex-start;
-      pointer-events: none;
-      z-index: 10;
     }
-    .score-box {
-      background: rgba(255,255,255,0.12);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 14px;
-      padding: 8px 16px;
-      color: #fff;
-      font-size: 13px;
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .nav-logo-icon { font-size: 24px; color: var(--accent); }
+    .nav-logo-text { font-size: 16px; font-weight: 700; letter-spacing: 2px; }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a {
+      color: var(--text2);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--accent);
+      color: #fff !important;
+      padding: 8px 20px;
+      border-radius: 6px;
       font-weight: 600;
-      letter-spacing: 0.5px;
+      transition: opacity 0.2s;
     }
-    .score-box span {
-      display: block;
-      font-size: 22px;
-      font-weight: 700;
-      color: #fff;
-    }
-    #lives { color: #ff6b6b; font-size: 20px; letter-spacing: 4px; }
+    .nav-cta:hover { opacity: 0.9; }
 
-    #overlay {
-      position: fixed;
-      inset: 0;
+    /* ── Hero ─────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 40px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-content { max-width: 800px; position: relative; z-index: 1; }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 50px;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+    .hero-badge .pulse-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse-anim 2s infinite;
+    }
+    @keyframes pulse-anim {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -2px;
+      margin-bottom: 24px;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), var(--purple), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--text2);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+    .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--text2); background: rgba(255,255,255,0.03); }
+
+    /* ── Terminal Preview ─────────────────────── */
+    .terminal-preview {
+      max-width: 1100px;
+      margin: -40px auto 0;
+      padding: 0 40px;
+      position: relative;
+      z-index: 2;
+    }
+    .terminal-frame {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+    }
+    .terminal-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+    .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .terminal-dot.red { background: #ff5f57; }
+    .terminal-dot.yellow { background: #febc2e; }
+    .terminal-dot.green { background: #28c840; }
+    .terminal-titlebar span {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text3);
+      font-family: var(--mono);
+    }
+    .terminal-body {
+      padding: 20px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text2);
+      min-height: 320px;
+    }
+    .term-prompt { color: var(--green); }
+    .term-cmd { color: var(--text); }
+    .term-comment { color: var(--text3); }
+    .term-output { color: var(--text2); }
+    .term-highlight { color: var(--accent); }
+    .term-warn { color: var(--yellow); }
+    .term-success { color: var(--green); }
+    .term-number { color: var(--cyan); }
+
+    /* ── Stats Bar ────────────────────────────── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      max-width: 1100px;
+      margin: 60px auto;
+      padding: 0 0;
+    }
+    .stat-item {
+      background: var(--bg2);
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .stat-number {
+      font-family: var(--mono);
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .stat-label-main {
+      font-size: 13px;
+      color: var(--text3);
+    }
+
+    /* ── Sections ─────────────────────────────── */
+    section { padding: 100px 40px; max-width: 1100px; margin: 0 auto; }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    .section-header h2 {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+    .section-header p {
+      color: var(--text2);
+      font-size: 16px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* ── Features Grid ────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 768px) { .features-grid { grid-template-columns: 1fr; } }
+
+    .feature-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+      transition: all 0.2s;
+    }
+    .feature-card:hover {
+      border-color: var(--accent);
+      background: rgba(59,130,246,0.03);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      width: 40px; height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+    .feature-icon.blue { background: rgba(59,130,246,0.1); color: var(--accent); }
+    .feature-icon.green { background: rgba(34,197,94,0.1); color: var(--green); }
+    .feature-icon.purple { background: rgba(139,92,246,0.1); color: var(--purple); }
+    .feature-icon.cyan { background: rgba(6,182,212,0.1); color: var(--cyan); }
+    .feature-icon.yellow { background: rgba(245,158,11,0.1); color: var(--yellow); }
+    .feature-icon.orange { background: rgba(249,115,22,0.1); color: var(--orange); }
+
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+
+    /* ── Code Block ───────────────────────────── */
+    .code-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+    @media (max-width: 768px) { .code-section { grid-template-columns: 1fr; } }
+
+    .code-block {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .code-block-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text3);
+    }
+    .code-block pre {
+      padding: 20px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-x: auto;
+      color: var(--text2);
+    }
+    .code-block .kw { color: var(--purple); }
+    .code-block .fn { color: var(--accent); }
+    .code-block .str { color: var(--green); }
+    .code-block .num { color: var(--cyan); }
+    .code-block .cm { color: var(--text3); }
+    .code-block .var { color: var(--text); }
+
+    .code-info h3 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .code-info p {
+      color: var(--text2);
+      font-size: 15px;
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+    .code-info ul {
+      list-style: none;
+      padding: 0;
+    }
+    .code-info li {
+      padding: 6px 0;
+      font-size: 14px;
+      color: var(--text2);
+    }
+    .code-info li::before {
+      content: "\\2713";
+      color: var(--green);
+      font-weight: 700;
+      margin-right: 10px;
+    }
+
+    /* ── Pricing ──────────────────────────────── */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 1024px) { .pricing-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px) { .pricing-grid { grid-template-columns: 1fr; } }
+
+    .pricing-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+      position: relative;
+    }
+    .pricing-card.featured {
+      border-color: var(--accent);
+      box-shadow: 0 0 40px rgba(59,130,246,0.1);
+    }
+    .pricing-card.featured::before {
+      content: 'MOST POPULAR';
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 3px 12px;
+      border-radius: 50px;
+    }
+    .pricing-tier {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+    .pricing-price {
+      font-family: var(--mono);
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .pricing-price span { font-size: 14px; color: var(--text3); font-weight: 400; }
+    .pricing-desc {
+      font-size: 13px;
+      color: var(--text3);
+      margin-bottom: 24px;
+    }
+    .pricing-features {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 24px;
+    }
+    .pricing-features li {
+      font-size: 13px;
+      color: var(--text2);
+      padding: 5px 0;
+    }
+    .pricing-features li::before {
+      content: "\\2713";
+      color: var(--green);
+      margin-right: 8px;
+      font-weight: 700;
+    }
+    .pricing-btn {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .pricing-btn.primary { background: var(--accent); color: #fff; }
+    .pricing-btn.primary:hover { background: var(--accent2); }
+    .pricing-btn.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .pricing-btn.secondary:hover { border-color: var(--text3); }
+
+    /* ── Platforms ─────────────────────────────── */
+    .platforms {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      margin-top: 40px;
+    }
+    .platform-item {
       display: flex;
       flex-direction: column;
       align-items: center;
+      gap: 8px;
+    }
+    .platform-logo {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
       justify-content: center;
-      background: rgba(0,0,10,0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      z-index: 20;
-      gap: 16px;
-    }
-    #overlay h1 {
-      font-size: clamp(36px, 8vw, 56px);
-      font-weight: 800;
-      color: #fff;
-      text-align: center;
-      letter-spacing: -1px;
-      line-height: 1.1;
-    }
-    #overlay h1 span { color: #7c6ef5; }
-    #overlay p {
-      font-size: 16px;
-      color: rgba(255,255,255,0.6);
-      text-align: center;
-      max-width: 280px;
-      line-height: 1.5;
-    }
-    #overlay .final-score {
-      font-size: 48px;
-      font-weight: 800;
-      color: #7c6ef5;
-    }
-    .btn {
-      margin-top: 8px;
-      padding: 16px 48px;
-      border-radius: 50px;
-      border: none;
-      background: linear-gradient(135deg, #7c6ef5, #5a4fcf);
-      color: #fff;
-      font-size: 18px;
+      font-size: 22px;
       font-weight: 700;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      pointer-events: all;
-      box-shadow: 0 8px 32px rgba(124,110,245,0.4);
-      -webkit-tap-highlight-color: transparent;
-      transition: transform 0.1s, box-shadow 0.1s;
     }
-    .btn:active { transform: scale(0.96); box-shadow: 0 4px 16px rgba(124,110,245,0.4); }
+    .platform-logo.poly { color: var(--purple); }
+    .platform-logo.kalshi { color: var(--cyan); }
+    .platform-logo.pinnacle { color: var(--orange); }
+    .platform-logo.betfair { color: var(--yellow); }
+    .platform-logo.dk { color: var(--green); }
+    .platform-logo.fd { color: var(--accent); }
+    .platform-name { font-size: 12px; color: var(--text3); }
 
-    #instructions {
-      position: fixed;
-      bottom: env(safe-area-inset-bottom, 20px);
-      left: 50%;
-      transform: translateX(-50%);
-      color: rgba(255,255,255,0.4);
-      font-size: 13px;
+    /* ── Footer ───────────────────────────────── */
+    footer.site-footer {
+      border-top: 1px solid var(--border);
+      padding: 40px;
       text-align: center;
-      pointer-events: none;
-      z-index: 10;
-      padding-bottom: 8px;
     }
+    footer.site-footer p {
+      color: var(--text3);
+      font-size: 13px;
+    }
+    footer.site-footer a {
+      color: var(--text2);
+      text-decoration: none;
+    }
+    footer.site-footer a:hover { color: var(--text); }
 
-    #combo {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #ffd700;
-      font-size: 32px;
-      font-weight: 800;
-      pointer-events: none;
-      z-index: 15;
-      opacity: 0;
-      text-shadow: 0 0 20px rgba(255,215,0,0.8);
-      transition: opacity 0.3s;
+    /* ── Responsive ───────────────────────────── */
+    @media (max-width: 640px) {
+      nav { padding: 0 16px; }
+      .nav-links { gap: 16px; }
+      .nav-links a { font-size: 12px; }
+      .hero { padding: 100px 20px 60px; }
+      section { padding: 60px 20px; }
+      .terminal-preview { padding: 0 20px; }
     }
   </style>
 </head>
 <body>
 
-<canvas id="c"></canvas>
+  <!-- Nav -->
+  <nav>
+    <a href="#" class="nav-logo">
+      <span class="nav-logo-icon">&#9678;</span>
+      <span class="nav-logo-text">OMNISIGHT</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#api">API</a>
+      <a href="#pricing">Pricing</a>
+      <a href="dashboard/index.html">Terminal</a>
+      <a href="docs/api.html">Docs</a>
+      <a href="#pricing" class="nav-cta">Get API Key</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="pulse-dot"></span>
+        Tracking $184M+ daily volume across 4 platforms
+      </div>
+      <h1>The <span class="gradient">Bloomberg Terminal</span> for Prediction Markets</h1>
+      <p>
+        Unified data infrastructure across Polymarket, Kalshi, and sportsbooks.
+        Real-time odds normalization, whale tracking, arbitrage detection, and
+        institutional-grade analytics API.
+      </p>
+      <div class="hero-buttons">
+        <a href="#pricing" class="btn-primary">Start Free</a>
+        <a href="docs/api.html" class="btn-secondary">View API Docs</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Terminal Preview -->
+  <div class="terminal-preview">
+    <div class="terminal-frame">
+      <div class="terminal-titlebar">
+        <div class="terminal-dot red"></div>
+        <div class="terminal-dot yellow"></div>
+        <div class="terminal-dot green"></div>
+        <span>omnisight-terminal</span>
+      </div>
+      <div class="terminal-body" id="terminal-demo">
+        <div><span class="term-prompt">$</span> <span class="term-cmd">pip install omnisight</span></div>
+        <div class="term-output">Successfully installed omnisight-1.0.0</div>
+        <br>
+        <div><span class="term-prompt">&gt;&gt;&gt;</span> <span class="term-cmd"><span class="term-highlight">from</span> omnisight <span class="term-highlight">import</span> OmniSight</span></div>
+        <div><span class="term-prompt">&gt;&gt;&gt;</span> <span class="term-cmd">client = OmniSight(api_key=<span class="term-success">"sk-..."</span>)</span></div>
+        <br>
+        <div><span class="term-prompt">&gt;&gt;&gt;</span> <span class="term-cmd">odds = client.get_normalized_odds(category=<span class="term-success">"politics"</span>)</span></div>
+        <div><span class="term-prompt">&gt;&gt;&gt;</span> <span class="term-cmd">odds[<span class="term-number">0</span>]</span></div>
+        <div class="term-output">{</div>
+        <div class="term-output">&nbsp;&nbsp;<span class="term-highlight">"event"</span>: <span class="term-success">"US Presidential Election 2028 — Republican"</span>,</div>
+        <div class="term-output">&nbsp;&nbsp;<span class="term-highlight">"consensus_probability"</span>: <span class="term-number">0.4218</span>,</div>
+        <div class="term-output">&nbsp;&nbsp;<span class="term-highlight">"platforms"</span>: {<span class="term-success">"polymarket"</span>: <span class="term-number">0.42</span>, <span class="term-success">"kalshi"</span>: <span class="term-number">0.44</span>, <span class="term-success">"pinnacle"</span>: <span class="term-number">0.40</span>},</div>
+        <div class="term-output">&nbsp;&nbsp;<span class="term-highlight">"max_spread"</span>: <span class="term-number">40</span> <span class="term-comment">// basis points</span>,</div>
+        <div class="term-output">&nbsp;&nbsp;<span class="term-highlight">"arbitrage_opportunity"</span>: <span class="term-warn">true</span></div>
+        <div class="term-output">}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-number">2,847</div>
+      <div class="stat-label-main">Markets tracked</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">4</div>
+      <div class="stat-label-main">Platforms unified</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">&lt;50ms</div>
+      <div class="stat-label-main">API latency (p99)</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">99.9%</div>
+      <div class="stat-label-main">Uptime SLA</div>
+    </div>
+  </div>
+
+  <!-- Connected Platforms -->
+  <section>
+    <div class="section-header">
+      <h2>Connected Platforms</h2>
+      <p>One API, every prediction market. Normalized, real-time, ready to build on.</p>
+    </div>
+    <div class="platforms">
+      <div class="platform-item"><div class="platform-logo poly">P</div><div class="platform-name">Polymarket</div></div>
+      <div class="platform-item"><div class="platform-logo kalshi">K</div><div class="platform-name">Kalshi</div></div>
+      <div class="platform-item"><div class="platform-logo pinnacle">Pi</div><div class="platform-name">Pinnacle</div></div>
+      <div class="platform-item"><div class="platform-logo betfair">B</div><div class="platform-name">Betfair</div></div>
+      <div class="platform-item"><div class="platform-logo dk">D</div><div class="platform-name">DraftKings</div></div>
+      <div class="platform-item"><div class="platform-logo fd">F</div><div class="platform-name">FanDuel</div></div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="section-header">
+      <h2>Infrastructure for Every Edge</h2>
+      <p>Everything quant firms, AI agents, and developers need to operate in prediction markets.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon blue">&#9881;</div>
+        <h3>Cross-Platform Normalization</h3>
+        <p>Unified odds across Polymarket, Kalshi, and sportsbooks. Vig removal, consensus probabilities, event matching.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon green">&#9729;</div>
+        <h3>Real-Time WebSocket Feeds</h3>
+        <p>Sub-100ms price streaming via WebSocket. Subscribe to markets, whale alerts, and arbitrage opportunities.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon purple">&#128051;</div>
+        <h3>Whale Tracking</h3>
+        <p>Monitor large trades in real-time. Wallet profiling, accumulation detection, and flow analysis across platforms.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon cyan">&#8644;</div>
+        <h3>Arbitrage Scanner</h3>
+        <p>Automatic cross-platform mispricing detection. Profit estimates, liquidity availability, and live opportunity feeds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon yellow">&#128200;</div>
+        <h3>Market Microstructure</h3>
+        <p>Order book depth, fill rates, slippage estimates, VWAP, spread analytics, and volume profiles.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon orange">&#10003;</div>
+        <h3>Resolution Tracking</h3>
+        <p>Monitor market resolutions, validate cross-platform outcomes, detect disputes, and track upcoming deadlines.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- API Section -->
+  <section id="api">
+    <div class="code-section">
+      <div class="code-info">
+        <h3>Built for Developers</h3>
+        <p>Python SDK, REST API, and WebSocket streams. Everything you need to build on prediction market data.</p>
+        <ul>
+          <li>Python & JavaScript SDKs</li>
+          <li>REST API with OpenAPI spec</li>
+          <li>WebSocket real-time streaming</li>
+          <li>Historical OHLCV data</li>
+          <li>Webhook event notifications</li>
+          <li>Rate-limited with clear tier pricing</li>
+        </ul>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header">whale_scanner.py</div>
+        <pre><span class="kw">import</span> asyncio
+<span class="kw">from</span> omnisight <span class="kw">import</span> OmniSight
+
+<span class="kw">async def</span> <span class="fn">scan_whales</span>():
+    <span class="kw">async with</span> OmniSight(api_key=<span class="str">"sk-..."</span>) <span class="kw">as</span> <span class="var">client</span>:
+        <span class="cm"># Stream real-time whale alerts</span>
+        <span class="kw">async for</span> <span class="var">alert</span> <span class="kw">in</span> client.stream_whale_alerts():
+            <span class="kw">if</span> alert.usd_value &gt; <span class="num">100_000</span>:
+                <span class="fn">print</span>(<span class="str">f"MEGA WHALE: </span>{alert.side}<span class="str"> </span>"
+                      <span class="str">f"</span>${alert.usd_value:,.0f}<span class="str"> on </span>"
+                      <span class="str">f"</span>{alert.market_title}<span class="str">"</span>)
+                <span class="fn">print</span>(<span class="str">f"  Wallet: </span>{alert.wallet_address}<span class="str">"</span>)
+                <span class="fn">print</span>(<span class="str">f"  Tags: </span>{alert.tags}<span class="str">"</span>)
+
+asyncio.run(scan_whales())</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing">
+    <div class="section-header">
+      <h2>Simple, Scalable Pricing</h2>
+      <p>Start free. Scale to institutional. Every bot, trader, and analyst needs data.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-tier">Free</div>
+        <div class="pricing-price">$0<span>/month</span></div>
+        <div class="pricing-desc">For exploration and prototyping</div>
+        <ul class="pricing-features">
+          <li>60 requests/minute</li>
+          <li>Basic market data</li>
+          <li>Normalized odds</li>
+          <li>Resolution tracking</li>
+          <li>1 WebSocket connection</li>
+          <li>7 days historical data</li>
+        </ul>
+        <a href="#" class="pricing-btn secondary">Get Started</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-tier">Pro</div>
+        <div class="pricing-price">$99<span>/month</span></div>
+        <div class="pricing-desc">For traders and bot developers</div>
+        <ul class="pricing-features">
+          <li>600 requests/minute</li>
+          <li>Full order book depth</li>
+          <li>Whale alerts &amp; flow</li>
+          <li>Arbitrage scanner</li>
+          <li>Market microstructure</li>
+          <li>5 WebSocket connections</li>
+          <li>1 year historical data</li>
+        </ul>
+        <a href="#" class="pricing-btn primary">Start Pro Trial</a>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-tier">Institutional</div>
+        <div class="pricing-price">$500<span>/month</span></div>
+        <div class="pricing-desc">For quant firms and serious operators</div>
+        <ul class="pricing-features">
+          <li>6,000 requests/minute</li>
+          <li>Everything in Pro</li>
+          <li>Wallet profiling</li>
+          <li>50 WebSocket connections</li>
+          <li>Unlimited historical data</li>
+          <li>Priority support</li>
+        </ul>
+        <a href="#" class="pricing-btn secondary">Contact Sales</a>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-tier">Enterprise</div>
+        <div class="pricing-price">Custom</div>
+        <div class="pricing-desc">Dedicated infrastructure</div>
+        <ul class="pricing-features">
+          <li>Unlimited rate</li>
+          <li>Everything in Institutional</li>
+          <li>Dedicated infrastructure</li>
+          <li>Custom data feeds</li>
+          <li>SLA guarantees</li>
+          <li>Direct support channel</li>
+        </ul>
+        <a href="#" class="pricing-btn secondary">Talk to Us</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>OmniSight &mdash; Prediction Market Infrastructure &middot; <a href="docs/api.html">API Docs</a> &middot; <a href="dashboard/index.html">Terminal</a></p>
+  </footer>
 
-<div id="ui">
-  <div class="score-box">SCORE<span id="scoreDisplay">0</span></div>
-  <div class="score-box" style="text-align:right">BEST<span id="bestDisplay">0</span></div>
-</div>
-<div id="lives"></div>
-
-<div id="combo"></div>
-<div id="instructions">Swipe left/right to dodge · Tap to boost</div>
-
-<div id="overlay">
-  <h1>Space<br/><span>Runner 3D</span></h1>
-  <p>Dodge obstacles and collect gems to survive as long as possible.</p>
-  <button class="btn" id="startBtn">Play</button>
-</div>
-
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
-
-<script type="module">
-import * as THREE from 'three';
-
-/* ── Constants ─────────────────────────────────────── */
-const LANES = [-2.4, 0, 2.4];
-const LANE_COUNT = 3;
-const SPEED_BASE = 14;
-const SPEED_MAX  = 40;
-const SPEED_ACCEL = 0.3;
-const SPAWN_INTERVAL_BASE = 1.4;
-const GEM_INTERVAL = 1.1;
-
-/* ── Scene ─────────────────────────────────────────── */
-const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x050510);
-scene.fog = new THREE.FogExp2(0x050510, 0.018);
-
-const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 200);
-camera.position.set(0, 3.5, 9);
-camera.lookAt(0, 0, -5);
-
-/* ── Lights ────────────────────────────────────────── */
-const ambient = new THREE.AmbientLight(0x111133, 0.8);
-scene.add(ambient);
-
-const sun = new THREE.DirectionalLight(0xffffff, 1.8);
-sun.position.set(5, 10, 5);
-sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
-scene.add(sun);
-
-const purpleLight = new THREE.PointLight(0x7c6ef5, 3, 30);
-purpleLight.position.set(0, 5, -10);
-scene.add(purpleLight);
-
-const blueLight = new THREE.PointLight(0x4488ff, 2, 20);
-blueLight.position.set(-5, 3, 0);
-scene.add(blueLight);
-
-/* ── Track ─────────────────────────────────────────── */
-const TRACK_LEN = 120;
-const trackGeo = new THREE.PlaneGeometry(8, TRACK_LEN, 8, 60);
-const trackMat = new THREE.MeshStandardMaterial({
-  color: 0x0d0d2b,
-  roughness: 0.8,
-  metalness: 0.2,
-  emissive: 0x0a0a1f,
-});
-const track = new THREE.Mesh(trackGeo, trackMat);
-track.rotation.x = -Math.PI / 2;
-track.position.z = -TRACK_LEN / 2 + 10;
-track.receiveShadow = true;
-scene.add(track);
-
-// Lane lines
-for (let i = -1; i <= 1; i++) {
-  const lineGeo = new THREE.PlaneGeometry(0.04, TRACK_LEN);
-  const lineMat = new THREE.MeshBasicMaterial({ color: 0x3333aa, transparent: true, opacity: 0.4 });
-  const line = new THREE.Mesh(lineGeo, lineMat);
-  line.rotation.x = -Math.PI / 2;
-  line.position.set(i * 2.4, 0.01, -TRACK_LEN / 2 + 10);
-  scene.add(line);
-}
-
-// Side walls (glowing strips)
-[-4.2, 4.2].forEach(x => {
-  const wallGeo = new THREE.BoxGeometry(0.15, 0.5, TRACK_LEN);
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x4444cc, emissive: 0x2222aa, emissiveIntensity: 0.6 });
-  const wall = new THREE.Mesh(wallGeo, wallMat);
-  wall.position.set(x, 0.25, -TRACK_LEN / 2 + 10);
-  scene.add(wall);
-});
-
-/* ── Stars ─────────────────────────────────────────── */
-const starGeo = new THREE.BufferGeometry();
-const starCount = 600;
-const starPos = new Float32Array(starCount * 3);
-for (let i = 0; i < starCount * 3; i += 3) {
-  starPos[i]   = (Math.random() - 0.5) * 200;
-  starPos[i+1] = Math.random() * 60 + 5;
-  starPos[i+2] = (Math.random() - 0.5) * 200;
-}
-starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.3, sizeAttenuation: true });
-scene.add(new THREE.Points(starGeo, starMat));
-
-/* ── Player ────────────────────────────────────────── */
-const playerGroup = new THREE.Group();
-scene.add(playerGroup);
-
-// Ship body
-const bodyGeo = new THREE.ConeGeometry(0.45, 1.4, 8);
-const bodyMat = new THREE.MeshStandardMaterial({ color: 0xaaaaff, metalness: 0.7, roughness: 0.2, emissive: 0x3333aa, emissiveIntensity: 0.3 });
-const body = new THREE.Mesh(bodyGeo, bodyMat);
-body.rotation.x = Math.PI / 2;
-body.castShadow = true;
-playerGroup.add(body);
-
-// Wings
-[-1, 1].forEach(side => {
-  const wingGeo = new THREE.BoxGeometry(1.2, 0.08, 0.7);
-  const wingMat = new THREE.MeshStandardMaterial({ color: 0x7c6ef5, metalness: 0.6, roughness: 0.3, emissive: 0x4444bb, emissiveIntensity: 0.4 });
-  const wing = new THREE.Mesh(wingGeo, wingMat);
-  wing.position.set(side * 0.7, 0, 0.2);
-  wing.castShadow = true;
-  playerGroup.add(wing);
-});
-
-// Engine glow
-const engineGeo = new THREE.SphereGeometry(0.18, 8, 8);
-const engineMat = new THREE.MeshStandardMaterial({ color: 0x00ccff, emissive: 0x00aaff, emissiveIntensity: 2, transparent: true, opacity: 0.9 });
-const engine = new THREE.Mesh(engineGeo, engineMat);
-engine.position.z = 0.75;
-playerGroup.add(engine);
-
-const engineLight = new THREE.PointLight(0x00aaff, 2, 5);
-engine.add(engineLight);
-
-playerGroup.position.set(0, 0.7, 7);
-
-/* ── Particles (engine trail) ──────────────────────── */
-const trailCount = 120;
-const trailGeo = new THREE.BufferGeometry();
-const trailPos = new Float32Array(trailCount * 3);
-const trailVel = [];
-const trailLife = new Float32Array(trailCount);
-for (let i = 0; i < trailCount; i++) {
-  trailPos[i*3] = trailPos[i*3+1] = trailPos[i*3+2] = 9999;
-  trailLife[i] = 0;
-  trailVel.push(new THREE.Vector3());
-}
-trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
-const trailMat = new THREE.PointsMaterial({ color: 0x00ccff, size: 0.18, transparent: true, opacity: 0.7, sizeAttenuation: true });
-const trail = new THREE.Points(trailGeo, trailMat);
-scene.add(trail);
-let trailIdx = 0;
-
-/* ── Obstacle pool ─────────────────────────────────── */
-const obstaclePool = [];
-const activeObstacles = [];
-
-function makeObstacle() {
-  const group = new THREE.Group();
-  const types = ['box', 'ring', 'wall'];
-  const t = types[Math.floor(Math.random() * types.length)];
-
-  if (t === 'box') {
-    const h = 0.6 + Math.random() * 1.2;
-    const geo = new THREE.BoxGeometry(1.6, h, 1.0);
-    const mat = new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0xaa1111, emissiveIntensity: 0.5, roughness: 0.4, metalness: 0.5 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = h / 2;
-    mesh.castShadow = true;
-    group.add(mesh);
-    group.userData.hitBox = new THREE.Vector3(0.7, h, 0.4);
-  } else if (t === 'ring') {
-    const geo = new THREE.TorusGeometry(0.9, 0.18, 8, 24);
-    const mat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xcc3300, emissiveIntensity: 0.6 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = 1.2;
-    group.add(mesh);
-    group.userData.isRing = true;
-    group.userData.hitBox = new THREE.Vector3(0.6, 0.6, 0.2);
-  } else {
-    // Full-width wall with a gap
-    const gap = Math.floor(Math.random() * LANE_COUNT);
-    for (let l = 0; l < LANE_COUNT; l++) {
-      if (l === gap) continue;
-      const geo = new THREE.BoxGeometry(2.0, 1.8, 0.5);
-      const mat = new THREE.MeshStandardMaterial({ color: 0xcc00ff, emissive: 0x880099, emissiveIntensity: 0.5 });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(LANES[l], 0.9, 0);
-      mesh.castShadow = true;
-      group.add(mesh);
-    }
-    group.userData.isWall = true;
-    group.userData.wallGap = gap;
-  }
-  return group;
-}
-
-/* ── Gem pool ──────────────────────────────────────── */
-const activeGems = [];
-const gemGeo = new THREE.OctahedronGeometry(0.28, 0);
-const gemMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 1.2, metalness: 0.8, roughness: 0.1 });
-
-function spawnGem(z) {
-  const gem = new THREE.Mesh(gemGeo, gemMat);
-  gem.position.set(LANES[Math.floor(Math.random() * LANE_COUNT)], 0.8, z);
-  gem.castShadow = true;
-  scene.add(gem);
-  activeGems.push(gem);
-}
-
-/* ── Game state ────────────────────────────────────── */
-let state = 'menu'; // 'menu' | 'playing' | 'dead'
-let score = 0;
-let best = parseInt(localStorage.getItem('srBest') || '0');
-let lives = 3;
-let speed = SPEED_BASE;
-let lane = 1; // 0,1,2
-let targetX = LANES[lane];
-let elapsed = 0;
-let nextObstacle = SPAWN_INTERVAL_BASE;
-let nextGem = GEM_INTERVAL;
-let invincible = 0;
-let comboCount = 0;
-let comboTimer = 0;
-let shakeAmt = 0;
-let boostActive = false;
-let boostTimer = 0;
-
-const scoreEl = document.getElementById('scoreDisplay');
-const bestEl  = document.getElementById('bestDisplay');
-const livesEl = document.getElementById('lives');
-const overlay = document.getElementById('overlay');
-const comboEl = document.getElementById('combo');
-
-bestEl.textContent = best;
-
-function updateLivesUI() {
-  livesEl.textContent = '♥'.repeat(lives) + '♡'.repeat(Math.max(0, 3 - lives));
-  livesEl.style.cssText = `position:fixed;top:${getTopOffset()}px;left:50%;transform:translateX(-50%);color:#ff6b6b;font-size:20px;letter-spacing:4px;pointer-events:none;z-index:10;`;
-}
-
-function getTopOffset() {
-  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat') || '0') + 20;
-}
-
-function startGame() {
-  score = 0; lives = 3; speed = SPEED_BASE; lane = 1;
-  targetX = LANES[lane]; elapsed = 0;
-  nextObstacle = SPAWN_INTERVAL_BASE; nextGem = GEM_INTERVAL;
-  invincible = 0; comboCount = 0; comboTimer = 0;
-  shakeAmt = 0; boostActive = false; boostTimer = 0;
-
-  // Clear obstacles
-  [...activeObstacles].forEach(o => { scene.remove(o); });
-  activeObstacles.length = 0;
-  [...activeGems].forEach(g => { scene.remove(g); });
-  activeGems.length = 0;
-
-  playerGroup.position.x = LANES[1];
-  playerGroup.position.y = 0.7;
-  overlay.style.display = 'none';
-  state = 'playing';
-  updateLivesUI();
-}
-
-function die() {
-  if (invincible > 0) return;
-  lives--;
-  shakeAmt = 0.5;
-  updateLivesUI();
-  if (lives <= 0) {
-    state = 'dead';
-    if (score > best) { best = score; localStorage.setItem('srBest', best); }
-    showDeathScreen();
-  } else {
-    invincible = 2.0;
-  }
-}
-
-function showDeathScreen() {
-  overlay.innerHTML = `
-    <h1>Game <span>Over</span></h1>
-    <div class="final-score">${score}</div>
-    <p>Best: ${best}</p>
-    <button class="btn" id="startBtn">Play Again</button>
-  `;
-  overlay.style.display = 'flex';
-  document.getElementById('startBtn').addEventListener('click', startGame, { once: true });
-}
-
-document.getElementById('startBtn').addEventListener('click', startGame, { once: true });
-
-/* ── Input ─────────────────────────────────────────── */
-let touchStartX = 0;
-let touchStartY = 0;
-let touchStartTime = 0;
-
-window.addEventListener('touchstart', e => {
-  const t = e.touches[0];
-  touchStartX = t.clientX;
-  touchStartY = t.clientY;
-  touchStartTime = Date.now();
-}, { passive: true });
-
-window.addEventListener('touchend', e => {
-  if (state !== 'playing') return;
-  const t = e.changedTouches[0];
-  const dx = t.clientX - touchStartX;
-  const dy = t.clientY - touchStartY;
-  const dt = Date.now() - touchStartTime;
-
-  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
-    // Swipe
-    if (dx > 0 && lane < 2) lane++;
-    else if (dx < 0 && lane > 0) lane--;
-    targetX = LANES[lane];
-  } else if (Math.abs(dy) < 30 && dt < 200) {
-    // Tap → boost
-    boostActive = true;
-    boostTimer = 1.5;
-  }
-}, { passive: true });
-
-// Keyboard (desktop testing)
-window.addEventListener('keydown', e => {
-  if (state !== 'playing') return;
-  if (e.key === 'ArrowLeft'  && lane > 0) { lane--; targetX = LANES[lane]; }
-  if (e.key === 'ArrowRight' && lane < 2) { lane++; targetX = LANES[lane]; }
-  if (e.key === ' ') { boostActive = true; boostTimer = 1.5; }
-});
-
-/* ── Resize ────────────────────────────────────────── */
-function onResize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-onResize();
-window.addEventListener('resize', onResize);
-
-/* ── Collision helpers ─────────────────────────────── */
-const _pBox = new THREE.Box3();
-const _oBox = new THREE.Box3();
-
-function checkObstacleHit(obs) {
-  const pd = playerGroup.position;
-  _pBox.setFromCenterAndSize(pd, new THREE.Vector3(0.6, 0.8, 0.5));
-
-  if (obs.userData.isWall) {
-    const gap = obs.userData.wallGap;
-    if (lane !== gap) {
-      _oBox.setFromObject(obs);
-      return _pBox.intersectsBox(_oBox);
-    }
-    return false;
-  }
-
-  if (obs.userData.isRing) {
-    // Pass through centre = good (dodge)
-    _oBox.setFromObject(obs);
-    const overlap = _pBox.intersectsBox(_oBox);
-    if (overlap) {
-      const cx = obs.position.x;
-      return Math.abs(pd.x - cx) > 0.55; // only hit rim
-    }
-    return false;
-  }
-
-  _oBox.setFromObject(obs);
-  return _pBox.intersectsBox(_oBox);
-}
-
-/* ── Main loop ─────────────────────────────────────── */
-const clock = new THREE.Clock();
-
-function animate() {
-  requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05);
-
-  if (state === 'playing') {
-    elapsed += dt;
-    speed = Math.min(SPEED_BASE + elapsed * SPEED_ACCEL, SPEED_MAX);
-    const curSpeed = boostActive ? speed * 1.6 : speed;
-
-    // Score
-    score = Math.floor(elapsed * 10 + comboCount * 5);
-    scoreEl.textContent = score;
-
-    // Timers
-    if (invincible > 0) invincible -= dt;
-    if (boostTimer > 0) { boostTimer -= dt; if (boostTimer <= 0) boostActive = false; }
-    if (comboTimer > 0) { comboTimer -= dt; } else { comboCount = 0; }
-
-    // Player lateral
-    playerGroup.position.x += (targetX - playerGroup.position.x) * Math.min(1, dt * 14);
-
-    // Ship tilt
-    const tiltDir = Math.sign(targetX - playerGroup.position.x);
-    playerGroup.rotation.z += (tiltDir * 0.25 - playerGroup.rotation.z) * dt * 8;
-    playerGroup.rotation.x = -0.08;
-
-    // Boost vertical bounce
-    const floatY = 0.7 + Math.sin(elapsed * 3) * 0.06 + (boostActive ? 0.15 : 0);
-    playerGroup.position.y += (floatY - playerGroup.position.y) * dt * 5;
-
-    // Engine glow pulse
-    engineMat.emissiveIntensity = 1.5 + Math.sin(elapsed * 15) * 0.5 + (boostActive ? 1 : 0);
-    engineLight.intensity = 2 + Math.sin(elapsed * 12) * 0.5 + (boostActive ? 2 : 0);
-
-    // Trail particles
-    const pw = playerGroup.position;
-    for (let i = 0; i < 3; i++) {
-      const idx = trailIdx % trailCount;
-      trailPos[idx*3]   = pw.x + (Math.random()-0.5)*0.2;
-      trailPos[idx*3+1] = pw.y + (Math.random()-0.5)*0.2;
-      trailPos[idx*3+2] = pw.z + 0.5 + Math.random()*0.3;
-      trailVel[idx].set((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.2, curSpeed * 0.06);
-      trailLife[idx] = 0.4;
-      trailIdx++;
-    }
-    for (let i = 0; i < trailCount; i++) {
-      if (trailLife[i] > 0) {
-        trailLife[i] -= dt;
-        trailPos[i*3]   += trailVel[i].x * dt;
-        trailPos[i*3+1] += trailVel[i].y * dt;
-        trailPos[i*3+2] += trailVel[i].z * dt;
-        if (trailLife[i] <= 0) { trailPos[i*3+2] = 9999; }
-      }
-    }
-    trailGeo.attributes.position.needsUpdate = true;
-
-    // Spawn obstacles
-    nextObstacle -= dt;
-    if (nextObstacle <= 0) {
-      nextObstacle = Math.max(0.5, SPAWN_INTERVAL_BASE - elapsed * 0.004) + Math.random() * 0.3;
-      const obs = makeObstacle();
-      obs.position.z = -55;
-      obs.position.x = LANES[Math.floor(Math.random() * LANE_COUNT)];
-      scene.add(obs);
-      activeObstacles.push(obs);
-    }
-
-    // Spawn gems
-    nextGem -= dt;
-    if (nextGem <= 0) {
-      nextGem = GEM_INTERVAL + Math.random() * 0.5;
-      spawnGem(-55);
-    }
-
-    // Move obstacles
-    for (let i = activeObstacles.length - 1; i >= 0; i--) {
-      const obs = activeObstacles[i];
-      obs.position.z += curSpeed * dt;
-      if (obs.userData.isRing) obs.rotation.z += dt * 1.5;
-
-      if (obs.position.z > 12) {
-        scene.remove(obs);
-        activeObstacles.splice(i, 1);
-        continue;
-      }
-
-      if (obs.position.z > playerGroup.position.z - 2 && obs.position.z < playerGroup.position.z + 1) {
-        if (checkObstacleHit(obs)) { die(); }
-      }
-    }
-
-    // Move gems
-    for (let i = activeGems.length - 1; i >= 0; i--) {
-      const gem = activeGems[i];
-      gem.position.z += curSpeed * dt;
-      gem.rotation.y += dt * 3;
-      gem.rotation.x += dt * 2;
-
-      if (gem.position.z > 12) {
-        scene.remove(gem);
-        activeGems.splice(i, 1);
-        continue;
-      }
-
-      const gd = gem.position.distanceTo(playerGroup.position);
-      if (gd < 0.8) {
-        // Collect
-        scene.remove(gem);
-        activeGems.splice(i, 1);
-        comboCount++;
-        comboTimer = 2.5;
-        if (comboCount > 1) {
-          comboEl.textContent = `x${comboCount} COMBO!`;
-          comboEl.style.opacity = '1';
-          setTimeout(() => { comboEl.style.opacity = '0'; }, 800);
-        }
-      }
-    }
-
-    // Track scroll (cosmetic, move track back)
-    track.position.z += curSpeed * dt;
-    if (track.position.z > 10 + TRACK_LEN / 2) {
-      track.position.z = -TRACK_LEN / 2 + 10;
-    }
-
-    // Camera shake
-    if (shakeAmt > 0) {
-      shakeAmt *= 0.85;
-      camera.position.x = (Math.random()-0.5) * shakeAmt * 0.5;
-      camera.position.y = 3.5 + (Math.random()-0.5) * shakeAmt * 0.3;
-    } else {
-      camera.position.x += (0 - camera.position.x) * dt * 5;
-      camera.position.y += (3.5 - camera.position.y) * dt * 5;
-    }
-
-    // Invincibility flash
-    if (invincible > 0) {
-      bodyMat.emissiveIntensity = Math.sin(elapsed * 30) > 0 ? 1.5 : 0;
-    } else {
-      bodyMat.emissiveIntensity = 0.3;
-    }
-
-    // Purple light follow player (delayed)
-    purpleLight.position.x += (playerGroup.position.x - purpleLight.position.x) * dt * 3;
-
-    // Update best
-    if (score > best) { best = score; bestEl.textContent = best; }
-  }
-
-  renderer.render(scene, camera);
-}
-
-animate();
-</script>
 </body>
 </html>

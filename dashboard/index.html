@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniSight Terminal</title>
+  <link rel="stylesheet" href="css/terminal.css">
+</head>
+<body>
+  <!-- Top Bar -->
+  <header id="topbar">
+    <div class="topbar-left">
+      <div class="logo">
+        <span class="logo-icon">&#9678;</span>
+        <span class="logo-text">OMNISIGHT</span>
+        <span class="logo-tag">TERMINAL</span>
+      </div>
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-panel="overview">Overview</button>
+        <button class="nav-tab" data-panel="markets">Markets</button>
+        <button class="nav-tab" data-panel="arbitrage">Arbitrage</button>
+        <button class="nav-tab" data-panel="whales">Whale Flow</button>
+        <button class="nav-tab" data-panel="microstructure">Microstructure</button>
+      </nav>
+    </div>
+    <div class="topbar-right">
+      <div class="status-indicator live">
+        <span class="pulse"></span> LIVE
+      </div>
+      <div class="clock" id="clock"></div>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <main id="terminal">
+
+    <!-- OVERVIEW PANEL -->
+    <div class="panel-view active" id="panel-overview">
+      <!-- Row 1: Stats Strip -->
+      <div class="stats-strip">
+        <div class="stat-card">
+          <div class="stat-label">Markets Tracked</div>
+          <div class="stat-value" id="stat-markets">2,847</div>
+          <div class="stat-delta positive">+124 today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">24h Volume</div>
+          <div class="stat-value" id="stat-volume">$184.2M</div>
+          <div class="stat-delta positive">+12.4%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active Arb Opps</div>
+          <div class="stat-value" id="stat-arbs">23</div>
+          <div class="stat-delta positive">+5</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Whale Alerts (24h)</div>
+          <div class="stat-value" id="stat-whales">147</div>
+          <div class="stat-delta negative">-8.3%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Cross-Platform Spread</div>
+          <div class="stat-value" id="stat-spread">42 bps</div>
+          <div class="stat-delta negative">+3 bps</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Resolutions (7d)</div>
+          <div class="stat-value" id="stat-resolutions">89</div>
+          <div class="stat-delta">0 disputed</div>
+        </div>
+      </div>
+
+      <!-- Row 2: Grid -->
+      <div class="grid-3col">
+        <!-- Hot Markets -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Hot Markets</h3>
+            <span class="badge">Top Volume</span>
+          </div>
+          <div class="market-list" id="hot-markets">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Cross-Platform Odds -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Cross-Platform Odds</h3>
+            <span class="badge live-badge">Real-time</span>
+          </div>
+          <div class="odds-table" id="odds-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Poly</th>
+                  <th>Kalshi</th>
+                  <th>Pinnacle</th>
+                  <th>Spread</th>
+                </tr>
+              </thead>
+              <tbody id="odds-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Whale Flow -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Whale Flow</h3>
+            <span class="badge">24h</span>
+          </div>
+          <div class="whale-flow" id="whale-flow-mini">
+            <div class="flow-bar">
+              <div class="flow-buy" id="flow-buy" style="width:62%">
+                <span>Buy $28.4M</span>
+              </div>
+              <div class="flow-sell" id="flow-sell" style="width:38%">
+                <span>Sell $17.2M</span>
+              </div>
+            </div>
+            <div class="whale-alerts" id="whale-alerts-mini"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Charts -->
+      <div class="grid-2col">
+        <div class="card chart-card">
+          <div class="card-header">
+            <h3>Platform Volume (7d)</h3>
+            <div class="chart-controls">
+              <button class="chip active">7d</button>
+              <button class="chip">30d</button>
+              <button class="chip">90d</button>
+            </div>
+          </div>
+          <canvas id="volume-chart" height="200"></canvas>
+        </div>
+        <div class="card chart-card">
+          <div class="card-header">
+            <h3>Spread Distribution</h3>
+            <div class="chart-controls">
+              <button class="chip active">All</button>
+              <button class="chip">Politics</button>
+              <button class="chip">Sports</button>
+            </div>
+          </div>
+          <canvas id="spread-chart" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- MARKETS PANEL -->
+    <div class="panel-view" id="panel-markets">
+      <div class="panel-toolbar">
+        <input type="text" class="search-input" placeholder="Search markets..." id="market-search">
+        <select class="select-input" id="platform-filter">
+          <option value="">All Platforms</option>
+          <option value="polymarket">Polymarket</option>
+          <option value="kalshi">Kalshi</option>
+          <option value="pinnacle">Pinnacle</option>
+          <option value="betfair">Betfair</option>
+        </select>
+        <select class="select-input" id="category-filter">
+          <option value="">All Categories</option>
+          <option value="politics">Politics</option>
+          <option value="crypto">Crypto</option>
+          <option value="sports">Sports</option>
+          <option value="economics">Economics</option>
+          <option value="science">Science</option>
+        </select>
+      </div>
+      <div class="data-table-wrapper">
+        <table class="data-table" id="markets-table">
+          <thead>
+            <tr>
+              <th>Market</th>
+              <th>Platform</th>
+              <th>Yes</th>
+              <th>No</th>
+              <th>Spread</th>
+              <th>24h Vol</th>
+              <th>Liquidity</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="markets-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ARBITRAGE PANEL -->
+    <div class="panel-view" id="panel-arbitrage">
+      <div class="stats-strip">
+        <div class="stat-card highlight">
+          <div class="stat-label">Active Opportunities</div>
+          <div class="stat-value" id="arb-count">23</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Spread</div>
+          <div class="stat-value" id="arb-avg-spread">34 bps</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Best Opportunity</div>
+          <div class="stat-value highlight-green" id="arb-best">+127 bps</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Available Liquidity</div>
+          <div class="stat-value" id="arb-liquidity">$4.2M</div>
+        </div>
+      </div>
+      <div class="data-table-wrapper">
+        <table class="data-table" id="arb-table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Buy Platform</th>
+              <th>Buy Price</th>
+              <th>Sell Platform</th>
+              <th>Sell Price</th>
+              <th>Spread (bps)</th>
+              <th>Est. Profit</th>
+              <th>Liquidity</th>
+              <th>Age</th>
+            </tr>
+          </thead>
+          <tbody id="arb-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- WHALE FLOW PANEL -->
+    <div class="panel-view" id="panel-whales">
+      <div class="stats-strip">
+        <div class="stat-card">
+          <div class="stat-label">Total Whale Volume (24h)</div>
+          <div class="stat-value" id="whale-total-vol">$45.6M</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Net Flow</div>
+          <div class="stat-value highlight-green" id="whale-net-flow">+$11.2M</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Unique Whales</div>
+          <div class="stat-value" id="whale-unique">89</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Mega Whale Trades</div>
+          <div class="stat-value" id="whale-mega">12</div>
+        </div>
+      </div>
+      <div class="grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <h3>Recent Whale Alerts</h3>
+            <span class="badge live-badge">Streaming</span>
+          </div>
+          <div class="whale-feed" id="whale-feed"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Top Whale Markets</h3>
+          </div>
+          <div class="whale-markets" id="whale-markets"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MICROSTRUCTURE PANEL -->
+    <div class="panel-view" id="panel-microstructure">
+      <div class="panel-toolbar">
+        <input type="text" class="search-input" placeholder="Enter market ID..." id="micro-market-id">
+        <select class="select-input" id="micro-platform">
+          <option value="polymarket">Polymarket</option>
+          <option value="kalshi">Kalshi</option>
+        </select>
+        <button class="btn-primary" id="micro-analyze">Analyze</button>
+      </div>
+      <div class="grid-3col">
+        <div class="card">
+          <div class="card-header"><h3>Spread Analytics</h3></div>
+          <div class="micro-stats" id="micro-spread">
+            <div class="micro-stat"><span>Current Spread</span><span class="val">2.1c</span></div>
+            <div class="micro-stat"><span>1h Avg</span><span class="val">2.3c</span></div>
+            <div class="micro-stat"><span>24h Avg</span><span class="val">2.8c</span></div>
+            <div class="micro-stat"><span>Volatility</span><span class="val">0.4c</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Depth Profile</h3></div>
+          <div class="micro-stats" id="micro-depth">
+            <div class="micro-stat"><span>Bid Depth (10bps)</span><span class="val">$42.1K</span></div>
+            <div class="micro-stat"><span>Ask Depth (10bps)</span><span class="val">$38.7K</span></div>
+            <div class="micro-stat"><span>Bid Depth (50bps)</span><span class="val">$128K</span></div>
+            <div class="micro-stat"><span>Ask Depth (50bps)</span><span class="val">$112K</span></div>
+            <div class="micro-stat"><span>Imbalance</span><span class="val positive">+0.12</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Execution Quality</h3></div>
+          <div class="micro-stats" id="micro-execution">
+            <div class="micro-stat"><span>Fill Rate</span><span class="val">85%</span></div>
+            <div class="micro-stat"><span>Avg Fill Time</span><span class="val">250ms</span></div>
+            <div class="micro-stat"><span>Slippage ($1K)</span><span class="val">3.2 bps</span></div>
+            <div class="micro-stat"><span>VWAP (1h)</span><span class="val">$0.652</span></div>
+            <div class="micro-stat"><span>Trade Count (1h)</span><span class="val">847</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2col" style="margin-top:12px">
+        <div class="card chart-card">
+          <div class="card-header"><h3>Order Book Depth</h3></div>
+          <canvas id="depth-chart" height="220"></canvas>
+        </div>
+        <div class="card chart-card">
+          <div class="card-header"><h3>Volume Profile</h3></div>
+          <canvas id="volume-profile-chart" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Ticker Strip -->
+  <footer id="ticker">
+    <div class="ticker-content" id="ticker-content"></div>
+  </footer>
+
+  <script src="js/terminal.js"></script>
+</body>
+</html>
