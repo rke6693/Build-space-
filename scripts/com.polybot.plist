@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd plist to keep the Polymarket bot running on a Mac mini.
+
+  Install:
+    1. Replace REPLACE_USER and REPLACE_PATH with your actual values.
+    2. cp scripts/com.polybot.plist ~/Library/LaunchAgents/com.polybot.plist
+    3. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.polybot.plist
+    4. launchctl enable gui/$(id -u)/com.polybot
+    5. launchctl kickstart -k gui/$(id -u)/com.polybot
+
+  Logs go to state/logs/launchd.out and state/logs/launchd.err.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.polybot</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/REPLACE_PATH/Build-space-/.venv/bin/python</string>
+        <string>/REPLACE_PATH/Build-space-/main.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/REPLACE_PATH/Build-space-</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>/REPLACE_PATH/Build-space-/state/logs/launchd.out</string>
+
+    <key>StandardErrorPath</key>
+    <string>/REPLACE_PATH/Build-space-/state/logs/launchd.err</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>LANG</key>
+        <string>en_US.UTF-8</string>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
