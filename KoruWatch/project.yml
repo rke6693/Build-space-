@@ -1,0 +1,159 @@
+# ============================================================================
+# Koru — XcodeGen project spec
+# ============================================================================
+#
+# How to open this project
+# ------------------------
+#   1. Install XcodeGen:   brew install xcodegen
+#   2. From this directory: xcodegen
+#   3. Open the generated   Koru.xcodeproj
+#   4. Sign both targets with your Apple developer team in "Signing & Capabilities"
+#   5. Select the "Koru" scheme, pick an Apple Watch Ultra 2 or Series 9 simulator,
+#      and press Run.
+#
+# Deploying to your watch
+# -----------------------
+#   Physical deploy requires a paid Apple developer account so the HealthKit,
+#   background-delivery, and App-Group entitlements can be signed.
+#
+#   Some of this project's capabilities are gated by Apple and may require
+#   request/approval before they work on device:
+#     • com.apple.developer.action-button
+#       (used to map the Ultra 2 Action Button to the check-in intent)
+#
+#   Without approval the app still runs — the in-app Check-in button and the
+#   Series 9 Double Tap gesture remain functional.
+#
+# Targets
+# -------
+#   • Koru (watchOS 11 app)
+#   • KoruWidgets (watchOS widget extension)
+#   • KoruCoreTests (unit tests running on macOS — no HealthKit required)
+#
+# Local Swift package
+# -------------------
+#   Packages/KoruKit provides KoruCore, KoruHealth, KoruUI, KoruWidgetsKit.
+#   It's added as a local package dependency so the watch app and widget
+#   extension share the scoring engine.
+# ============================================================================
+
+name: Koru
+options:
+  bundleIdPrefix: app.koru
+  deploymentTarget:
+    watchOS: "11.0"
+    iOS: "17.0"
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: true
+  xcodeVersion: "16.0"
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SWIFT_STRICT_CONCURRENCY: complete
+    GCC_WARN_INHIBIT_ALL_WARNINGS: NO
+    CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER: YES
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""          # fill in your team ID in Signing & Capabilities
+
+packages:
+  KoruKit:
+    path: Packages/KoruKit
+
+targets:
+
+  # --------------------------------------------------------------------------
+  # Watch app target
+  # --------------------------------------------------------------------------
+  Koru:
+    type: application
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - path: Koru
+        excludes:
+          - "**/.DS_Store"
+    resources:
+      - Koru/Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.koru.watch
+        INFOPLIST_FILE: Koru/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Koru/Koru.entitlements
+        WATCHOS_DEPLOYMENT_TARGET: "11.0"
+        TARGETED_DEVICE_FAMILY: "4"      # 4 = watchOS
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: KoruKit
+        product: KoruCore
+      - package: KoruKit
+        product: KoruHealth
+      - package: KoruKit
+        product: KoruUI
+      - target: KoruWidgets
+        embed: true
+
+  # --------------------------------------------------------------------------
+  # Widget extension target (Smart Stack)
+  # --------------------------------------------------------------------------
+  KoruWidgets:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - KoruWidgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.koru.watch.widgets
+        INFOPLIST_FILE: KoruWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: KoruWidgets/KoruWidgets.entitlements
+        WATCHOS_DEPLOYMENT_TARGET: "11.0"
+        TARGETED_DEVICE_FAMILY: "4"
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: KoruKit
+        product: KoruCore
+      - package: KoruKit
+        product: KoruUI
+      - package: KoruKit
+        product: KoruWidgetsKit
+      - package: KoruKit
+        product: KoruHealth
+
+  # --------------------------------------------------------------------------
+  # Unit tests — link only KoruCore so we can test the scoring engine
+  # without any HealthKit runtime. Runs on macOS natively — no simulator.
+  # --------------------------------------------------------------------------
+  KoruCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - Packages/KoruKit/Tests/KoruCoreTests
+    dependencies:
+      - package: KoruKit
+        product: KoruCore
+
+schemes:
+
+  Koru:
+    build:
+      targets:
+        Koru: all
+        KoruWidgets: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - KoruCoreTests
+    archive:
+      config: Release

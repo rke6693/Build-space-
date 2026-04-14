@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="day">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="description" content="Koru — an on-device wellness score for Apple Watch Ultra 2 and Series 9. Pixel-accurate prototype." />
+  <title>Koru — Wellness Score Prototype</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/svg+xml" href="assets/spiral.svg" />
+</head>
+<body>
+  <header class="page-header">
+    <div class="brand">
+      <svg class="brand-glyph" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id="brandAurora" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#37E2D5" />
+            <stop offset="50%" stop-color="#7B5CFF" />
+            <stop offset="100%" stop-color="#FF6B6B" />
+          </linearGradient>
+        </defs>
+        <path class="brand-spiral" fill="none" stroke="url(#brandAurora)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <div class="brand-text">
+        <h1>Koru</h1>
+        <p>Wellness Score · Prototype</p>
+      </div>
+    </div>
+    <nav class="page-controls" aria-label="Prototype controls">
+      <button type="button" class="ctl" data-action="prev-page" aria-label="Previous page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="ctl ctl-primary" data-action="cycle-state">
+        <span class="ctl-label">Cycle score</span>
+      </button>
+      <button type="button" class="ctl" data-action="next-page" aria-label="Next page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="ctl" data-action="toggle-night" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" fill="currentColor"/></svg>
+        <span class="ctl-label">Night</span>
+      </button>
+      <button type="button" class="ctl" data-action="open-checkin">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 12l3 3 5-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="ctl-label">Check in</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="stage">
+    <!-- APPLE WATCH ULTRA 2 — 49mm / 410x502 -->
+    <section class="device device-ultra2" data-device="ultra2" aria-label="Apple Watch Ultra 2, 49mm, 410 by 502">
+      <div class="device-meta">
+        <span class="device-name">Ultra 2</span>
+        <span class="device-size">49 mm · 410 × 502</span>
+      </div>
+      <div class="watch watch-ultra2">
+        <div class="bezel bezel-titanium" aria-hidden="true"></div>
+        <div class="crown crown-ultra" aria-hidden="true"></div>
+        <div class="side-button" aria-hidden="true"></div>
+        <div class="action-button" aria-label="Action Button mapped to wellness check-in"></div>
+        <div class="screen">
+          <div class="screen-inner" data-size="ultra2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- APPLE WATCH SERIES 9 — 45mm / 396x484 -->
+    <section class="device device-s9-45" data-device="s9-45" aria-label="Apple Watch Series 9, 45mm, 396 by 484">
+      <div class="device-meta">
+        <span class="device-name">Series 9</span>
+        <span class="device-size">45 mm · 396 × 484</span>
+      </div>
+      <div class="watch watch-s9-45">
+        <div class="bezel bezel-aluminum" aria-hidden="true"></div>
+        <div class="crown crown-standard" aria-hidden="true"></div>
+        <div class="side-button side-button-standard" aria-hidden="true"></div>
+        <div class="screen">
+          <div class="screen-inner" data-size="s9-45"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- APPLE WATCH SERIES 9 — 41mm / 352x430 -->
+    <section class="device device-s9-41" data-device="s9-41" aria-label="Apple Watch Series 9, 41mm, 352 by 430">
+      <div class="device-meta">
+        <span class="device-name">Series 9</span>
+        <span class="device-size">41 mm · 352 × 430</span>
+      </div>
+      <div class="watch watch-s9-41">
+        <div class="bezel bezel-aluminum" aria-hidden="true"></div>
+        <div class="crown crown-standard" aria-hidden="true"></div>
+        <div class="side-button side-button-standard" aria-hidden="true"></div>
+        <div class="screen">
+          <div class="screen-inner" data-size="s9-41"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="panels" aria-label="Prototype details">
+    <article class="panel">
+      <h2>Score formula</h2>
+      <p>Today's Koru score is a weighted blend of ten HealthKit components, normalized against a hybrid personal + population baseline that matures over 14 days.</p>
+      <ul class="weight-list">
+        <li><span>HRV (SDNN)</span><b>18%</b></li>
+        <li><span>Sleep (duration + stages)</span><b>18%</b></li>
+        <li><span>Resting heart rate</span><b>12%</b></li>
+        <li><span>Activity rings</span><b>12%</b></li>
+        <li><span>Workout load</span><b>8%</b></li>
+        <li><span>VO₂ max</span><b>8%</b></li>
+        <li><span>Wrist temperature</span><b>8%</b></li>
+        <li><span>Blood oxygen (SpO₂)</span><b>6%</b></li>
+        <li><span>Respiratory rate</span><b>5%</b></li>
+        <li><span>Mindfulness</span><b>5%</b></li>
+      </ul>
+    </article>
+
+    <article class="panel">
+      <h2>Hardware hooks</h2>
+      <dl>
+        <dt>Ultra 2 — Action Button</dt>
+        <dd>Press the orange Action Button to instantly open the mood / energy / stress check-in from any screen.</dd>
+        <dt>Series 9 — Double Tap</dt>
+        <dd>Pinch twice with the watch-hand to trigger the same check-in. Falls back to an on-screen button and crown long-press on any watchOS 11 device.</dd>
+        <dt>Night Mode</dt>
+        <dd>Red-on-black palette preserves dark adaptation. Schedule + manual toggle on both watches; Ultra 2 additionally syncs with the Wayfinder face.</dd>
+      </dl>
+    </article>
+
+    <article class="panel">
+      <h2>Privacy</h2>
+      <p>100% on-device. No iCloud, no analytics, no network entitlement. All history stored with <code>FileProtection.complete</code>. HealthKit is the source of truth; Koru never mirrors raw samples off the watch.</p>
+    </article>
+  </section>
+
+  <!-- CHECK-IN SHEET OVERLAY -->
+  <div class="sheet-overlay" data-sheet="checkin" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <header class="sheet-header">
+        <h3 id="sheet-title">How are you?</h3>
+        <button type="button" class="sheet-close" data-action="close-checkin" aria-label="Close">×</button>
+      </header>
+      <div class="sheet-steps">
+        <div class="sheet-step" data-step="mood">
+          <p class="sheet-label">Mood</p>
+          <div class="chip-row">
+            <button class="chip">Rough</button>
+            <button class="chip">Low</button>
+            <button class="chip">OK</button>
+            <button class="chip chip-active">Good</button>
+            <button class="chip">Great</button>
+          </div>
+        </div>
+        <div class="sheet-step" data-step="energy">
+          <p class="sheet-label">Energy</p>
+          <div class="chip-row">
+            <button class="chip">Drained</button>
+            <button class="chip">Low</button>
+            <button class="chip chip-active">Steady</button>
+            <button class="chip">Lively</button>
+            <button class="chip">Peak</button>
+          </div>
+        </div>
+        <div class="sheet-step" data-step="stress">
+          <p class="sheet-label">Stress</p>
+          <div class="chip-row">
+            <button class="chip chip-active">Calm</button>
+            <button class="chip">Soft</button>
+            <button class="chip">Wired</button>
+            <button class="chip">Tense</button>
+            <button class="chip">Fried</button>
+          </div>
+        </div>
+      </div>
+      <footer class="sheet-footer">
+        <button type="button" class="sheet-save" data-action="close-checkin">Log check-in</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="koru.js" defer></script>
+</body>
+</html>

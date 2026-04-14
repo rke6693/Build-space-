@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>Koru</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(MARKETING_VERSION)</string>
+    <key>CFBundleVersion</key>
+    <string>$(CURRENT_PROJECT_VERSION)</string>
+
+    <!-- Localized strings that appear in every HealthKit permission sheet -->
+    <key>NSHealthShareUsageDescription</key>
+    <string>Koru reads your heart, sleep, activity, and wellness signals to compute a private daily score that lives only on your watch.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>Koru saves a short mindful-session entry each time you log a wellness check-in, so Apple Health reflects your day.</string>
+
+    <!-- Mindfulness write permission (for check-in → HK mindful session) -->
+    <key>NSUserActivityTypes</key>
+    <array>
+        <string>KoruCheckInIntent</string>
+    </array>
+
+    <!-- Watch app classification -->
+    <key>WKApplication</key>
+    <true/>
+    <key>WKWatchOnly</key>
+    <true/>
+    <key>WKApplicationCategoryType</key>
+    <string>health-fitness</string>
+
+    <!-- Background modes: HealthKit background delivery + app refresh -->
+    <key>WKBackgroundModes</key>
+    <array>
+        <string>workout-processing</string>
+        <string>healthkit-background-delivery</string>
+    </array>
+
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>processing</string>
+    </array>
+
+    <!-- Launch screen — minimal spiral glyph while state hydrates -->
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIColorName</key>
+        <string>LaunchBackground</string>
+    </dict>
+
+    <!-- Require S9 / Ultra 2-class hardware. watchOS 11 refuses to
+         install on older watches regardless, but this surfaces a
+         friendlier error message in App Store Connect. -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>watch-companion</string>
+    </array>
+</dict>
+</plist>

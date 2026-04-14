@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- HealthKit read/write -->
+    <key>com.apple.developer.healthkit</key>
+    <true/>
+    <key>com.apple.developer.healthkit.background-delivery</key>
+    <true/>
+    <key>com.apple.developer.healthkit.access</key>
+    <array/>
+
+    <!-- App Group shared with KoruWidgets for history + baseline JSON -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.app.koru.shared</string>
+    </array>
+
+    <!--
+      Action Button entitlement.
+      watchOS 11 exposes a third-party Action Button API gated by Apple's
+      developer entitlements portal. Without approval the key below is
+      ignored at runtime and Koru falls back to the in-app "Check In"
+      button + long-press gesture. Apply for the entitlement via your
+      Apple Developer account when you're ready to ship.
+    -->
+    <key>com.apple.developer.action-button</key>
+    <true/>
+</dict>
+</plist>
