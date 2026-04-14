@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Local data (never commit cookies, DB, or logs)
+data/
+*.db
+*.log
+browser-profile/
