@@ -1,0 +1,23 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "welix:frost_draught_recipe"
+    },
+    "tags": ["crafting_table"],
+    "pattern": [
+      " B ",
+      "NBN",
+      " I "
+    ],
+    "key": {
+      "B": { "item": "minecraft:glass_bottle" },
+      "N": { "item": "minecraft:nether_wart" },
+      "I": { "item": "minecraft:ice" }
+    },
+    "result": {
+      "item": "welix:frost_draught",
+      "count": 2
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Wizard's Elixirs - Resources",
+    "description": "Textures, sounds and names for the Wizard's Elixirs addon.",
+    "uuid": "61c220f6-0f30-4b72-8ef4-8d5ee4cd4f7e",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 20, 50]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "5e06134c-f28d-460b-a372-e342280a535b",
+      "version": [1, 0, 0]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "5fe5d2d4-1a78-4cdd-b2c3-5183e1badbeb",
+      "version": [1, 0, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["Wizard's Elixirs Team"],
+    "license": "MIT",
+    "product_type": "addon"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "welix:storm_tonic_recipe"
+    },
+    "tags": ["crafting_table"],
+    "pattern": [
+      " B ",
+      "NBN",
+      " F "
+    ],
+    "key": {
+      "B": { "item": "minecraft:glass_bottle" },
+      "N": { "item": "minecraft:nether_wart" },
+      "F": { "item": "minecraft:feather" }
+    },
+    "result": {
+      "item": "welix:storm_tonic",
+      "count": 2
+    }
+  }
+}

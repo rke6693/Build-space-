@@ -1,0 +1,23 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "welix:flame_brew_recipe"
+    },
+    "tags": ["crafting_table"],
+    "pattern": [
+      " B ",
+      "NBN",
+      " L "
+    ],
+    "key": {
+      "B": { "item": "minecraft:glass_bottle" },
+      "N": { "item": "minecraft:nether_wart" },
+      "L": { "item": "minecraft:blaze_powder" }
+    },
+    "result": {
+      "item": "welix:flame_brew",
+      "count": 2
+    }
+  }
+}

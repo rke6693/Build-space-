@@ -1,0 +1,14 @@
+pack.name=Wizard's Elixirs
+pack.description=Brew 5 magical elixirs, each with a unique enchantment. Drink up, adventurer!
+
+item.welix.flame_brew.name=Flame Brew
+item.welix.frost_draught.name=Frost Draught
+item.welix.storm_tonic.name=Storm Tonic
+item.welix.natures_sip.name=Nature's Sip
+item.welix.void_essence.name=Void Essence
+
+tile.welix.flame_brew.name=Flame Brew
+tile.welix.frost_draught.name=Frost Draught
+tile.welix.storm_tonic.name=Storm Tonic
+tile.welix.natures_sip.name=Nature's Sip
+tile.welix.void_essence.name=Void Essence

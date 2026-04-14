@@ -1,0 +1,23 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "welix:natures_sip_recipe"
+    },
+    "tags": ["crafting_table"],
+    "pattern": [
+      " B ",
+      "NBN",
+      " M "
+    ],
+    "key": {
+      "B": { "item": "minecraft:glass_bottle" },
+      "N": { "item": "minecraft:nether_wart" },
+      "M": { "item": "minecraft:melon_slice" }
+    },
+    "result": {
+      "item": "welix:natures_sip",
+      "count": 2
+    }
+  }
+}

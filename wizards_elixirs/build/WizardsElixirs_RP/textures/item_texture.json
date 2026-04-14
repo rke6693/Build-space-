@@ -1,0 +1,11 @@
+{
+  "resource_pack_name": "Wizard's Elixirs",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "welix_flame_brew":    { "textures": "textures/items/flame_brew" },
+    "welix_frost_draught": { "textures": "textures/items/frost_draught" },
+    "welix_storm_tonic":   { "textures": "textures/items/storm_tonic" },
+    "welix_natures_sip":   { "textures": "textures/items/natures_sip" },
+    "welix_void_essence":  { "textures": "textures/items/void_essence" }
+  }
+}

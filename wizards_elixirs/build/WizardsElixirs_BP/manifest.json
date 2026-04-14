@@ -1,0 +1,28 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Wizard's Elixirs - Behavior",
+    "description": "Brew five magical elixirs, each with a unique enchantment! Works on iPad Minecraft.",
+    "uuid": "5fe5d2d4-1a78-4cdd-b2c3-5183e1badbeb",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 20, 50]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "ad092f4f-b4e4-4911-846e-0dcd4782b7e6",
+      "version": [1, 0, 0]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "61c220f6-0f30-4b72-8ef4-8d5ee4cd4f7e",
+      "version": [1, 0, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["Wizard's Elixirs Team"],
+    "license": "MIT",
+    "product_type": "addon"
+  }
+}
