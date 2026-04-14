@@ -3,41 +3,60 @@
 # Copy to config.yaml and tweak to taste.
 # ----------------------------------------------------------------------------
 
-# Behaviour
+# ---- Behaviour --------------------------------------------------------------
 dry_run: true              # If true, NEVER clicks the bid button. Just logs.
 headless: false            # Keep the browser visible so you can intervene.
 user_data_dir: ".profile"  # Persistent browser profile (stores your login).
 
-# Targeting
+# ---- Bidding ----------------------------------------------------------------
 max_start_price: 1.00      # Only snipe auctions that *started* at <= this.
 max_bid: 5.00              # Hard ceiling. The bot will never bid above this.
 min_bid_increment: 1.00    # Whatnot's typical increment.
 
-# Snipe timing (seconds before the auction closes)
+# ---- Snipe timing (seconds before the auction closes) ----------------------
 snipe_window_open: 1.8     # Start trying to bid when T-minus <= this.
 snipe_window_close: 0.4    # Stop trying once we're closer than this
                            # (avoid sending a click after the lot closes).
-poll_interval_ms: 120      # How often to re-scan the DOM.
+poll_interval_ms: 120      # How often each watcher re-scans the DOM.
 
-# Streams to watch. The bot rotates through them looking for live $1 lots.
-# You can pass `--stream <url>` on the command line to override.
-streams:
-  - "https://www.whatnot.com/live/"     # generic fallback — pick from listings
-  # - "https://www.whatnot.com/live/<livestream-id>"
+# ---- Manually pinned streams ------------------------------------------------
+# The bot always watches these (until they end / idle out). You can also
+# pass --stream <url> on the command line, possibly several times.
+streams: []
+# - "https://www.whatnot.com/live/<livestream-id>"
 
-# DOM selectors. Whatnot changes its markup from time to time — if the bot
-# stops seeing auctions, open devtools, find the new classes, and update these.
-# Every selector is matched with Playwright's CSS engine.
+# ---- Stream discovery -------------------------------------------------------
+# Automatically widen the net by browsing Whatnot's live listings and
+# spawning a watcher for every live stream the bot finds, up to `max_streams`.
+discovery:
+  enabled: true
+  listing_urls:
+    - "https://www.whatnot.com/live"
+    # Add category pages here to bias toward what you collect, e.g.:
+    # - "https://www.whatnot.com/category/sports-cards/live"
+    # - "https://www.whatnot.com/category/pokemon/live"
+    # - "https://www.whatnot.com/category/sneakers/live"
+  max_streams: 5                    # Hard cap on parallel watchers.
+  refresh_interval_seconds: 30      # How often to re-scrape the listings.
+  idle_timeout_seconds: 60          # Watcher self-terminates if no auction
+                                    # card is visible for this long.
+  title_keywords: []                # If non-empty, stream title MUST match
+                                    # at least one. e.g. ["pokemon", "tcg"].
+  title_blocklist: []               # If a title contains any of these,
+                                    # skip the stream.
+
+# ---- DOM selectors ----------------------------------------------------------
+# Whatnot changes its markup from time to time — if the bot stops seeing
+# auctions or stops finding streams, open devtools, find the new classes,
+# and update these.
 selectors:
-  # The live-auction "card" that appears on the right side of a stream.
-  auction_root: '[data-testid="live-auction-card"], [class*="AuctionCard"]'
-  # Current highest bid (text contains a $ amount).
-  current_bid:  '[data-testid="current-bid"], [class*="currentBid"]'
-  # Starting price, used to decide whether this is a "$1 auction".
-  start_price:  '[data-testid="start-price"], [class*="startingBid"]'
-  # Countdown / time remaining (text like "0:03" or "3s").
-  time_left:    '[data-testid="auction-timer"], [class*="timer"]'
-  # The clickable bid button.
-  bid_button:   'button[data-testid="bid-button"], button:has-text("Place Bid"), button:has-text("Bid")'
-  # Optional confirmation modal ("Yes, bid $X") — left blank to skip.
-  confirm_button: 'button:has-text("Confirm"), button:has-text("Yes")'
+  # --- Per-stream page (live auction card) ---
+  auction_root:    '[data-testid="live-auction-card"], [class*="AuctionCard"]'
+  current_bid:     '[data-testid="current-bid"], [class*="currentBid"]'
+  start_price:     '[data-testid="start-price"], [class*="startingBid"]'
+  time_left:       '[data-testid="auction-timer"], [class*="timer"]'
+  bid_button:      'button[data-testid="bid-button"], button:has-text("Place Bid"), button:has-text("Bid")'
+  confirm_button:  'button:has-text("Confirm"), button:has-text("Yes")'
+  # --- Listings page (discovery) ---
+  livestream_link:  'a[href*="/live/"]'
+  livestream_title: '[data-testid*="title"], h2, h3'
