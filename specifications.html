@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Specs &amp; FEFCO - Packaging Engineer Repository</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+
+  <main class="container">
+    <h1>Specifications &amp; FEFCO</h1>
+    <p class="subtitle">
+      FEFCO international box style codes for corrugated and an interactive
+      corrugated spec sheet generator suitable for RFQs and sample approvals.
+    </p>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="spec">Spec Sheet Generator</button>
+      <button class="tab-btn" data-tab="fefco">FEFCO Library</button>
+      <button class="tab-btn" data-tab="pallets">Pallet &amp; Unit Load</button>
+    </div>
+
+    <!-- SPEC SHEET -->
+    <section class="tab-panel active" id="spec">
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="card">
+          <h3>Case Inputs</h3>
+          <div class="form-row">
+            <div class="field"><label>Part number</label><input id="sp-pn" value="PN-00001" /></div>
+            <div class="field"><label>Description</label><input id="sp-desc" value="RSC Shipper" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Revision</label><input id="sp-rev" value="A" /></div>
+            <div class="field"><label>Date</label><input id="sp-date" type="date" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Inside L (in)</label><input id="sp-l" type="number" step="0.1" value="12" /></div>
+            <div class="field"><label>Inside W (in)</label><input id="sp-w" type="number" step="0.1" value="10" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Inside D (in)</label><input id="sp-d" type="number" step="0.1" value="8" /></div>
+            <div class="field"><label>FEFCO style</label>
+              <select id="sp-style">
+                <option>0200</option><option>0201</option><option>0202</option>
+                <option>0203</option><option>0204</option><option>0400</option>
+                <option>0427</option><option>0711</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Board grade</label>
+              <select id="sp-board">
+                <option>32 ECT C-flute</option>
+                <option>44 ECT C-flute</option>
+                <option>48 ECT BC double-wall</option>
+                <option>275# C-flute</option>
+                <option>350# BC double-wall</option>
+                <option>E-flute 23 ECT</option>
+              </select>
+            </div>
+            <div class="field"><label>Liner</label>
+              <select id="sp-liner">
+                <option>Kraft / Kraft</option>
+                <option>Kraft / Test</option>
+                <option>White top / Kraft</option>
+                <option>Mottled white / Kraft</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Print</label>
+              <select id="sp-print">
+                <option>None (plain)</option>
+                <option>1-color flexo</option>
+                <option>2-color flexo</option>
+                <option>4-color pre-print</option>
+                <option>Digital</option>
+              </select>
+            </div>
+            <div class="field"><label>Closure</label>
+              <select id="sp-close">
+                <option>BOPP tape 48 mm</option>
+                <option>Water activated tape 70 mm</option>
+                <option>Hot-melt glue</option>
+                <option>Self-seal peel/stick</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Units / bundle</label><input id="sp-bundle" type="number" value="25" /></div>
+            <div class="field"><label>Bundles / pallet</label><input id="sp-pall" type="number" value="40" /></div>
+          </div>
+          <button id="sp-gen">Generate Spec Sheet</button>
+        </div>
+
+        <div class="card" id="sp-out">
+          <h3>Preview</h3>
+          <p class="subtitle">Complete the form and click generate.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEFCO LIBRARY -->
+    <section class="tab-panel" id="fefco">
+      <p class="subtitle">FEFCO classification of corrugated and solid fiberboard box styles.</p>
+      <div class="search-bar">
+        <input id="fq" type="search" placeholder="Search FEFCO code or name…" />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Code</th><th>Name</th><th>Group</th><th>Description</th><th>Typical use</th></tr></thead>
+          <tbody id="fefco-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PALLETS -->
+    <section class="tab-panel" id="pallets">
+      <div class="grid">
+        <div class="card">
+          <h3>Common Pallet Footprints</h3>
+          <div class="table-wrap" style="max-height:280px;">
+            <table>
+              <thead><tr><th>Region / Name</th><th>Footprint (mm)</th><th>Footprint (in)</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>GMA / NA Standard</td><td>1219 × 1016</td><td>48 × 40</td><td>Stringer, 4-way</td></tr>
+                <tr><td>EURO (EPAL)</td><td>1200 × 800</td><td>47.2 × 31.5</td><td>Block, 4-way</td></tr>
+                <tr><td>ISO 0</td><td>800 × 600</td><td>31.5 × 23.6</td><td>Dairy, retail</td></tr>
+                <tr><td>ISO 1</td><td>1200 × 1000</td><td>47.2 × 39.4</td><td>Marine, intermodal</td></tr>
+                <tr><td>Australia</td><td>1165 × 1165</td><td>45.9 × 45.9</td><td>Square, CHEP</td></tr>
+                <tr><td>Half pallet</td><td>600 × 800</td><td>23.6 × 31.5</td><td>Retail display</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Unit Load Stability</h3>
+          <ul class="subtitle" style="padding-left:18px; line-height:1.8;">
+            <li>Use <strong>column stack</strong> for strength, <strong>interlock</strong> for stability - hybrid for heavy.</li>
+            <li>Shrink/stretch wrap at <strong>150-250%</strong> prestretch for sustainability.</li>
+            <li>Do not exceed pallet overhang &gt; 25 mm (1&quot;) - drops BCT by ~30%.</li>
+            <li>Target pallet height &lt; 180 cm (72 in) for truck/trailer height.</li>
+            <li>Mind lane heat &amp; humidity - de-rate BCT per McKee humidity factor.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer id="footer" class="footer"></footer>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Default today's date
+    document.getElementById('sp-date').valueAsDate = new Date();
+
+    document.getElementById('sp-gen').addEventListener('click', () => {
+      const v = id => document.getElementById(id).value;
+      const L = parseFloat(v('sp-l')), W = parseFloat(v('sp-w')), D = parseFloat(v('sp-d'));
+      const blank = ((2 * L) + (2 * W) + 0.25) + '" × ' + (D + (W / 2) + 0.125) + '" (approx blank)';
+      const out = document.getElementById('sp-out');
+      out.innerHTML = `
+        <h3>${v('sp-desc')} <span class="tag accent">${v('sp-pn')}</span> <span class="tag">Rev ${v('sp-rev')}</span></h3>
+        <div class="subtitle">Issued ${v('sp-date')}</div>
+        <h3 style="margin-top:16px;">Dimensions</h3>
+        <table>
+          <tbody>
+            <tr><td>Inside L × W × D</td><td><strong>${L} × ${W} × ${D} in</strong></td></tr>
+            <tr><td>Inside (mm)</td><td>${(L*25.4).toFixed(0)} × ${(W*25.4).toFixed(0)} × ${(D*25.4).toFixed(0)}</td></tr>
+            <tr><td>Est. blank</td><td>${blank}</td></tr>
+            <tr><td>FEFCO style</td><td>${v('sp-style')}</td></tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:16px;">Material &amp; Print</h3>
+        <table>
+          <tbody>
+            <tr><td>Board grade</td><td>${v('sp-board')}</td></tr>
+            <tr><td>Liner combination</td><td>${v('sp-liner')}</td></tr>
+            <tr><td>Print</td><td>${v('sp-print')}</td></tr>
+            <tr><td>Closure</td><td>${v('sp-close')}</td></tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:16px;">Pack-out</h3>
+        <table>
+          <tbody>
+            <tr><td>Units / bundle</td><td>${v('sp-bundle')}</td></tr>
+            <tr><td>Bundles / pallet</td><td>${v('sp-pall')}</td></tr>
+            <tr><td>Units / pallet</td><td>${parseInt(v('sp-bundle')) * parseInt(v('sp-pall'))}</td></tr>
+          </tbody>
+        </table>
+        <div class="note">Save or print this page (Ctrl/Cmd + P) to issue as a spec sheet.</div>`;
+    });
+
+    // FEFCO library
+    (async () => {
+      const data = await PE.loadJSON('data/fefco.json');
+      const fq = document.getElementById('fq');
+      const rows = document.getElementById('fefco-rows');
+      function render() {
+        const kw = (fq.value || '').toLowerCase();
+        const list = data.styles.filter(s => !kw || JSON.stringify(s).toLowerCase().includes(kw));
+        rows.innerHTML = list.map(s => {
+          const grp = (data.groups.find(g => g.code === s.group) || {}).name || s.group;
+          return `<tr>
+            <td><span class="tag accent">${s.code}</span></td>
+            <td><strong>${s.name}</strong></td>
+            <td class="subtitle">${grp}</td>
+            <td class="subtitle">${s.description}</td>
+            <td class="subtitle">${s.typical_use}</td>
+          </tr>`;
+        }).join('');
+      }
+      fq.addEventListener('input', render);
+      render();
+    })();
+  </script>
+</body>
+</html>

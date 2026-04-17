@@ -1,0 +1,31 @@
+{
+  "groups": [
+    { "code": "01", "name": "Commercial rolls and sheets" },
+    { "code": "02", "name": "Slotted-type boxes (one-piece)" },
+    { "code": "03", "name": "Telescope-type boxes (lids and trays)" },
+    { "code": "04", "name": "Folder-type boxes and trays" },
+    { "code": "05", "name": "Slide-type boxes (inner and outer)" },
+    { "code": "06", "name": "Rigid-type boxes" },
+    { "code": "07", "name": "Ready-glued cases" },
+    { "code": "09", "name": "Interior fitments (dividers, partitions)" }
+  ],
+  "styles": [
+    { "code": "0200", "name": "Regular Slotted Container (RSC)", "group": "02", "description": "All flaps same length; two inner flaps meet with a small gap. The most common shipper.", "typical_use": "General shipping, e-commerce" },
+    { "code": "0201", "name": "RSC with same flaps meeting", "group": "02", "description": "Similar to 0200; used interchangeably in some regions.", "typical_use": "Shipping cases" },
+    { "code": "0202", "name": "Overlap Slotted Container (OSC)", "group": "02", "description": "Outer flaps fully overlap, giving reinforcement on top/bottom.", "typical_use": "Heavy items, uneven top load" },
+    { "code": "0203", "name": "Full Overlap Slotted Container (FOL)", "group": "02", "description": "All flaps are the full width of the box. Very strong top and bottom.", "typical_use": "Stacking-critical and heavy products" },
+    { "code": "0204", "name": "Centre Special Slotted Container (CSSC)", "group": "02", "description": "Inner and outer flaps meet in the middle on both sides.", "typical_use": "Products needing double panel top/bottom" },
+    { "code": "0300", "name": "Two-piece Full Telescope Design Style (FTD)", "group": "03", "description": "Separate top and bottom trays fully telescoping.", "typical_use": "Long, heavy, or sensitive shipments" },
+    { "code": "0301", "name": "Full Telescope Half Slotted (HSC lid + tray)", "group": "03", "description": "Slotted base with a telescoping lid.", "typical_use": "Repeat-use bulk packaging" },
+    { "code": "0310", "name": "Design Style Tray with Lid", "group": "03", "description": "Tray with separate lid telescoping partially.", "typical_use": "Retail-ready, display-ready" },
+    { "code": "0400", "name": "One-Piece Folder (OPF)", "group": "04", "description": "Single piece wraps around the product; also called book-fold.", "typical_use": "Books, flat panels, apparel mailers" },
+    { "code": "0401", "name": "Book Fold Mailer", "group": "04", "description": "Book-wrap mailer with tuck closure.", "typical_use": "E-commerce media shippers" },
+    { "code": "0402", "name": "Five Panel Folder (FPF)", "group": "04", "description": "Long rectangular items; fifth panel wraps around.", "typical_use": "Rods, long tools" },
+    { "code": "0427", "name": "Bookwrap / Variable-Depth Mailer", "group": "04", "description": "Self-adjusting depth for irregular goods.", "typical_use": "Books and electronics mailers" },
+    { "code": "0501", "name": "Slide Box (double-walled sleeve)", "group": "05", "description": "Sleeve with inserts sliding out.", "typical_use": "Hardware, pen sets" },
+    { "code": "0601", "name": "Rigid Box (Bliss Box)", "group": "06", "description": "Three-piece style with body and two ends; common in produce.", "typical_use": "Produce, hardware, quick-service" },
+    { "code": "0700", "name": "Ready-Glued (HSC)", "group": "07", "description": "Half-slotted container, glued side seam.", "typical_use": "Pre-formed, no top flaps" },
+    { "code": "0711", "name": "Die-Cut Mailer", "group": "07", "description": "Self-locking e-commerce mailer with tear strip optional.", "typical_use": "Apparel, cosmetics, subscription" },
+    { "code": "0904", "name": "Partition (dividers)", "group": "09", "description": "Grid partition to separate glass/bottles.", "typical_use": "Bottle and jar shippers" }
+  ]
+}

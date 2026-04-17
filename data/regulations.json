@@ -1,0 +1,26 @@
+{
+  "regulations": [
+    { "id": "fda-21-175", "region": "United States", "code": "21 CFR 175-178", "title": "FDA Indirect Food Additives", "scope": "Adhesives, coatings, polymers, paper and paperboard in food contact.", "compliance": "Food contact notification (FCN) or threshold of regulation." },
+    { "id": "fda-gras", "region": "United States", "code": "FDA GRAS", "title": "Generally Recognized As Safe", "scope": "Food contact substances with long safe use history.", "compliance": "Self-affirmation or FDA notification." },
+    { "id": "eu-1935-2004", "region": "European Union", "code": "Regulation (EC) 1935/2004", "title": "Materials and Articles Intended to Contact Food", "scope": "Framework regulation for food contact materials in the EU.", "compliance": "Declaration of Compliance (DoC) required." },
+    { "id": "eu-10-2011", "region": "European Union", "code": "Regulation (EU) 10/2011", "title": "Plastic Food Contact Materials", "scope": "Authorized substances list, migration limits (OML 10 mg/dm²).", "compliance": "Migration testing and DoC." },
+    { "id": "eu-ppwr", "region": "European Union", "code": "EU PPWR", "title": "Packaging and Packaging Waste Regulation (2025)", "scope": "Reuse, recyclability, PCR content targets, bans on certain single-use.", "compliance": "Design for recycling, mandatory recycled content, 2030/2040 milestones." },
+    { "id": "ca-prop65", "region": "California, USA", "code": "Prop 65", "title": "California Proposition 65", "scope": "Warnings for chemicals causing cancer/reproductive harm.", "compliance": "Warning label if applicable; material disclosure." },
+    { "id": "toxics-packaging", "region": "US States (CONEG)", "code": "Toxics in Packaging", "title": "CONEG Model Toxics Legislation", "scope": "Lead, mercury, cadmium, hexavalent chromium sum ≤100 ppm; PFAS in many states.", "compliance": "Certificate of Compliance (COC)." },
+    { "id": "pfas-states", "region": "US States", "code": "PFAS bans (ME/CA/WA/NY/MN)", "title": "State PFAS Food Packaging Bans", "scope": "Prohibits intentionally added PFAS in food-contact paper/board.", "compliance": "Supplier declarations, total fluorine testing." },
+    { "id": "epr-states", "region": "US States", "code": "EPR Laws (ME, OR, CO, CA, MN)", "title": "Extended Producer Responsibility", "scope": "Producers fund recycling systems; eco-modulated fees.", "compliance": "Register with PRO, report material tonnage." },
+    { "id": "epr-eu", "region": "European Union", "code": "EPR - EU", "title": "Directive 94/62/EC and national EPR schemes", "scope": "Packaging takeback fees; Green Dot or equivalents.", "compliance": "National registration per country." },
+    { "id": "iata-dgr", "region": "Global", "code": "IATA DGR", "title": "Dangerous Goods Regulations", "scope": "Air shipment of hazardous materials including lithium batteries.", "compliance": "UN-rated packaging, labels, shipper's declaration." },
+    { "id": "49-cfr-173", "region": "United States", "code": "49 CFR 173", "title": "DOT Hazmat Packaging", "scope": "Hazardous materials packaging for ground transport.", "compliance": "UN-certified combination or single packaging." },
+    { "id": "ispm-15", "region": "Global", "code": "ISPM 15", "title": "International Standards for Phytosanitary Measures", "scope": "Solid wood packaging material (pallets, crates) heat treatment or fumigation.", "compliance": "HT or MB stamp." },
+    { "id": "gmp-pharma", "region": "Global", "code": "EU GMP Annex 1 / 21 CFR 211", "title": "Pharma Packaging GMPs", "scope": "Primary packaging validation for sterile/terminally sterile products.", "compliance": "Validated seal, bioburden, shelf-life stability." }
+  ],
+  "sustainability_frameworks": [
+    { "id": "4r", "name": "4R Framework (Reduce, Reuse, Recycle, Recover)", "notes": "Base hierarchy for sustainable packaging design." },
+    { "id": "apr-design", "name": "APR Design Guide for Plastics Recyclability", "notes": "US recyclability guidance for PET, HDPE, PP." },
+    { "id": "howtorecycle", "name": "How2Recycle Label Program", "notes": "Standardized on-pack recyclability communication." },
+    { "id": "ghg-protocol", "name": "GHG Protocol - Scope 3 Category 4/9", "notes": "Upstream and downstream packaging emissions accounting." },
+    { "id": "sbp-score", "name": "Sustainable Packaging Coalition Design Metrics", "notes": "Holistic scorecard: sourcing, energy, recoverability." },
+    { "id": "ellen-macarthur", "name": "Ellen MacArthur New Plastics Economy", "notes": "2025 targets: 100% reusable, recyclable, or compostable; PCR content." }
+  ]
+}

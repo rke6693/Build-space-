@@ -1,0 +1,52 @@
+{
+  "bodies": [
+    { "id": "astm", "name": "ASTM International", "description": "Voluntary consensus technical standards." },
+    { "id": "ista", "name": "ISTA", "description": "International Safe Transit Association procedures for package performance testing." },
+    { "id": "iso", "name": "ISO", "description": "International Organization for Standardization." },
+    { "id": "tappi", "name": "TAPPI", "description": "Technical Association of the Pulp and Paper Industry." },
+    { "id": "fefco", "name": "FEFCO", "description": "European Federation of Corrugated Board Manufacturers - box style codes." },
+    { "id": "usp", "name": "USP", "description": "United States Pharmacopeia - packaging and container standards." },
+    { "id": "iec", "name": "IEC", "description": "International Electrotechnical Commission." }
+  ],
+  "standards": [
+    { "id": "astm-d642", "body": "astm", "code": "ASTM D642", "title": "Compressive Resistance of Shipping Containers", "scope": "Box compression test (BCT) - static top-load resistance of shipping containers, components, and unit loads.", "key_apparatus": "Platen compression tester", "key_params": "50 ± 3 kPa/min or 12.5 mm/min platen speed" },
+    { "id": "astm-d4169", "body": "astm", "code": "ASTM D4169", "title": "Performance Testing of Shipping Containers and Systems", "scope": "Defines Distribution Cycles (DC) 1-18 with Assurance Levels I/II/III to simulate handling, stacking, vibration, drop, and environmental.", "key_apparatus": "Drop tester, vibration table, compression machine", "key_params": "DC-13 small parcel; DC-12 single package common" },
+    { "id": "astm-d5276", "body": "astm", "code": "ASTM D5276", "title": "Free-Fall Drop Test of Loaded Containers", "scope": "Drop test procedure at specified height onto concrete; 10-drop sequence for faces, edges, corners.", "key_params": "Drop height by product weight and shipping class" },
+    { "id": "astm-d999", "body": "astm", "code": "ASTM D999", "title": "Vibration Testing of Shipping Containers", "scope": "Rotary, vertical linear, and random vibration methods for palletized and single-package testing.", "key_params": "Resonance search, random PSD profiles" },
+    { "id": "astm-d4332", "body": "astm", "code": "ASTM D4332", "title": "Standard Atmospheres for Conditioning", "scope": "Conditioning paperboard and packages for testing (23°C / 50% RH standard).", "key_params": "Preconditioning 72 h; condition 24 h minimum" },
+    { "id": "astm-d3103", "body": "astm", "code": "ASTM D3103", "title": "Thermal Insulation Performance", "scope": "Performance of insulated shipping containers (cold chain qualification).", "key_params": "Ambient profile simulations" },
+    { "id": "astm-d3330", "body": "astm", "code": "ASTM D3330", "title": "Peel Adhesion of PSA Tape", "scope": "180° peel adhesion on stainless steel.", "key_params": "Rate 300 mm/min" },
+    { "id": "astm-f88", "body": "astm", "code": "ASTM F88", "title": "Seal Strength of Flexible Barrier Materials", "scope": "Tensile seal strength of pouch seals.", "key_params": "Crosshead 8-12 in/min" },
+    { "id": "astm-f1929", "body": "astm", "code": "ASTM F1929", "title": "Seal Integrity - Dye Penetration", "scope": "Porous-to-nonporous seals in medical packaging.", "key_params": "Toluidine blue dye" },
+    { "id": "ista-1a", "body": "ista", "code": "ISTA 1A", "title": "Non-Simulation Integrity for Packaged Products ≤68 kg", "scope": "Shock and vibration with fixed parameters to challenge package/product integrity.", "key_params": "Drop sequence + 60 min vibration" },
+    { "id": "ista-2a", "body": "ista", "code": "ISTA 2A", "title": "Partial Simulation ≤68 kg", "scope": "Combined simulation and non-simulation; atmospheric conditioning, compression, vibration, drop.", "key_params": "Conditioning, 1.35 kPa compression, random vib, drops" },
+    { "id": "ista-3a", "body": "ista", "code": "ISTA 3A", "title": "Packaged Products for Parcel Delivery System Shipment ≤70 kg", "scope": "General simulation for single parcels shipped through small-package carriers (e.g., UPS, FedEx).", "key_params": "Random vibration profile with top load, drop sequence" },
+    { "id": "ista-3b", "body": "ista", "code": "ISTA 3B", "title": "Packaged Products for LTL Shipment", "scope": "Simulates LTL freight environments for palletized and unitized loads.", "key_params": "Shock, rotational drops, vibration" },
+    { "id": "ista-3e", "body": "ista", "code": "ISTA 3E", "title": "Similar Unitized Loads in Truckload", "scope": "Full truckload distribution testing for unitized products.", "key_params": "Random vibration + compression + shock" },
+    { "id": "ista-6-amz", "body": "ista", "code": "ISTA 6-Amazon.com SIOC", "title": "Ships In Own Container - Amazon", "scope": "Amazon SIOC / Over-boxing / Prep-Free qualification.", "key_params": "Type A/B/C/D based on product & ship mode" },
+    { "id": "ista-6-fedex", "body": "ista", "code": "ISTA 6-FedEx-A", "title": "FedEx Parcel Test (≤70 lb)", "scope": "FedEx-specified procedure for packaging shipped via small parcel.", "key_params": "Drop + vibration + incline impact" },
+    { "id": "ista-7d", "body": "ista", "code": "ISTA 7D", "title": "Temperature Test for Transport Packaging", "scope": "Thermal qualification of insulated shippers.", "key_params": "Winter/Summer profiles, payload duty cycle" },
+    { "id": "iso-4180", "body": "iso", "code": "ISO 4180", "title": "Complete, Filled Transport Packages", "scope": "General rules for compiling performance test schedules.", "key_params": "Severity levels 1-3" },
+    { "id": "iso-11607", "body": "iso", "code": "ISO 11607", "title": "Packaging for Terminally Sterilized Medical Devices", "scope": "Part 1: materials; Part 2: validation of forming/sealing/assembly.", "key_params": "Seal strength, bubble/dye, aging" },
+    { "id": "iso-3394", "body": "iso", "code": "ISO 3394", "title": "Dimensions of Rigid Rectangular Packages", "scope": "Modular 600x400 mm dimensions for harmonization with pallets.", "key_params": "600x400; 400x300; 300x200 modules" },
+    { "id": "iso-14001", "body": "iso", "code": "ISO 14001", "title": "Environmental Management Systems", "scope": "EMS framework applicable to packaging operations.", "key_params": "Plan-Do-Check-Act" },
+    { "id": "tappi-t811", "body": "tappi", "code": "TAPPI T811", "title": "Edgewise Compressive Strength of Corrugated Fiberboard (ECT)", "scope": "Short column edgewise compression of combined corrugated board.", "key_params": "Platen speed 12.5 mm/min" },
+    { "id": "tappi-t804", "body": "tappi", "code": "TAPPI T804", "title": "Compression Test of Fiberboard Shipping Containers", "scope": "Fixed-platen or floating-platen BCT method.", "key_params": "0.5 ± 0.1 in/min" },
+    { "id": "tappi-t810", "body": "tappi", "code": "TAPPI T810", "title": "Bursting Strength of Linerboard (Mullen)", "scope": "Hydraulic burst strength of paperboard.", "key_params": "Reported in psi or kPa" },
+    { "id": "tappi-t441", "body": "tappi", "code": "TAPPI T441", "title": "Water Absorptiveness (Cobb Test)", "scope": "Water absorption of paper and board.", "key_params": "Cobb60 or Cobb180 g/m²" },
+    { "id": "tappi-t402", "body": "tappi", "code": "TAPPI T402", "title": "Standard Atmospheric Conditions - Paper", "scope": "Conditioning of paper for testing.", "key_params": "23°C / 50% RH" },
+    { "id": "usp-661", "body": "usp", "code": "USP <661>", "title": "Plastic Packaging Systems for Pharmaceutical Use", "scope": "<661.1> Materials of Construction; <661.2> Packaging Systems.", "key_params": "Physicochemical / extractables" },
+    { "id": "usp-671", "body": "usp", "code": "USP <671>", "title": "Containers - Performance Testing", "scope": "Moisture vapor transmission and light transmission of containers.", "key_params": "MVTR at 75% RH 23°C" },
+    { "id": "iec-62133", "body": "iec", "code": "IEC 62133", "title": "Secondary Cells and Batteries - Safety", "scope": "Influences lithium battery packaging requirements.", "key_params": "Short-circuit, thermal abuse" },
+    { "id": "un-3480", "body": "iso", "code": "UN 3480 / 3481", "title": "Lithium Battery Shipping", "scope": "Packaging Instructions 965-970 per IATA DGR & 49 CFR.", "key_params": "State of charge limits, UN-rated boxes" }
+  ],
+  "distribution_cycles": [
+    { "code": "DC-1", "title": "General Handling Cycle", "notes": "Handling and stacking" },
+    { "code": "DC-2", "title": "General Vehicle Stacked", "notes": "Stacked during transport" },
+    { "code": "DC-3", "title": "Air Parcel", "notes": "Air mode small parcel" },
+    { "code": "DC-4", "title": "Truck Parcel Delivery", "notes": "Ground small parcel" },
+    { "code": "DC-12", "title": "Single Package ≤150 lb (68 kg)", "notes": "Typical for overnight shippers" },
+    { "code": "DC-13", "title": "Single Package Air Mode", "notes": "Small parcel by air" },
+    { "code": "DC-18", "title": "Consumer Home Delivery", "notes": "Last-mile direct-to-home" }
+  ]
+}

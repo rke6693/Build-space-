@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Standards - Packaging Engineer Repository</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+
+  <main class="container">
+    <h1>Testing Standards &amp; Protocols</h1>
+    <p class="subtitle">
+      Cross-reference of ASTM, ISTA, ISO, TAPPI, USP, and UN packaging standards
+      commonly used in package qualification, paperboard/film characterization
+      and hazmat shipping. Click to filter by standards body.
+    </p>
+
+    <div class="search-bar" style="margin-top:18px;">
+      <input id="q" type="search" placeholder="Search: drop, compression, pharma, foil, RH…" autofocus />
+      <select id="body"><option value="">All bodies</option></select>
+      <button class="secondary" id="clear">Clear</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Title</th>
+            <th>Scope</th>
+            <th>Key Parameters</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="4" style="color:var(--muted);padding:24px;text-align:center;">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <section style="margin-top:32px;">
+      <h2>ISTA Procedure Selector</h2>
+      <p class="subtitle">Typical mapping of package size and channel to an ISTA procedure.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Channel</th><th>Package size</th><th>Procedure</th><th>Simulation level</th></tr></thead>
+          <tbody>
+            <tr><td>Small parcel (UPS/FedEx)</td><td>≤ 70 kg (150 lb)</td><td>ISTA 3A</td><td>General simulation</td></tr>
+            <tr><td>LTL freight</td><td>Palletized</td><td>ISTA 3B</td><td>General simulation</td></tr>
+            <tr><td>Truckload</td><td>Unitized similar loads</td><td>ISTA 3E</td><td>Simulation</td></tr>
+            <tr><td>Amazon SIOC / Overbox</td><td>E-commerce</td><td>ISTA 6-Amazon.com</td><td>Partial/General</td></tr>
+            <tr><td>FedEx small parcel</td><td>≤ 32 kg</td><td>ISTA 6-FedEx-A</td><td>Non-simulation</td></tr>
+            <tr><td>Insulated / cold chain</td><td>Temperature controlled</td><td>ISTA 7D / 7E</td><td>Thermal</td></tr>
+            <tr><td>Non-simulation integrity</td><td>≤ 68 kg</td><td>ISTA 1A</td><td>Non-simulation</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section style="margin-top:32px;">
+      <h2>ASTM D4169 Distribution Cycles</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cycle</th><th>Title</th><th>Notes</th></tr></thead>
+          <tbody id="dc-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer id="footer" class="footer"></footer>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    (async () => {
+      const data = await PE.loadJSON('data/standards.json');
+      const q = document.getElementById('q');
+      const bodyEl = document.getElementById('body');
+      const rows = document.getElementById('rows');
+
+      data.bodies.forEach(b => {
+        const o = document.createElement('option');
+        o.value = b.id;
+        o.textContent = b.name;
+        bodyEl.appendChild(o);
+      });
+
+      function render() {
+        const kw = q.value.trim().toLowerCase();
+        const b = bodyEl.value;
+        const list = data.standards.filter(s => {
+          if (b && s.body !== b) return false;
+          if (!kw) return true;
+          return JSON.stringify(s).toLowerCase().includes(kw);
+        });
+        if (!list.length) {
+          rows.innerHTML = '<tr><td colspan="4" style="color:var(--muted);padding:24px;text-align:center;">No matches.</td></tr>';
+          return;
+        }
+        rows.innerHTML = list.map(s => `
+          <tr>
+            <td><span class="tag accent">${s.code}</span></td>
+            <td><strong>${s.title}</strong></td>
+            <td class="subtitle">${s.scope}</td>
+            <td class="subtitle" style="font-size:13px;">${s.key_params || ''}</td>
+          </tr>`).join('');
+      }
+      q.addEventListener('input', render);
+      bodyEl.addEventListener('change', render);
+      document.getElementById('clear').onclick = () => { q.value = ''; bodyEl.value = ''; render(); };
+      render();
+
+      const dcRows = document.getElementById('dc-rows');
+      dcRows.innerHTML = data.distribution_cycles.map(d => `
+        <tr><td><strong>${d.code}</strong></td><td>${d.title}</td><td class="subtitle">${d.notes}</td></tr>`).join('');
+    })();
+  </script>
+</body>
+</html>

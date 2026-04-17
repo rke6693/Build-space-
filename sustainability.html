@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sustainability &amp; Regulations - Packaging Engineer Repository</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+
+  <main class="container">
+    <h1>Sustainability &amp; Regulations</h1>
+    <p class="subtitle">
+      Environmental frameworks, extended producer responsibility (EPR), chemical
+      restrictions, food-contact compliance, and hazardous goods packaging
+      regulations that influence packaging design decisions.
+    </p>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="regs">Regulations</button>
+      <button class="tab-btn" data-tab="frameworks">Sustainability Frameworks</button>
+      <button class="tab-btn" data-tab="checklist">Design-for-Recycling</button>
+      <button class="tab-btn" data-tab="howto">How2Recycle Quick Ref</button>
+    </div>
+
+    <section class="tab-panel active" id="regs">
+      <div class="search-bar">
+        <input id="q" type="search" placeholder="Search: PFAS, EPR, FDA, migration, pharma…" />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Region</th><th>Code</th><th>Title</th><th>Scope</th><th>Compliance</th></tr></thead>
+          <tbody id="reg-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="frameworks">
+      <div class="grid" id="frame-grid"></div>
+    </section>
+
+    <section class="tab-panel" id="checklist">
+      <div class="card">
+        <h3>Design-for-Recycling Checklist</h3>
+        <ul style="line-height:1.9;">
+          <li><strong>Mono-material</strong> - Pick a single resin family (PE/PE, PP/PP). Laminates with foil/EVOH hurt recyclability.</li>
+          <li><strong>Avoid dark carbon black</strong> - NIR sorters cannot detect it; use detectable blacks or lighter pigments.</li>
+          <li><strong>Detachable labels</strong> - PSL adhesives should be wash-off (alkaline-soluble) for PET bottles.</li>
+          <li><strong>Full-body shrink sleeves</strong> - Must be perforated &lt; 50% label coverage, or use float-separable TDs.</li>
+          <li><strong>PCR content</strong> - Prefer 30-100% PCR where regulated (EU PPWR rPET ≥30% by 2030).</li>
+          <li><strong>Closures</strong> - EU SUP tethered cap requirement for &lt;3L beverage, effective 3 July 2024.</li>
+          <li><strong>Inks &amp; varnishes</strong> - Deinkable per INGEDE 11 method for paper; solvent-free EB/UV for plastic.</li>
+          <li><strong>Size &amp; format</strong> - Avoid &lt; 50 mm dimensions that fall through MRF screens.</li>
+          <li><strong>Declare</strong> - On-pack recyclability via How2Recycle / OPRL / Triman label where required.</li>
+          <li><strong>Reduce</strong> - Right-size primary &amp; secondary, lightweighted caps, down-gauged films.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="howto">
+      <div class="grid">
+        <div class="card">
+          <h3>How2Recycle Labels (US/CA)</h3>
+          <table>
+            <tbody>
+              <tr><td>Widely Recyclable</td><td class="subtitle">≥ 60% population access, no disassembly needed.</td></tr>
+              <tr><td>Check Locally</td><td class="subtitle">20-60% access (e.g. PP tubs).</td></tr>
+              <tr><td>Store Drop-off</td><td class="subtitle">Flexible film at participating retailers.</td></tr>
+              <tr><td>Not Yet Recycled</td><td class="subtitle">&lt; 20% access - work on DfR.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>OPRL (UK)</h3>
+          <table>
+            <tbody>
+              <tr><td>Recycle</td><td class="subtitle">≥ 75% local authority collection.</td></tr>
+              <tr><td>Don't Recycle</td><td class="subtitle">&lt; 50% collection or not recycled.</td></tr>
+              <tr><td>Recycle at Store</td><td class="subtitle">Flexible film, carrier bag drop-off.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>EU &amp; National Marks</h3>
+          <ul style="line-height:1.8;">
+            <li><strong>Triman</strong> (FR) - mandatory since 2022.</li>
+            <li><strong>Grüner Punkt</strong> (DE historical) - license mark.</li>
+            <li><strong>Tidyman</strong> - generic dispose responsibly.</li>
+            <li><strong>CE/UKCA</strong> - market access marks (not recycling).</li>
+            <li><strong>Mobius loop</strong> - ISO 7000-1135 generic recycle.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer id="footer" class="footer"></footer>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    (async () => {
+      const data = await PE.loadJSON('data/regulations.json');
+      const q = document.getElementById('q');
+      const rows = document.getElementById('reg-rows');
+      function render() {
+        const kw = q.value.trim().toLowerCase();
+        const list = data.regulations.filter(r => !kw || JSON.stringify(r).toLowerCase().includes(kw));
+        rows.innerHTML = list.map(r => `
+          <tr>
+            <td>${r.region}</td>
+            <td><span class="tag accent">${r.code}</span></td>
+            <td><strong>${r.title}</strong></td>
+            <td class="subtitle">${r.scope}</td>
+            <td class="subtitle">${r.compliance}</td>
+          </tr>`).join('');
+      }
+      q.addEventListener('input', render);
+      render();
+
+      const grid = document.getElementById('frame-grid');
+      grid.innerHTML = data.sustainability_frameworks.map(f => `
+        <div class="card">
+          <h3>${f.name}</h3>
+          <p class="subtitle">${f.notes}</p>
+        </div>`).join('');
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+{
+  "categories": [
+    {
+      "id": "corrugated",
+      "name": "Corrugated Board",
+      "description": "Fluted paperboard used for shipping containers and retail ready cases."
+    },
+    {
+      "id": "paperboard",
+      "name": "Paperboard & Folding Carton",
+      "description": "Solid bleached/unbleached paperboard for retail cartons, inserts and trays."
+    },
+    {
+      "id": "plastic",
+      "name": "Rigid Plastics",
+      "description": "Injection, blow, extrusion, thermoform resins for bottles, jars, trays and caps."
+    },
+    {
+      "id": "film",
+      "name": "Flexible Films & Laminates",
+      "description": "Mono and multi-layer films for pouches, overwrap, lidstock, shrink and stretch."
+    },
+    {
+      "id": "foam",
+      "name": "Cushioning & Foams",
+      "description": "Protective cushions, dunnage, inserts and void fill."
+    },
+    {
+      "id": "metal",
+      "name": "Metal Packaging",
+      "description": "Steel and aluminum cans, closures, pails and drums."
+    },
+    {
+      "id": "glass",
+      "name": "Glass Containers",
+      "description": "Type I/II/III glass bottles and jars."
+    },
+    {
+      "id": "pulp",
+      "name": "Molded Pulp",
+      "description": "Fiber molded trays, end caps, inserts and cups."
+    },
+    {
+      "id": "adhesive",
+      "name": "Adhesives, Tapes & Strapping",
+      "description": "Bonding, sealing and unitization materials."
+    }
+  ],
+  "materials": [
+    { "id": "flute-a", "category": "corrugated", "name": "A-Flute", "code": "A", "thickness_mm": 4.8, "flutes_per_m": 110, "properties": { "stacking": "High", "printability": "Low", "cushioning": "High" }, "typical_use": "Heavy stacking, fragile goods cushioning", "ect_range_lb_in": "26-44", "notes": "Largest common flute; good vertical strength and cushioning." },
+    { "id": "flute-b", "category": "corrugated", "name": "B-Flute", "code": "B", "thickness_mm": 3.2, "flutes_per_m": 154, "properties": { "stacking": "Medium", "printability": "Good", "cushioning": "Low" }, "typical_use": "Canned goods, die-cut inserts, POP", "ect_range_lb_in": "23-40", "notes": "Better crush resistance and printability than A-flute." },
+    { "id": "flute-c", "category": "corrugated", "name": "C-Flute", "code": "C", "thickness_mm": 4.0, "flutes_per_m": 128, "properties": { "stacking": "High", "printability": "Good", "cushioning": "Medium" }, "typical_use": "Most common shipping RSC", "ect_range_lb_in": "26-44", "notes": "Industry standard flute for RSC shippers." },
+    { "id": "flute-e", "category": "corrugated", "name": "E-Flute", "code": "E", "thickness_mm": 1.6, "flutes_per_m": 290, "properties": { "stacking": "Low-Med", "printability": "Excellent", "cushioning": "Low" }, "typical_use": "Retail ready cartons, cosmetics, electronics inner", "ect_range_lb_in": "23-32", "notes": "Thin caliper; accepts offset and flexo print well." },
+    { "id": "flute-f", "category": "corrugated", "name": "F-Flute", "code": "F", "thickness_mm": 0.8, "flutes_per_m": 420, "properties": { "stacking": "Low", "printability": "Excellent", "cushioning": "Very low" }, "typical_use": "Folding cartons with corrugated strength, small retail", "ect_range_lb_in": "20-28", "notes": "Microflute alternative to paperboard." },
+    { "id": "flute-bc", "category": "corrugated", "name": "BC Double Wall", "code": "BC", "thickness_mm": 6.4, "flutes_per_m": 282, "properties": { "stacking": "Very High", "printability": "Fair", "cushioning": "High" }, "typical_use": "Heavy shippers, bulk, e-commerce oversized", "ect_range_lb_in": "44-90", "notes": "Combines B + C flute for strength and cushioning." },
+    { "id": "flute-eb", "category": "corrugated", "name": "EB Double Wall", "code": "EB", "thickness_mm": 4.8, "flutes_per_m": 444, "properties": { "stacking": "High", "printability": "Good", "cushioning": "Medium" }, "typical_use": "Premium retail shippers", "ect_range_lb_in": "36-55", "notes": "Double wall with better printable face." },
+    { "id": "kraft-liner", "category": "corrugated", "name": "Kraft Linerboard 42#", "code": "KL42", "thickness_mm": 0.46, "gsm": 205, "properties": { "burst": "High", "color": "Brown" }, "typical_use": "Outer liner for shipping cases", "notes": "Standard virgin kraft liner." },
+    { "id": "test-liner", "category": "corrugated", "name": "Test Liner 140gsm", "code": "TL140", "thickness_mm": 0.3, "gsm": 140, "properties": { "burst": "Medium", "color": "Brown" }, "typical_use": "Inner liner, recycled content cases", "notes": "Recycled alternative to kraft liner." },
+    { "id": "sbs", "category": "paperboard", "name": "Solid Bleached Sulphate (SBS)", "code": "SBS", "gsm_range": "200-450", "properties": { "color": "White", "printability": "Excellent", "food_contact": "Yes" }, "typical_use": "Cosmetics, pharma, premium food cartons", "notes": "Virgin bleached board, FDA compliant." },
+    { "id": "cuk", "category": "paperboard", "name": "Coated Unbleached Kraft (CUK)", "code": "CUK", "gsm_range": "200-350", "properties": { "color": "Brown/White Coat", "wet_strength": "High" }, "typical_use": "Beverage carriers, frozen food", "notes": "Strong even when wet." },
+    { "id": "cnk", "category": "paperboard", "name": "Coated Natural Kraft (CNK)", "code": "CNK", "gsm_range": "200-350", "properties": { "color": "Natural", "wet_strength": "High" }, "typical_use": "Craft beer 6-pack, rustic retail", "notes": "Natural look; high wet strength." },
+    { "id": "cs2s", "category": "paperboard", "name": "Clay Coated News (CCN)", "code": "CCN", "gsm_range": "250-500", "properties": { "color": "Gray/White", "recycled": "100%" }, "typical_use": "Cereal, dry goods, tube cores", "notes": "Recycled content, white coated face." },
+    { "id": "pet", "category": "plastic", "name": "PET (Polyethylene Terephthalate)", "code": "#1", "density_g_cm3": 1.38, "properties": { "clarity": "Excellent", "barrier_o2": "Good", "barrier_h2o": "Fair", "recyclability": "High" }, "typical_use": "Water and soda bottles, thermoform trays, clamshells", "notes": "Widely recycled. Consider rPET for PCR content." },
+    { "id": "hdpe", "category": "plastic", "name": "HDPE (High-Density Polyethylene)", "code": "#2", "density_g_cm3": 0.95, "properties": { "clarity": "Opaque", "barrier_h2o": "Excellent", "chemical_resistance": "High" }, "typical_use": "Milk jugs, detergent, personal care bottles, pails", "notes": "Recyclable; good ESCR." },
+    { "id": "ldpe", "category": "plastic", "name": "LDPE (Low-Density Polyethylene)", "code": "#4", "density_g_cm3": 0.92, "properties": { "flexibility": "High", "sealability": "Excellent" }, "typical_use": "Shrink films, squeeze bottles, bags, liners", "notes": "Sealant layer in many laminates." },
+    { "id": "pp", "category": "plastic", "name": "Polypropylene (PP)", "code": "#5", "density_g_cm3": 0.90, "properties": { "heat_resistance": "High", "clarity": "Clear to opaque" }, "typical_use": "Hot-fill bottles, yogurt cups, closures, film", "notes": "Microwave safe; rigid or film forms." },
+    { "id": "ps", "category": "plastic", "name": "Polystyrene / HIPS", "code": "#6", "density_g_cm3": 1.05, "properties": { "clarity": "Clear/Opaque", "stiffness": "High", "brittle": true }, "typical_use": "Disposable cutlery, deli trays, medical trays", "notes": "Limited curbside recyclability." },
+    { "id": "pla", "category": "plastic", "name": "PLA (Polylactic Acid)", "code": "#7 BIO", "density_g_cm3": 1.24, "properties": { "bio_based": true, "industrially_compostable": true, "heat_resistance": "Low (~60C)" }, "typical_use": "Cold cups, deli clamshells, compostable trays", "notes": "Requires industrial compost facility." },
+    { "id": "pvc", "category": "plastic", "name": "PVC (Polyvinyl Chloride)", "code": "#3", "density_g_cm3": 1.38, "properties": { "clarity": "Excellent", "barrier_o2": "Very high" }, "typical_use": "Blister packs, shrink labels, pharma packaging", "notes": "Avoid where possible due to end-of-life concerns." },
+    { "id": "bopp", "category": "film", "name": "BOPP (Biaxially Oriented PP)", "code": "BOPP", "gauge_micron": "15-40", "properties": { "clarity": "High", "moisture_barrier": "Good", "printability": "Excellent" }, "typical_use": "Snack bags, overwrap, labels", "notes": "Lightweight with excellent print." },
+    { "id": "pet-film", "category": "film", "name": "PET Film", "code": "PET", "gauge_micron": "12-23", "properties": { "strength": "High", "heat_resistance": "High" }, "typical_use": "Lidding, laminate outer layer, retort pouches", "notes": "Typical outer layer in laminates." },
+    { "id": "metallized-pet", "category": "film", "name": "Metallized PET (MetPET)", "code": "MetPET", "gauge_micron": "12-23", "properties": { "oxygen_barrier": "High", "light_barrier": "High" }, "typical_use": "Coffee, chips, nutritional bars", "notes": "Vacuum-deposited aluminum improves barrier." },
+    { "id": "foil-laminate", "category": "film", "name": "Aluminum Foil Laminate", "code": "ALU", "gauge_micron": "7-12 foil", "properties": { "oxygen_barrier": "Near absolute", "moisture_barrier": "Near absolute" }, "typical_use": "Pharma blister lidding, coffee, condiments sachets", "notes": "Highest barrier film; not recyclable in standard streams." },
+    { "id": "pe-stretch", "category": "film", "name": "LLDPE Stretch Wrap", "code": "LLDPE", "gauge_micron": "15-30", "properties": { "cling": "High", "puncture": "Medium" }, "typical_use": "Pallet unitization", "notes": "Use down-gauged / pre-stretch for sustainability." },
+    { "id": "shrink-pe", "category": "film", "name": "PE Shrink Film", "code": "PE-SHR", "gauge_micron": "35-100", "properties": { "shrink": "High", "toughness": "High" }, "typical_use": "Multipack bundling, beverage cases", "notes": "Heavier gauge for heavy loads." },
+    { "id": "epe-foam", "category": "foam", "name": "EPE (Expanded Polyethylene)", "code": "EPE", "density_kg_m3": "20-70", "properties": { "resilience": "High", "reusable": true }, "typical_use": "Electronics, appliance cushioning", "notes": "Multi-impact capable; non-abrasive." },
+    { "id": "eps-foam", "category": "foam", "name": "EPS (Expanded Polystyrene)", "code": "EPS", "density_kg_m3": "12-30", "properties": { "cost": "Low", "insulation": "High" }, "typical_use": "Cold-chain, electronics end caps", "notes": "Low recyclability; many municipal bans." },
+    { "id": "epp-foam", "category": "foam", "name": "EPP (Expanded Polypropylene)", "code": "EPP", "density_kg_m3": "20-90", "properties": { "resilience": "Very high", "reusable": true }, "typical_use": "Automotive returnable dunnage", "notes": "Excellent multi-impact performance." },
+    { "id": "pu-foam", "category": "foam", "name": "Polyurethane Foam", "code": "PU", "density_kg_m3": "20-60", "properties": { "compressibility": "High", "shock_absorption": "Excellent" }, "typical_use": "Case inserts, anti-static for electronics", "notes": "Available in anti-static and conductive grades." },
+    { "id": "corr-paper-cushion", "category": "foam", "name": "Paper Honeycomb", "code": "HONEY", "density_kg_m3": "40-120", "properties": { "recyclable": true, "stiffness": "High" }, "typical_use": "Furniture corner protection, heavy dunnage", "notes": "Sustainable alternative to plastic foam." },
+    { "id": "aluminum-can", "category": "metal", "name": "Aluminum Beverage Can", "code": "AL-CAN", "wall_micron": 90, "properties": { "infinitely_recyclable": true, "barrier": "Complete" }, "typical_use": "Carbonated/still beverages", "notes": "Lightweighted stock 4.7 g (355mL typical)." },
+    { "id": "tinplate", "category": "metal", "name": "Tinplate Steel Food Can", "code": "SN-FE", "wall_micron": 210, "properties": { "corrosion_resistance": "High" }, "typical_use": "Food, pet food, aerosol", "notes": "BPA-NI linings available." },
+    { "id": "glass-type3", "category": "glass", "name": "Type III Soda-Lime Glass", "code": "T3", "properties": { "food_contact": true, "reusable": true }, "typical_use": "Food jars, standard beverage", "notes": "Most common commercial glass." },
+    { "id": "glass-type1", "category": "glass", "name": "Type I Borosilicate Glass", "code": "T1", "properties": { "chemical_durability": "Highest" }, "typical_use": "Pharma vials, parenteral", "notes": "USP <660>." },
+    { "id": "molded-pulp", "category": "pulp", "name": "Molded Fiber Pulp", "code": "MP", "gsm_range": "300-800", "properties": { "recyclable": true, "compostable": true }, "typical_use": "Egg cartons, end caps, wine shippers", "notes": "Made from recycled paper or bagasse." },
+    { "id": "tape-bopp", "category": "adhesive", "name": "BOPP Carton Sealing Tape", "code": "TAPE-BOPP", "width_mm": 48, "properties": { "adhesion": "Medium", "temp_range_c": "-10 to 60" }, "typical_use": "Standard carton sealing", "notes": "Hot-melt or acrylic adhesive." },
+    { "id": "tape-gummed", "category": "adhesive", "name": "Kraft Gummed Paper Tape (WAT)", "code": "TAPE-WAT", "width_mm": 70, "properties": { "recyclable": true, "tamper_evident": true }, "typical_use": "Sustainable e-commerce closure", "notes": "Water-activated; fiber-based tape." },
+    { "id": "strap-pet", "category": "adhesive", "name": "PET Strapping", "code": "STRAP-PET", "width_mm": 15, "properties": { "break_strength_lbf": 1400 }, "typical_use": "Unitizing pallets, replaces steel", "notes": "Lighter than steel; lower elongation." },
+    { "id": "hotmelt-eva", "category": "adhesive", "name": "EVA Hot Melt Adhesive", "code": "HM-EVA", "properties": { "set_time_s": "1-3", "temp_c": "160-180" }, "typical_use": "Case and carton sealing", "notes": "Fast setting; widely used." }
+  ]
+}

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Materials Database - Packaging Engineer Repository</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+
+  <main class="container">
+    <h1>Materials Database</h1>
+    <p class="subtitle">
+      Reference engineering data for common packaging materials. Use this
+      library to compare alternatives, sketch specifications, and cross-check
+      supplier data sheets. Filter by category or keyword.
+    </p>
+
+    <div class="search-bar" style="margin-top:18px;">
+      <input id="q" type="search" placeholder="Search by name, code, use, property…" autofocus />
+      <select id="cat"><option value="">All categories</option></select>
+      <button class="secondary" id="clear">Clear</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Material</th>
+            <th>Code</th>
+            <th>Key Properties</th>
+            <th>Typical Use</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="6" style="color:var(--muted);padding:24px;text-align:center;">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <section style="margin-top:32px;">
+      <h2>Category Guide</h2>
+      <div class="grid" id="cat-cards"></div>
+    </section>
+
+    <section style="margin-top:32px;">
+      <h2>Corrugated Flute Comparison</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Flute</th><th>Caliper (mm)</th><th>Flutes / m</th><th>Stacking</th><th>Printability</th><th>Cushioning</th><th>ECT range (lb/in)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>A</td><td>4.8</td><td>110</td><td>High</td><td>Low</td><td>High</td><td>26-44</td></tr>
+            <tr><td>B</td><td>3.2</td><td>154</td><td>Medium</td><td>Good</td><td>Low</td><td>23-40</td></tr>
+            <tr><td>C</td><td>4.0</td><td>128</td><td>High</td><td>Good</td><td>Medium</td><td>26-44</td></tr>
+            <tr><td>E</td><td>1.6</td><td>290</td><td>Low-Med</td><td>Excellent</td><td>Low</td><td>23-32</td></tr>
+            <tr><td>F</td><td>0.8</td><td>420</td><td>Low</td><td>Excellent</td><td>Very low</td><td>20-28</td></tr>
+            <tr><td>BC</td><td>6.4</td><td>282</td><td>Very High</td><td>Fair</td><td>High</td><td>44-90</td></tr>
+            <tr><td>EB</td><td>4.8</td><td>444</td><td>High</td><td>Good</td><td>Medium</td><td>36-55</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer id="footer" class="footer"></footer>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    (async () => {
+      const data = await PE.loadJSON('data/materials.json');
+      const rowsEl = document.getElementById('rows');
+      const q = document.getElementById('q');
+      const cat = document.getElementById('cat');
+
+      // Populate category dropdown
+      data.categories.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = c.name;
+        cat.appendChild(o);
+      });
+
+      // Category cards
+      const cardsEl = document.getElementById('cat-cards');
+      data.categories.forEach(c => {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = `<h3>${c.name}</h3><p class="subtitle">${c.description}</p><button class="secondary" data-cat="${c.id}">View ${c.name.toLowerCase()}</button>`;
+        d.querySelector('button').onclick = () => { cat.value = c.id; render(); window.scrollTo({top: 160, behavior: 'smooth'}); };
+        cardsEl.appendChild(d);
+      });
+
+      function render() {
+        const kw = q.value.trim().toLowerCase();
+        const c = cat.value;
+        const list = data.materials.filter(m => {
+          if (c && m.category !== c) return false;
+          if (!kw) return true;
+          const blob = JSON.stringify(m).toLowerCase();
+          return blob.includes(kw);
+        });
+        if (!list.length) {
+          rowsEl.innerHTML = '<tr><td colspan="6" style="color:var(--muted);padding:24px;text-align:center;">No matches.</td></tr>';
+          return;
+        }
+        rowsEl.innerHTML = list.map(m => {
+          const catName = (data.categories.find(x => x.id === m.category) || {}).name || m.category;
+          const props = Object.entries(m.properties || {}).map(([k, v]) => `<span class="tag">${k}: ${v}</span>`).join(' ');
+          const extras = [];
+          if (m.thickness_mm) extras.push(`t=${m.thickness_mm}mm`);
+          if (m.gsm || m.gsm_range) extras.push(`GSM ${m.gsm || m.gsm_range}`);
+          if (m.density_g_cm3) extras.push(`ρ=${m.density_g_cm3}`);
+          if (m.density_kg_m3) extras.push(`ρ=${m.density_kg_m3} kg/m³`);
+          if (m.gauge_micron) extras.push(`gauge ${m.gauge_micron} µm`);
+          if (m.ect_range_lb_in) extras.push(`ECT ${m.ect_range_lb_in}`);
+          return `<tr>
+            <td>${catName}</td>
+            <td><strong>${m.name}</strong><div class="subtitle" style="font-size:12px;">${extras.join(' · ')}</div></td>
+            <td><code>${m.code || ''}</code></td>
+            <td>${props}</td>
+            <td>${m.typical_use || ''}</td>
+            <td class="subtitle" style="font-size:13px;">${m.notes || ''}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      q.addEventListener('input', render);
+      cat.addEventListener('change', render);
+      document.getElementById('clear').onclick = () => { q.value = ''; cat.value = ''; render(); };
+      render();
+    })();
+  </script>
+</body>
+</html>

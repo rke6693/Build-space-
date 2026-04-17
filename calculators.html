@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculators - Packaging Engineer Repository</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+
+  <main class="container">
+    <h1>Engineering Calculators</h1>
+    <p class="subtitle">
+      Industry-standard estimators for sizing corrugated cases, cushioning,
+      pallet loads, shelf life, and shipping costs. All values are
+      directional - always validate against lab testing per the relevant
+      standard.
+    </p>
+
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="corrugated">Corrugated</button>
+      <button class="tab-btn" data-tab="distribution">Distribution</button>
+      <button class="tab-btn" data-tab="cushioning">Cushioning</button>
+      <button class="tab-btn" data-tab="flexibles">Flexibles</button>
+      <button class="tab-btn" data-tab="sustainability">Sustainability</button>
+      <button class="tab-btn" data-tab="conversions">Conversions</button>
+    </div>
+
+    <!-- CORRUGATED -->
+    <section class="tab-panel active" id="corrugated">
+      <div class="grid">
+        <div class="card" id="mckee">
+          <h3>McKee Box Compression (BCT)</h3>
+          <p class="subtitle">Predict short-term top load on an RSC. BCT = 5.874 × ECT × √(caliper × perimeter).</p>
+          <div class="form-row">
+            <div class="field"><label>ECT (lb/in)</label><input id="mk-ect" type="number" step="0.1" value="32" /></div>
+            <div class="field"><label>Caliper (in)</label><input id="mk-caliper" type="number" step="0.001" value="0.157" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Inside Length (in)</label><input id="mk-length" type="number" step="0.1" value="12" /></div>
+            <div class="field"><label>Inside Width (in)</label><input id="mk-width" type="number" step="0.1" value="10" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label>Stack time (days)</label>
+              <select id="mk-time">
+                <option value="0">Short-term (lab BCT)</option>
+                <option value="10" selected>10 days</option>
+                <option value="30">30 days</option>
+                <option value="180">180 days</option>
+              </select>
+            </div>
+            <div class="field"><label>Humidity (%RH)</label><input id="mk-humidity" type="number" value="50" /></div>
+          </div>
+          <div class="form-row one">
+            <div class="field"><label>Safety factor</label><input id="mk-safety" type="number" step="0.1" value="3" /></div>
+          </div>
+          <button data-calc="mckee">Calculate BCT</button>
+          <div class="result"></div>
+        </div>
+
+        <div class="card">
+          <h3>Required ECT from Target BCT</h3>
+          <p class="subtitle">Reverse McKee to pick the right board grade.</p>
+          <div class="form-row">
+            <div class="field"><label>Target BCT (lbf)</label><input id="ect-bct" type="number" value="600" /></div>
+            <div class="field"><label>Caliper (in)</label><input id="ect-caliper" type="number" step="0.001" value="0.157" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Length (in)</label><input id="ect-l" type="number" value="12" /></div>
+            <div class="field"><label>Width (in)</label><input id="ect-w" type="number" value="10" /></div>
+          </div>
+          <button data-calc="ect">Calculate ECT</button>
+          <div class="result"></div>
+        </div>
+
+        <div class="card">
+          <h3>Flute Caliper Reference</h3>
+          <p class="subtitle">Typical thickness and flute density for common corrugated profiles.</p>
+          <div class="form-row one">
+            <div class="field">
+              <label>Flute</label>
+              <select id="cal-flute">
+                <option>A</option><option>B</option><option selected>C</option><option>E</option>
+                <option>F</option><option>BC</option><option>EB</option><option>BA</option>
+              </select>
+            </div>
+          </div>
+          <button data-calc="caliper">Show</button>
+          <div class="result"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DISTRIBUTION -->
+    <section class="tab-panel" id="distribution">
+      <div class="grid">
+        <div class="card">
+          <h3>Dimensional Weight</h3>
+          <p class="subtitle">Billable weight = max(actual, DIM) where DIM = (L × W × H) / divisor.</p>
+          <div class="form-row">
+            <div class="field"><label>Units</label>
+              <select id="dim-units">
+                <option value="in-lb">Inches / Pounds</option>
+                <option value="cm-kg">Centimeters / Kilograms</option>
+              </select>
+            </div>
+            <div class="field"><label>Carrier</label>
+              <select id="dim-carrier">
+                <option value="ups-ground">UPS / FedEx</option>
+                <option value="usps">USPS</option>
+                <option value="amazon">Amazon</option>
+                <option value="intl">International (IATA)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Length</label><input id="dim-l" type="number" value="12" /></div>
+            <div class="field"><label>Width</label><input id="dim-w" type="number" value="10" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Height</label><input id="dim-h" type="number" value="8" /></div>
+            <div class="field"><label>Actual weight</label><input id="dim-actual" type="number" step="0.1" value="5" /></div>
+          </div>
+          <button data-calc="dim">Calculate</button>
+          <div class="result"></div>
+        </div>
+
+        <div class="card">
+          <h3>Drop Test Height (ASTM D5276 / ISTA)</h3>
+          <p class="subtitle">Recommended drop height based on package weight and severity.</p>
+          <div class="form-row">
+            <div class="field"><label>Package weight</label><input id="drop-weight" type="number" value="15" /></div>
+            <div class="field"><label>Unit</label>
+              <select id="drop-unit">
+                <option value="lb">lb</option><option value="kg">kg</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row one">
+            <div class="field"><label>Severity</label>
+              <select id="drop-sev">
+                <option value="light">Light (Level I)</option>
+                <option value="moderate" selected>Moderate (Level II)</option>
+                <option value="severe">Severe (Level III)</option>
+              </select>
+            </div>
+          </div>
+          <button data-calc="drop">Calculate</button>
+          <div class="result"></div>
+        </div>
+
+        <div class="card">
+          <h3>Ti × Hi Pallet Pattern</h3>
+          <p class="subtitle">Cases per layer × layers high on a pallet.</p>
+          <div class="form-row">
+            <div class="field"><label>Pallet L (in)</label><input id="pal-l" type="number" value="48" /></div>
+            <div class="field"><label>Pallet W (in)</label><input id="pal-w" type="number" value="40" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Pallet deck H (in)</label><input id="pal-h" type="number" value="6" /></div>
+            <div class="field"><label>Max load H (in)</label><input id="pal-max" type="number" value="72" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Case L (in)</label><input id="pal-cl" type="number" value="12" /></div>
+            <div class="field"><label>Case W (in)</label><input id="pal-cw" type="number" value="10" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Case H (in)</label><input id="pal-ch" type="number" value="8" /></div>
+            <div class="field"><label>Case weight (lb)</label><input id="pal-cwt" type="number" value="5" /></div>
+          </div>
+          <button data-calc="pallet">Calculate</button>
+          <div class="result"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CUSHIONING -->
+    <section class="tab-panel" id="cushioning">
+      <div class="grid">
+        <div class="card">
+          <h3>Cushion Thickness &amp; Area</h3>
+          <p class="subtitle">Estimate protective foam thickness and bearing area from product fragility and drop height.</p>
+          <div class="form-row">
+            <div class="field"><label>Drop height (in)</label><input id="cu-drop" type="number" value="36" /></div>
+            <div class="field"><label>Product weight (lb)</label><input id="cu-weight" type="number" value="20" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Fragility (G)</label><input id="cu-g" type="number" value="40" /></div>
+            <div class="field"><label>Static stress (psi)</label><input id="cu-sigma" type="number" step="0.01" value="0.5" /></div>
+          </div>
+          <button data-calc="cushion">Calculate</button>
+          <div class="result"></div>
+        </div>
+
+        <div class="card">
+          <h3>Seal Burst Pressure (approx)</h3>
+          <p class="subtitle">Directional estimate for heat-seal burst pressure from linear seal strength.</p>
+          <div class="form-row">
+            <div class="field"><label>Seal width (mm)</label><input id="seal-width" type="number" value="5" /></div>
+            <div class="field"><label>Seal strength (N / 15 mm)</label><input id="seal-burst" type="number" value="30" /></div>
+          </div>
+          <div class="form-row one">
+            <div class="field"><label>Pouch area (cm²)</label><input id="seal-area" type="number" value="300" /></div>
+          </div>
+          <button data-calc="bubble">Estimate</button>
+          <div class="result"></div>
+        </div>
+
+        <div class="card">
+          <h3>Fragility Reference (G)</h3>
+          <p class="subtitle">Typical product fragility classes used for cushion sizing.</p>
+          <div class="table-wrap" style="max-height:240px;">
+            <table>
+              <thead><tr><th>Class</th><th>G range</th><th>Examples</th></tr></thead>
+              <tbody>
+                <tr><td>Extremely fragile</td><td>15-25</td><td>Precision instruments</td></tr>
+                <tr><td>Very fragile</td><td>25-40</td><td>Medical electronics, HDD</td></tr>
+                <tr><td>Fragile</td><td>40-60</td><td>Laptops, displays</td></tr>
+                <tr><td>Moderate</td><td>60-85</td><td>Appliances, furniture</td></tr>
+                <tr><td>Rugged</td><td>85-115</td><td>Hand tools</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FLEXIBLES -->
+    <section class="tab-panel" id="flexibles">
+      <div class="grid">
+        <div class="card">
+          <h3>MVTR Shelf Life Estimator</h3>
+          <p class="subtitle">Simplified linear model to compare films for moisture-sensitive products.</p>
+          <div class="form-row">
+            <div class="field"><label>Film MVTR (g/m²/day)</label><input id="sl-mvtr" type="number" step="0.1" value="1.5" /></div>
+            <div class="field"><label>Pouch surface area (m²)</label><input id="sl-area" type="number" step="0.001" value="0.04" /></div>
+          </div>
+          <div class="form-row one">
+            <div class="field"><label>Max allowable moisture gain (g)</label><input id="sl-gain" type="number" step="0.01" value="0.2" /></div>
+          </div>
+          <button data-calc="shelf">Estimate</button>
+          <div class="result"></div>
+        </div>
+
+        <div class="card">
+          <h3>GSM ↔ lb/1000 ft² (Basis Weight)</h3>
+          <p class="subtitle">Convert paper/paperboard grammage.</p>
+          <div class="form-row one">
+            <div class="field"><label>GSM (g/m²)</label><input id="gsm-gsm" type="number" value="250" /></div>
+          </div>
+          <button data-calc="gsm">Convert</button>
+          <div class="result"></div>
+        </div>
+
+        <div class="card">
+          <h3>Typical Film Barrier Reference</h3>
+          <div class="table-wrap" style="max-height:240px;">
+            <table>
+              <thead><tr><th>Film</th><th>O₂ TR (cc/m²·day)</th><th>MVTR (g/m²·day)</th></tr></thead>
+              <tbody>
+                <tr><td>LDPE 50 µm</td><td>5500</td><td>15</td></tr>
+                <tr><td>PP 30 µm</td><td>2000</td><td>5</td></tr>
+                <tr><td>PET 12 µm</td><td>110</td><td>25</td></tr>
+                <tr><td>BOPP 30 µm</td><td>1600</td><td>4</td></tr>
+                <tr><td>EVOH 15 µm</td><td>0.5</td><td>60</td></tr>
+                <tr><td>Foil 9 µm laminate</td><td>&lt;0.1</td><td>&lt;0.1</td></tr>
+                <tr><td>MetPET 12 µm</td><td>1.5</td><td>1.5</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUSTAINABILITY -->
+    <section class="tab-panel" id="sustainability">
+      <div class="grid">
+        <div class="card">
+          <h3>CO₂e Footprint (cradle-to-gate)</h3>
+          <p class="subtitle">Estimate emissions from mass of packaging material. Use supplier EPDs for reporting.</p>
+          <div class="form-row">
+            <div class="field"><label>Material</label>
+              <select id="co2-mat">
+                <option value="corrugated-virgin">Corrugated (virgin)</option>
+                <option value="corrugated-recycled">Corrugated (recycled)</option>
+                <option value="paperboard-sbs">Paperboard SBS</option>
+                <option value="molded-pulp">Molded pulp</option>
+                <option value="pet">PET (virgin)</option>
+                <option value="rpet">rPET</option>
+                <option value="hdpe">HDPE</option>
+                <option value="ldpe">LDPE</option>
+                <option value="pp">PP</option>
+                <option value="bopp">BOPP</option>
+                <option value="pla">PLA</option>
+                <option value="aluminum-virgin">Aluminum (virgin)</option>
+                <option value="aluminum-recycled">Aluminum (recycled)</option>
+                <option value="glass-virgin">Glass (virgin)</option>
+                <option value="glass-recycled">Glass (recycled)</option>
+                <option value="steel-tin">Tinplate steel</option>
+              </select>
+            </div>
+            <div class="field"><label>Mass per unit (kg)</label><input id="co2-mass" type="number" step="0.001" value="0.025" /></div>
+          </div>
+          <div class="form-row one">
+            <div class="field"><label>Units in run</label><input id="co2-units" type="number" value="100000" /></div>
+          </div>
+          <button data-calc="co2">Estimate</button>
+          <div class="result"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONVERSIONS -->
+    <section class="tab-panel" id="conversions">
+      <div class="grid">
+        <div class="card">
+          <h3>Unit Conversion</h3>
+          <div class="form-row">
+            <div class="field"><label>Value</label><input id="cv-val" type="number" step="0.0001" value="1" /></div>
+            <div class="field"><label>From</label>
+              <select id="cv-from">
+                <optgroup label="Length"><option>in</option><option>mm</option><option>cm</option><option>ft</option><option>m</option></optgroup>
+                <optgroup label="Mass"><option>g</option><option>kg</option><option>oz</option><option>lb</option></optgroup>
+                <optgroup label="Force"><option>N</option><option>lbf</option><option>kgf</option></optgroup>
+                <optgroup label="Pressure"><option>kPa</option><option>psi</option><option>bar</option><option>Pa</option><option>N/mm2</option></optgroup>
+                <optgroup label="Basis wt"><option>gsm</option><option>lb/1000ft2</option></optgroup>
+              </select>
+            </div>
+          </div>
+          <div class="form-row one">
+            <div class="field"><label>To</label>
+              <select id="cv-to">
+                <optgroup label="Length"><option>in</option><option>mm</option><option>cm</option><option>ft</option><option>m</option></optgroup>
+                <optgroup label="Mass"><option>g</option><option>kg</option><option>oz</option><option>lb</option></optgroup>
+                <optgroup label="Force"><option>N</option><option>lbf</option><option>kgf</option></optgroup>
+                <optgroup label="Pressure"><option>kPa</option><option>psi</option><option>bar</option><option>Pa</option><option>N/mm2</option></optgroup>
+                <optgroup label="Basis wt"><option>gsm</option><option>lb/1000ft2</option></optgroup>
+              </select>
+            </div>
+          </div>
+          <button data-calc="convert">Convert</button>
+          <div class="result"></div>
+        </div>
+
+        <div class="card">
+          <h3>Common Constants</h3>
+          <div class="table-wrap" style="max-height:300px;">
+            <table>
+              <thead><tr><th>Constant</th><th>Value</th></tr></thead>
+              <tbody>
+                <tr><td>1 inch</td><td>25.4 mm</td></tr>
+                <tr><td>1 lb</td><td>453.592 g</td></tr>
+                <tr><td>1 psi</td><td>6.895 kPa</td></tr>
+                <tr><td>1 lb/in (ECT)</td><td>0.175 kN/m</td></tr>
+                <tr><td>1 gsm</td><td>0.2048 lb/1000 ft²</td></tr>
+                <tr><td>Standard atmosphere</td><td>23 °C / 50 % RH</td></tr>
+                <tr><td>GMA pallet</td><td>48 × 40 in (1219 × 1016 mm)</td></tr>
+                <tr><td>EURO pallet</td><td>1200 × 800 mm</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer id="footer" class="footer"></footer>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script src="js/calculators.js"></script>
+  <script>
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+    // support deep linking via #hash
+    if (location.hash) {
+      const tab = document.querySelector(`.tab-btn[data-tab="${location.hash.slice(1)}"]`);
+      if (tab) tab.click();
+    }
+  </script>
+</body>
+</html>
