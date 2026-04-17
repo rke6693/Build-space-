@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pallet Stability Simulator — ISTA 3E / CHEP</title>
+  <meta name="description" content="Physics-accurate pallet stability simulator. Runs rigid-body ISTA 3E transit tests on CHEP pallets with parameterized corrugated box stacks." />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="icon" href="data:," />
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "@dimforge/rapier3d-compat": "https://esm.sh/@dimforge/rapier3d-compat@0.14.0",
+      "lit-html": "https://esm.sh/lit-html@3.1.2",
+      "uplot": "https://esm.sh/uplot@1.6.30"
+    }
+  }
+  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css" />
+</head>
+<body>
+
+<div id="boot-overlay">
+  <div class="boot-card">
+    <div class="boot-brand">PALLET STABILITY SIMULATOR</div>
+    <div class="boot-sub">ISTA 3E · CHEP GMA · Rigid-body physics</div>
+    <div class="spinner" aria-hidden="true"></div>
+    <div id="boot-overlay-msg">Loading Rapier WASM and Three.js…</div>
+  </div>
+</div>
+
+<header id="topbar">
+  <div class="brand">
+    <span class="logo-mark">▢▦</span>
+    <span class="title">Pallet Stability Simulator</span>
+    <span class="tag">ISTA 3E · CHEP GMA</span>
+  </div>
+  <div class="topbar-actions">
+    <button id="btn-run-single" class="btn btn-primary" disabled>Run ISTA 3E Sequence</button>
+    <button id="btn-run-batch" class="btn" disabled>Monte Carlo Batch…</button>
+    <button id="btn-export" class="btn" disabled>Export Report</button>
+  </div>
+</header>
+
+<main id="app-grid">
+
+  <aside id="panel-config" class="panel" aria-label="Configuration">
+    <h2 class="panel-title">Configuration</h2>
+
+    <section class="cfg-section">
+      <h3>Pallet</h3>
+      <div class="cfg-row"><label>Type</label><span class="cfg-ro">CHEP GMA 48×40 (block)</span></div>
+      <div class="cfg-row"><label>Mass</label><span class="cfg-ro">35 kg</span></div>
+    </section>
+
+    <section class="cfg-section">
+      <h3>Box</h3>
+      <div class="cfg-row"><label for="inp-box-L">Length (mm)</label><input id="inp-box-L" type="number" value="300" min="50" max="1200" /></div>
+      <div class="cfg-row"><label for="inp-box-W">Width (mm)</label><input id="inp-box-W" type="number" value="250" min="50" max="1016" /></div>
+      <div class="cfg-row"><label for="inp-box-H">Height (mm)</label><input id="inp-box-H" type="number" value="220" min="50" max="600" /></div>
+      <div class="cfg-row"><label for="inp-box-mass">Mass (kg)</label><input id="inp-box-mass" type="number" value="8.0" step="0.1" min="0.1" max="50" /></div>
+      <div class="cfg-row"><label for="inp-box-ect">ECT (lb/in)</label><input id="inp-box-ect" type="number" value="44" min="20" max="100" /></div>
+      <div class="cfg-row"><label for="inp-box-mu">μ (carton-carton)</label><input id="inp-box-mu" type="number" value="0.45" step="0.05" min="0.1" max="0.9" /></div>
+    </section>
+
+    <section class="cfg-section">
+      <h3>Stack Pattern</h3>
+      <div class="cfg-row"><label for="inp-pattern">Pattern</label>
+        <select id="inp-pattern">
+          <option value="column">Column stack</option>
+          <option value="interlock" selected>Interlock (brick)</option>
+          <option value="pinwheel">Pinwheel</option>
+        </select>
+      </div>
+      <div class="cfg-row"><label for="inp-layers">Layers</label><input id="inp-layers" type="number" value="6" min="1" max="12" /></div>
+    </section>
+
+    <section class="cfg-section">
+      <h3>Stretch Wrap</h3>
+      <div class="cfg-row"><label for="inp-wrap-turns">Turns</label><input id="inp-wrap-turns" type="number" value="4" min="0" max="12" /></div>
+      <div class="cfg-row"><label for="inp-wrap-tension">Pretension (N)</label><input id="inp-wrap-tension" type="number" value="120" min="0" max="500" /></div>
+    </section>
+
+    <section class="cfg-section">
+      <h3>ISTA 3E Test</h3>
+      <div class="cfg-row"><label for="inp-vib-duration">Vib. duration (s, simulated)</label><input id="inp-vib-duration" type="number" value="180" min="10" max="600" /></div>
+      <div class="cfg-row"><label for="inp-time-compression">Time compression</label><input id="inp-time-compression" type="number" value="60" min="1" max="60" /></div>
+      <div class="cfg-row"><label for="inp-seed">Seed</label><input id="inp-seed" type="number" value="42" /></div>
+    </section>
+
+    <section class="cfg-section">
+      <div class="cfg-row"><button id="btn-reset" class="btn btn-outline">Rebuild scene</button></div>
+    </section>
+  </aside>
+
+  <section id="panel-viewport" class="panel panel-viewport" aria-label="3D Viewport">
+    <canvas id="viewport"></canvas>
+    <div id="viewport-hud">
+      <div class="hud-phase">PHASE: <span id="hud-phase">Idle</span></div>
+      <div class="hud-metric">SIM TIME: <span id="hud-sim-time">0.000 s</span></div>
+      <div class="hud-metric">FPS: <span id="hud-fps">—</span></div>
+    </div>
+  </section>
+
+  <aside id="panel-metrics" class="panel" aria-label="Metrics &amp; Results">
+    <h2 class="panel-title">Metrics</h2>
+
+    <div id="verdict-card" class="verdict verdict-idle">
+      <div class="verdict-label">Verdict</div>
+      <div class="verdict-value">— No run yet —</div>
+    </div>
+
+    <section class="metrics-grid" id="metrics-live">
+      <div class="metric"><span class="m-label">Max box displacement</span><span class="m-val" data-metric="maxBoxDisplacementXY">— mm</span></div>
+      <div class="metric"><span class="m-label">Boxes toppled</span><span class="m-val" data-metric="boxesToppled">—</span></div>
+      <div class="metric"><span class="m-label">Load lean angle</span><span class="m-val" data-metric="loadLeanAngle">— °</span></div>
+      <div class="metric"><span class="m-label">Pallet COG shift</span><span class="m-val" data-metric="palletCOGShift">— mm</span></div>
+      <div class="metric"><span class="m-label">Wrap broken</span><span class="m-val" data-metric="wrapBroken">—</span></div>
+      <div class="metric"><span class="m-label">Compression deflection</span><span class="m-val" data-metric="compressionDeflection">— mm</span></div>
+      <div class="metric"><span class="m-label">Max box accel</span><span class="m-val" data-metric="maxBoxAccel">— g</span></div>
+      <div class="metric"><span class="m-label">McKee BCT (advisory)</span><span class="m-val" data-metric="bctAdvisory_McKee">— lbf</span></div>
+    </section>
+
+    <div id="batch-results" class="batch-block hidden">
+      <h3>Monte Carlo — Cp / Cpk</h3>
+      <div id="cpk-table"></div>
+      <h3>Sensitivity (|Spearman ρ|)</h3>
+      <div id="tornado-chart" class="chart-slot"></div>
+      <h3>Metric distribution</h3>
+      <div id="hist-chart" class="chart-slot"></div>
+    </div>
+  </aside>
+
+</main>
+
+<footer id="bottom-bar">
+  <div id="status-line">booting…</div>
+  <div class="limits-banner">
+    <strong>Limitations:</strong> rigid-body only — no box crush (McKee BCT is advisory), no creep, no humidity, no fluid sloshing. Use as a screening tool; confirm with physical ISTA 3E testing before release.
+  </div>
+</footer>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "_source": "ISTA 3E: Similar Packaged-Products in Unitized Loads for Truckload Shipment, 2017 revision. Random vibration PSD (§4.4), truck over-the-road assurance spectrum. Values transcribed from the ISTA/ASTM D4728 Assurance Level 1 profile. Engineer should verify against current ISTA 3E procedure before certification use.",
+  "profile": "ISTA_3E_TRUCK_OTR",
+  "axis": "vertical",
+  "units": { "frequency": "Hz", "psd": "g^2/Hz" },
+  "breakpoints": [
+    { "f": 1,   "psd": 0.0001 },
+    { "f": 4,   "psd": 0.0100 },
+    { "f": 16,  "psd": 0.0100 },
+    { "f": 40,  "psd": 0.0010 },
+    { "f": 80,  "psd": 0.0010 },
+    { "f": 200, "psd": 0.00001 }
+  ],
+  "grms_nominal": 0.54,
+  "duration_min_real": 180,
+  "notes": [
+    "Log-log interpolation is used between breakpoints.",
+    "The simulator's compressed-time runs preserve frequency content and peak events, but NOT cumulative creep/fatigue.",
+    "This profile is vertical-axis only; ISTA 3E also specifies shorter lateral/longitudinal runs which can be enabled via the UI in a future phase."
+  ]
+}

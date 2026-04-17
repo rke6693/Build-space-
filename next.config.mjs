@@ -26,6 +26,25 @@ const nextConfig = {
           { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'" },
         ],
       },
+      {
+        // Pallet stability simulator: Rapier WASM from esm.sh, Three.js + uPlot CSS from jsdelivr.
+        source: '/simulator/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'self'; " +
+              "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://esm.sh; " +
+              "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+              "img-src 'self' data:; " +
+              "font-src 'self' data:; " +
+              "connect-src 'self' https://cdn.jsdelivr.net https://esm.sh; " +
+              "worker-src 'self' blob:; " +
+              "frame-ancestors 'self'",
+          },
+        ],
+      },
     ];
   },
 };
