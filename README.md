@@ -49,6 +49,37 @@ stripe listen --forward-to localhost:3000/api/billing/webhook
 - `npm run typecheck` — TypeScript check
 - `npm run db:migrate` — Prisma migrations
 
+## Daily food-offers email (Vercel Cron)
+
+A small scheduled job that emails a curated list of top-rated local restaurants
+near a ZIP code each morning.
+
+- Handler: `app/api/cron/food-offers/route.ts`
+- Schedule: `vercel.json` — fires at 12:00 and 13:00 UTC; the handler only sends
+  when the local hour in `DAILY_OFFERS_TZ` equals `DAILY_OFFERS_SEND_HOUR`, so
+  8 AM America/New_York delivery works under both EDT and EST with no edits.
+- Auth: `Authorization: Bearer $CRON_SECRET` (Vercel Cron injects this).
+- Data: Yelp Fusion API if `YELP_API_KEY` is set; otherwise a small static
+  fallback list so the first send still contains something.
+
+Configure in your Vercel project env:
+
+```
+CRON_SECRET=...              # openssl rand -hex 32
+DAILY_OFFERS_RECIPIENT=you@example.com
+DAILY_OFFERS_ZIP=45103
+DAILY_OFFERS_TZ=America/New_York
+DAILY_OFFERS_SEND_HOUR=8
+YELP_API_KEY=...             # optional but recommended
+RESEND_API_KEY=...           # already required for magic-link auth
+EMAIL_FROM="Offers <offers@example.com>"
+```
+
+Test locally:
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/food-offers
+```
+
 ## Layout
 
 ```

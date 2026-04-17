@@ -24,6 +24,15 @@ const schema = z.object({
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
   RUN_TOKEN_SECRET: z.string().min(32),
+
+  // Daily food-offers email (Vercel Cron).
+  // CRON_SECRET is the bearer token Vercel Cron includes on each invocation.
+  CRON_SECRET: z.string().min(16).optional(),
+  DAILY_OFFERS_RECIPIENT: z.string().email().optional(),
+  DAILY_OFFERS_ZIP: z.string().regex(/^\d{5}$/).default('45103'),
+  DAILY_OFFERS_TZ: z.string().default('America/New_York'),
+  DAILY_OFFERS_SEND_HOUR: z.coerce.number().int().min(0).max(23).default(8),
+  YELP_API_KEY: z.string().min(1).optional(),
 });
 
 const parsed = schema.safeParse(process.env);
