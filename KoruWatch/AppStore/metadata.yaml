@@ -1,0 +1,97 @@
+# ============================================================================
+# Koru — App Store Connect Metadata
+# ============================================================================
+# Copy-paste into App Store Connect or use Fastlane `deliver` to upload.
+# ============================================================================
+
+app_name: "Koru — Wellness Score"
+subtitle: "Your body, one number."
+bundle_id: "app.koru.watch"
+category: "Health & Fitness"
+secondary_category: "Lifestyle"
+content_rating: "4+"
+price_tier: 0  # free, or set to paid
+
+# ---- Description --------------------------------------------------------
+# Character limit: 4,000. Write for scanners, not readers.
+
+description: |
+  Wake up. Glance at your wrist. One number tells you how ready you are.
+
+  Koru distills ten HealthKit signals — HRV, resting heart rate, sleep stages, activity rings, workout load, VO2 max, SpO2, respiratory rate, wrist temperature, and mindfulness — into a single 0–100 daily wellness score that's 100% private, 100% on your watch.
+
+  DESIGNED FOR ULTRA 2 & SERIES 9
+  • Action Button on Ultra 2 opens an instant mood/energy/stress check-in
+  • Double Tap on Series 9 does the same — one gesture, three data points
+  • Night Mode preserves dark adaptation with a red-on-black palette
+  • Size-adaptive layouts for 41mm, 45mm, and 49mm displays
+
+  YOUR SCORE, EXPLAINED
+  • Score ring fills with an aurora gradient (teal → violet → coral) that shifts with your state
+  • Crown-scroll through Score → 7-Day Trend → Top Contributors → Calendar Heatmap
+  • Tap any contributor to see its 7-day sparkline, baseline comparison, and what it means
+  • Personalized insights powered by 8 pattern detectors, not canned text
+
+  BASELINE THAT LEARNS
+  Day 1: population norms give you a usable score immediately.
+  Day 14: fully personalized to YOUR heart, YOUR sleep, YOUR rhythm.
+  The transition is invisible — your score just gets smarter.
+
+  RETENTION WITHOUT ADDICTION
+  • Morning summary notification with yesterday's score
+  • Recovery alerts when your body needs an easy day
+  • Weekly reviews with your best day, worst day, and top improving metric
+  • Milestone celebrations: first score, personal best, 7/14/30-day streaks
+  • No social feed. No leaderboard. No dark patterns. Just your data.
+
+  PRIVACY FIRST
+  • Zero network calls. No iCloud. No analytics. No telemetry.
+  • All data stored with complete file protection — encrypted at rest.
+  • HealthKit raw samples never leave the device.
+  • Not a medical device. Always consult a clinician for health concerns.
+
+  Koru is the Maori spiral symbol for new growth and renewal. This app is a daily renewal of self-awareness — your body's story, told in one number.
+
+# ---- Promotional text (170 chars, can be updated without review) --------
+promotional_text: "Your body, one number. Koru turns 10 Apple Watch sensors into a private daily wellness score. Designed for Ultra 2 & Series 9."
+
+# ---- Keywords (100 chars, comma-separated) ------------------------------
+keywords: "wellness,health,score,HRV,sleep,recovery,fitness,watch,mindfulness,Apple Watch"
+
+# ---- What's New (4000 chars) -------------------------------------------
+whats_new: "Welcome to Koru 1.0! Your wellness score starts here."
+
+# ---- Privacy Nutrition Label -------------------------------------------
+# Complete this in App Store Connect. Koru collects:
+privacy:
+  data_not_collected: true  # Koru does not send ANY data off-device
+  data_not_linked_to_you: true
+  data_linked_to_you: false
+  data_used_to_track_you: false
+  # HealthKit data is used locally only.
+  # No analytics, no crash reporting, no third-party SDKs.
+
+# ---- Screenshot Dimensions (watchOS) -----------------------------------
+# Generate using Xcode Simulator at these sizes:
+screenshots:
+  ultra2_49mm: "410 x 502 @2x"
+  series9_45mm: "396 x 484 @2x"
+  series9_41mm: "352 x 430 @2x"
+  # Recommended 5 screenshots per device:
+  # 1. Score ring with aurora gradient (hero shot)
+  # 2. 7-day trend sparkline
+  # 3. Top contributors with insight
+  # 4. Calendar heatmap
+  # 5. Check-in sheet (mood/energy/stress)
+
+# ---- App Preview Video (optional) --------------------------------------
+# 15-30 second screen recording showing:
+# 1. Score appearing with ring fill animation
+# 2. Crown-scrolling through pages
+# 3. Tapping a contributor → detail view
+# 4. Action Button → check-in flow
+# 5. Night Mode toggle
+
+# ---- Support URL (required) --------------------------------------------
+support_url: "https://github.com/rke6693/Build-space-/issues"
+marketing_url: ""

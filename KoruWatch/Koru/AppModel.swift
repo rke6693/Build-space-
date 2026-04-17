@@ -36,6 +36,15 @@ final class AppModel: ObservableObject {
     /// Shows the check-in sheet over any screen.
     @Published var showingCheckIn: Bool = false
 
+    /// Currently pending milestone celebration (nil = no milestone to show).
+    @Published var pendingMilestone: Milestone? = nil
+
+    /// Triggers the weekly summary sheet on Monday morning.
+    @Published var showWeeklySummary: Bool = false
+
+    /// Persisted set of milestone IDs that have already been shown.
+    @AppStorage("koru.shownMilestoneIDs") private var shownMilestoneIDsData: Data = Data()
+
     // MARK: - Dependencies
 
     let healthStore: HealthStoreProtocol
@@ -116,10 +125,60 @@ final class AppModel: ObservableObject {
             try await history.save(baselines: baselines)
             recentHistory = await history.loadHistory()
             KoruHaptic.scoreRevealed.play()
+
+            // Check for milestones
+            let newMilestones = MilestoneEngine.check(
+                score: score,
+                history: recentHistory,
+                shownIDs: loadShownMilestoneIDs()
+            )
+            if let first = newMilestones.first {
+                pendingMilestone = first
+            }
+
+            // Trigger weekly summary on Monday morning
+            checkWeeklySummary()
         } catch {
             // Leave todayScore nil — the UI shows a "No data yet" state.
             todayScore = nil
         }
+    }
+
+    // MARK: - Milestones
+
+    /// Dismiss the current milestone and persist its ID so it won't show again.
+    func dismissMilestone() {
+        guard let milestone = pendingMilestone else { return }
+        var ids = loadShownMilestoneIDs()
+        ids.insert(milestone.id)
+        saveShownMilestoneIDs(ids)
+        pendingMilestone = nil
+    }
+
+    private func loadShownMilestoneIDs() -> Set<String> {
+        guard !shownMilestoneIDsData.isEmpty,
+              let decoded = try? JSONDecoder().decode(Set<String>.self, from: shownMilestoneIDsData)
+        else { return [] }
+        return decoded
+    }
+
+    private func saveShownMilestoneIDs(_ ids: Set<String>) {
+        if let data = try? JSONEncoder().encode(ids) {
+            shownMilestoneIDsData = data
+        }
+    }
+
+    // MARK: - Weekly Summary
+
+    /// Check if it's Monday morning and the last 7 days have scores,
+    /// then trigger the weekly summary sheet.
+    private func checkWeeklySummary() {
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: Date())
+        // Sunday = 1, Monday = 2
+        guard weekday == 1 || weekday == 2 else { return }
+        guard recentHistory.count >= 7 else { return }
+        showWeeklySummary = true
     }
 
     // MARK: - Check-in

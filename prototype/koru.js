@@ -362,9 +362,17 @@
     // Pulse the score numerals
     document.querySelectorAll('.score-numeral').forEach(el => {
       el.classList.remove('pulsing');
-      void el.offsetWidth; // reflow
+      void el.offsetWidth;
       el.classList.add('pulsing');
     });
+    // Streak badges
+    updateStreakBadges(runtime.stateIndex);
+    // Confetti on Peak scores
+    if (s.band === 'high' && s.value >= 90) {
+      document.querySelectorAll('.screen-inner').forEach(root => burstConfetti(root));
+    }
+    // Milestone check
+    setTimeout(() => checkMilestone(s), 600);
   }
 
   // -----------------------------------------------------------------------
@@ -539,6 +547,77 @@
   }
 
   // -----------------------------------------------------------------------
+  // Confetti burst — fires inside a device screen on "Peak" scores.
+  // -----------------------------------------------------------------------
+  function burstConfetti(parent) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const container = document.createElement('div');
+    container.className = 'confetti-container';
+    parent.appendChild(container);
+    const colors = ['#37E2D5', '#7B5CFF', '#FF6B6B', '#FFD700', '#FF8C42', '#E8FF42'];
+    for (let i = 0; i < 18; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'confetti-dot';
+      const angle = (Math.PI * 2 * i) / 18 + (Math.random() - 0.5) * 0.5;
+      const dist = 60 + Math.random() * 90;
+      dot.style.setProperty('--cx', `${Math.cos(angle) * dist}px`);
+      dot.style.setProperty('--cy', `${Math.sin(angle) * dist}px`);
+      dot.style.left = '50%'; dot.style.top = '45%';
+      dot.style.background = colors[i % colors.length];
+      dot.style.animationDelay = `${Math.random() * 0.15}s`;
+      container.appendChild(dot);
+    }
+    setTimeout(() => container.remove(), 1500);
+  }
+
+  // -----------------------------------------------------------------------
+  // Milestone celebration — shows a full-screen card on special moments.
+  // -----------------------------------------------------------------------
+  const MILESTONES = [
+    { value: 91, emoji: '💯', text: 'A perfect Koru score! You\'re in the top 1%.' },
+    { value: 82, emoji: '🔥', text: '7-day streak! Consistency is the real superpower.' },
+    { value: 64, emoji: '💪', text: 'Bounced back! Score jumped 20+ from your low.' },
+    { value: 43, emoji: '🌱', text: 'Rest day detected. Recovery is growth.' },
+  ];
+  let milestoneShown = new Set();
+
+  function checkMilestone(state) {
+    const ms = MILESTONES.find(m => m.value === state.value && !milestoneShown.has(m.value));
+    if (!ms) return;
+    milestoneShown.add(ms.value);
+    const overlay = document.getElementById('milestone');
+    if (!overlay) return;
+    overlay.querySelector('[data-role="ms-emoji"]').textContent = ms.emoji;
+    overlay.querySelector('[data-role="ms-text"]').textContent = ms.text;
+    overlay.hidden = false;
+  }
+
+  function dismissMilestone() {
+    const overlay = document.getElementById('milestone');
+    if (overlay) overlay.hidden = true;
+  }
+
+  // -----------------------------------------------------------------------
+  // Streak badge — shows fire icon + count in score page.
+  // -----------------------------------------------------------------------
+  function updateStreakBadges(stateIndex) {
+    const streakCount = Math.max(0, 7 - stateIndex % 4);
+    document.querySelectorAll('.screen-inner').forEach(root => {
+      let badge = root.querySelector('.streak-badge');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.className = 'streak-badge';
+        badge.innerHTML = '<span class="streak-flame">🔥</span><span class="streak-count"></span>';
+        const mainPage = root.querySelector('.koru-main');
+        if (mainPage) mainPage.appendChild(badge);
+      }
+      badge.querySelector('.streak-count').textContent = String(streakCount);
+      badge.classList.toggle('visible', streakCount >= 3);
+      badge.classList.toggle('streak-hot', streakCount >= 7);
+    });
+  }
+
+  // -----------------------------------------------------------------------
   // Touch gestures — swipe left/right to change pages on mobile.
   // -----------------------------------------------------------------------
   function initTouch() {
@@ -602,7 +681,8 @@
       if (action === 'toggle-night')   setNight(!runtime.night);
       if (action === 'open-checkin')   openCheckIn();
       if (action === 'close-checkin')  closeCheckIn();
-      if (action === 'close-component') closeComponentDetail();
+      if (action === 'close-component')  closeComponentDetail();
+      if (action === 'dismiss-milestone') dismissMilestone();
     });
 
     document.addEventListener('wheel', onWheel, { passive: true });
