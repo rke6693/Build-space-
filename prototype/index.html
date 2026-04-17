@@ -10,6 +10,30 @@
   <link rel="icon" type="image/svg+xml" href="assets/spiral.svg" />
 </head>
 <body>
+  <!-- LOADING SCREEN — animated spiral unfurl -->
+  <div class="loading-overlay" id="loader" aria-live="polite">
+    <div class="loader-stack">
+      <svg class="loader-spiral" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id="loaderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#37E2D5"/><stop offset="50%" stop-color="#7B5CFF"/><stop offset="100%" stop-color="#FF6B6B"/>
+          </linearGradient>
+        </defs>
+        <path class="loader-path" fill="none" stroke="url(#loaderGrad)" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+      <span class="loader-text">Koru</span>
+    </div>
+  </div>
+
+  <!-- AURORA PARTICLES — ambient floating dots behind everything -->
+  <canvas id="particles" class="particle-canvas" aria-hidden="true"></canvas>
+
+  <!-- TOAST NOTIFICATION — slides up briefly after state changes -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span class="toast-icon">&#10024;</span>
+    <span class="toast-text"></span>
+  </div>
+
   <header class="page-header">
     <div class="brand">
       <svg class="brand-glyph" viewBox="0 0 100 100" aria-hidden="true">
@@ -135,6 +159,35 @@
     </article>
   </section>
 
+  <!-- COMPONENT DETAIL MODAL — drills into a single contributor -->
+  <div class="sheet-overlay" data-sheet="component-detail" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="comp-title">
+      <header class="sheet-header">
+        <h3 id="comp-title" data-role="comp-name">HRV</h3>
+        <button type="button" class="sheet-close" data-action="close-component" aria-label="Close">&#215;</button>
+      </header>
+      <div class="comp-hero">
+        <div class="comp-score" data-role="comp-score">68</div>
+        <span class="comp-delta" data-role="comp-delta">+6 ms vs baseline</span>
+      </div>
+      <div class="comp-sparkline-wrap">
+        <svg class="comp-sparkline" viewBox="0 0 260 80" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="compGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="var(--aurora-teal)"/><stop offset="100%" stop-color="var(--aurora-violet)"/>
+            </linearGradient>
+          </defs>
+          <path data-role="comp-line" fill="none" stroke="url(#compGrad)" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <p class="comp-explain" data-role="comp-explain">Heart Rate Variability measures your autonomic nervous system's flexibility. Higher overnight SDNN indicates stronger recovery capacity.</p>
+      <div class="comp-impact" data-role="comp-impact">
+        <span class="comp-impact-badge">Contributing +8 to your score</span>
+      </div>
+      <button type="button" class="sheet-save" data-action="close-component">Got it</button>
+    </div>
+  </div>
+
   <!-- CHECK-IN SHEET OVERLAY -->
   <div class="sheet-overlay" data-sheet="checkin" hidden>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
@@ -179,6 +232,15 @@
       </footer>
     </div>
   </div>
+
+  <!-- KEYBOARD SHORTCUT LEGEND -->
+  <footer class="kbd-legend" aria-label="Keyboard shortcuts">
+    <span><kbd>Space</kbd> Cycle score</span>
+    <span><kbd>&#8592;</kbd><kbd>&#8594;</kbd> Pages</span>
+    <span><kbd>N</kbd> Night mode</span>
+    <span><kbd>C</kbd> Check-in</span>
+    <span><kbd>Esc</kbd> Close</span>
+  </footer>
 
   <script src="koru.js" defer></script>
 </body>

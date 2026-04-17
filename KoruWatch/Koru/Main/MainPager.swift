@@ -2,9 +2,10 @@
 //  MainPager.swift
 //  Koru Watch App
 //
-//  Three vertically-paged screens: score → trend → insights. Driven
-//  by crown rotation (the default TabView .verticalPage style on
-//  watchOS 11) so there's zero custom gesture code.
+//  Five vertically-paged screens: score → trend → insights → calendar
+//  → settings. Driven by crown rotation (the default TabView
+//  .verticalPage style on watchOS 11) so there's zero custom gesture
+//  code.
 //
 
 import SwiftUI
@@ -20,7 +21,8 @@ struct MainPager: View {
             ScoreScreen().tag(0)
             TrendScreen().tag(1)
             InsightsScreen().tag(2)
-            SettingsScreen().tag(3)
+            CalendarHeatMap().tag(3)
+            SettingsScreen().tag(4)
         }
         .tabViewStyle(.verticalPage)
         .koruBackground(KoruColors.surface)

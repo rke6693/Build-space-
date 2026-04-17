@@ -78,7 +78,7 @@
   ];
 
   const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const PAGES = ['score', 'trend', 'insights'];
+  const PAGES = ['score', 'trend', 'insights', 'calendar'];
 
   // -----------------------------------------------------------------------
   // Runtime state
@@ -180,6 +180,7 @@
             <span class="dot dot-active"></span>
             <span class="dot"></span>
             <span class="dot"></span>
+            <span class="dot"></span>
           </div>
         </div>
       </div>
@@ -214,6 +215,10 @@
         <div class="insights-header">Top contributors</div>
         <div class="insights-list" data-role="insights-list"></div>
         <div class="insight-tip" data-role="insights-tip"></div>
+      </div>
+
+      <div class="koru-calendar">
+        ${renderCalendarPage(root)}
       </div>
     `;
 
@@ -278,7 +283,7 @@
     // INSIGHTS PAGE --------------------------------------------------------
     const insightsList = root.querySelector('[data-role="insights-list"]');
     insightsList.innerHTML = state.components.map(c => `
-      <div class="insight-row">
+      <div class="insight-row" data-comp='${JSON.stringify(c).replace(/'/g, "&#39;")}'>
         <div class="insight-row-top">
           <span class="insight-label">${c.label}</span>
           <span class="insight-value">${c.delta}</span>
@@ -334,7 +339,7 @@
   function setPage(index) {
     runtime.pageIndex = ((index % PAGES.length) + PAGES.length) % PAGES.length;
     document.querySelectorAll('.screen-inner').forEach((root) => {
-      root.querySelectorAll('.koru-main, .koru-trend, .koru-insights')
+      root.querySelectorAll('.koru-main, .koru-trend, .koru-insights, .koru-calendar')
         .forEach((p, i) => p.classList.toggle('page-active', i === runtime.pageIndex));
       const dots = root.querySelectorAll('[data-role="dots"] .dot');
       dots.forEach((d, i) => d.classList.toggle('dot-active', i === runtime.pageIndex));
@@ -350,7 +355,17 @@
     document.querySelectorAll('.screen-inner').forEach(root => updateScreen(root, state));
   }
 
-  function cycleState() { applyState(runtime.stateIndex + 1); }
+  function cycleState() {
+    applyState(runtime.stateIndex + 1);
+    const s = STATES[runtime.stateIndex];
+    showToast(`Score ${s.value} \u00B7 ${s.status}`, s.trend > 0 ? '\u2197\uFE0F' : s.trend < 0 ? '\u2198\uFE0F' : '\u2796');
+    // Pulse the score numerals
+    document.querySelectorAll('.score-numeral').forEach(el => {
+      el.classList.remove('pulsing');
+      void el.offsetWidth; // reflow
+      el.classList.add('pulsing');
+    });
+  }
 
   // -----------------------------------------------------------------------
   // Night Mode
@@ -367,6 +382,179 @@
   // -----------------------------------------------------------------------
   function openCheckIn()  { document.querySelector('.sheet-overlay').hidden = false; }
   function closeCheckIn() { document.querySelector('.sheet-overlay').hidden = true;  }
+
+  // -----------------------------------------------------------------------
+  // Particle system — ambient aurora dots floating behind everything.
+  // -----------------------------------------------------------------------
+  function initParticles() {
+    const canvas = document.getElementById('particles');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W, H;
+    const particles = [];
+    const COUNT = 60;
+    const COLORS = ['#37E2D5', '#7B5CFF', '#FF6B6B', '#5DA0E8', '#AA77FF'];
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    for (let i = 0; i < COUNT; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: 1 + Math.random() * 2.5,
+        dx: (Math.random() - 0.5) * 0.3,
+        dy: (Math.random() - 0.5) * 0.25,
+        alpha: 0.15 + Math.random() * 0.35,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      for (const p of particles) {
+        p.x += p.dx; p.y += p.dy;
+        if (p.x < -10) p.x = W + 10;
+        if (p.x > W + 10) p.x = -10;
+        if (p.y < -10) p.y = H + 10;
+        if (p.y > H + 10) p.y = -10;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(draw);
+    }
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      requestAnimationFrame(draw);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Loading screen — dismisses after render + spiral path draw.
+  // -----------------------------------------------------------------------
+  function initLoader() {
+    const loader = document.getElementById('loader');
+    if (!loader) return;
+    const sp = loader.querySelector('.loader-path');
+    if (sp) sp.setAttribute('d', buildSpiralPath({ cx: 50, cy: 50, maxR: 38, turns: 1.6 }));
+    setTimeout(() => loader.classList.add('fade-out'), 1400);
+    setTimeout(() => { loader.style.display = 'none'; }, 2200);
+  }
+
+  // -----------------------------------------------------------------------
+  // Toast notification system
+  // -----------------------------------------------------------------------
+  let toastTimer = null;
+  function showToast(text, icon = '\u2728') {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.querySelector('.toast-text').textContent = text;
+    el.querySelector('.toast-icon').textContent = icon;
+    el.hidden = false;
+    requestAnimationFrame(() => el.classList.add('visible'));
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.classList.remove('visible');
+      setTimeout(() => { el.hidden = true; }, 400);
+    }, 2800);
+  }
+
+  // -----------------------------------------------------------------------
+  // Calendar heatmap — 28-day grid rendered inside the 4th watch page.
+  // -----------------------------------------------------------------------
+  const CALENDAR_DATA = (() => {
+    const bands = ['recover', 'steady', 'strong', 'peak'];
+    const values = [43, 64, 78, 82, 91, 68, 75, 55, 70, 88, 92, 44, 67, 73, 81, 85, 60, 72, 79, 84, 90, 48, 66, 77, 83, 87, 71, 80];
+    return values.map((v, i) => ({
+      day: 28 - i,
+      value: v,
+      band: v < 50 ? 'recover' : v < 70 ? 'steady' : v < 85 ? 'strong' : 'peak',
+    }));
+  })();
+
+  function renderCalendarPage(root) {
+    const today = new Date();
+    const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const monthStr = today.toLocaleDateString('en', { month: 'long', year: 'numeric' }).toUpperCase();
+    let html = `<h4 class="cal-header">${monthStr}</h4>`;
+    html += `<div class="cal-day-headers">${dayNames.map(d => `<span>${d}</span>`).join('')}</div>`;
+    html += '<div class="cal-grid">';
+    for (let i = CALENDAR_DATA.length - 1; i >= 0; i--) {
+      const d = CALENDAR_DATA[i];
+      const isToday = i === 0;
+      html += `<div class="cal-cell ${isToday ? 'cal-today' : ''}" data-band="${d.band}" title="Day ${d.day}: Score ${d.value} (${d.band})" aria-label="Score ${d.value}, ${d.band}">${d.value}</div>`;
+    }
+    html += '</div>';
+    html += `<div class="cal-legend">
+      <span><span class="cal-legend-dot" style="background:rgba(255,107,107,0.55)"></span>Recover</span>
+      <span><span class="cal-legend-dot" style="background:rgba(123,92,255,0.45)"></span>Steady</span>
+      <span><span class="cal-legend-dot" style="background:rgba(55,226,213,0.5)"></span>Strong</span>
+      <span><span class="cal-legend-dot" style="background:rgba(55,226,213,0.8)"></span>Peak</span>
+    </div>`;
+    return html;
+  }
+
+  // -----------------------------------------------------------------------
+  // Component detail — opens a modal showing per-metric drilldown.
+  // -----------------------------------------------------------------------
+  const COMP_EXPLANATIONS = {
+    'HRV': 'Heart Rate Variability measures your autonomic nervous system\'s flexibility. Higher overnight SDNN indicates stronger recovery capacity and resilience to stress.',
+    'Sleep': 'Sleep quality is a composite of duration, deep+REM share, and efficiency. Consistently hitting 7\u20139 hours with 20%+ deep+REM is the strongest predictor of high scores.',
+    'Resting HR': 'A lower resting heart rate generally indicates better cardiovascular fitness and recovery. Acute rises often signal stress, illness, or overtraining.',
+    'Activity': 'Your daily movement measured through Apple\'s three activity rings: Move (calories), Exercise (active minutes), and Stand (hourly standing). Closing all rings = 100.',
+    'Workouts': 'Training load uses a TRIMP-lite formula: duration \u00D7 intensity. An inverted-U curve means both undertraining and overtraining depress your score.',
+    'VO\u2082 Max': 'Cardiorespiratory fitness measured as maximum oxygen uptake. This metric changes slowly over weeks \u2014 it\'s the best long-term health predictor in the formula.',
+    'Blood O\u2082': 'Overnight blood oxygen saturation. Healthy is \u226595%. Drops below 93% are flagged aggressively because even mild chronic hypoxemia affects recovery.',
+    'Breath Rate': 'Overnight respiratory rate in breaths per minute. Deviations in either direction from your personal baseline signal physiological stress.',
+    'Wrist Temp': 'Sleeping wrist temperature deviation from your personal baseline. Shifts of \u00B10.3\u00B0C or more often precede illness, hormonal changes, or recovery strain.',
+    'Mindful': 'Minutes of mindfulness sessions logged today. The target is 10 minutes/day \u2014 even a brief session meaningfully impacts HRV and subjective wellbeing.',
+  };
+
+  function openComponentDetail(component) {
+    const overlay = document.querySelector('[data-sheet="component-detail"]');
+    if (!overlay) return;
+    overlay.querySelector('[data-role="comp-name"]').textContent = component.label;
+    overlay.querySelector('[data-role="comp-score"]').textContent = String(component.value);
+    overlay.querySelector('[data-role="comp-delta"]').textContent = component.delta;
+    overlay.querySelector('[data-role="comp-explain"]').textContent = COMP_EXPLANATIONS[component.label] || 'A key contributor to your daily wellness score.';
+    const impact = component.value > 55 ? `Contributing +${component.value - 50} to your score` : `Pulling score down by ${50 - component.value}`;
+    overlay.querySelector('[data-role="comp-impact"]').innerHTML = `<span class="comp-impact-badge">${impact}</span>`;
+    // Mini sparkline
+    const sparkData = [component.value - 8, component.value - 4, component.value + 2, component.value - 6, component.value + 5, component.value - 1, component.value];
+    const { pathLine } = buildSparkline(sparkData, 260, 80, 8);
+    overlay.querySelector('[data-role="comp-line"]').setAttribute('d', pathLine);
+    overlay.hidden = false;
+  }
+
+  function closeComponentDetail() {
+    const overlay = document.querySelector('[data-sheet="component-detail"]');
+    if (overlay) overlay.hidden = true;
+  }
+
+  // -----------------------------------------------------------------------
+  // Touch gestures — swipe left/right to change pages on mobile.
+  // -----------------------------------------------------------------------
+  function initTouch() {
+    let startX = 0, startY = 0;
+    document.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+      if (dx > 0) setPage(runtime.pageIndex - 1);
+      else        setPage(runtime.pageIndex + 1);
+    }, { passive: true });
+  }
 
   // -----------------------------------------------------------------------
   // Mouse wheel = crown-scroll analogue
@@ -408,12 +596,13 @@
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
       const action = btn.dataset.action;
-      if (action === 'cycle-state')   cycleState();
-      if (action === 'prev-page')     setPage(runtime.pageIndex - 1);
-      if (action === 'next-page')     setPage(runtime.pageIndex + 1);
-      if (action === 'toggle-night')  setNight(!runtime.night);
-      if (action === 'open-checkin')  openCheckIn();
-      if (action === 'close-checkin') closeCheckIn();
+      if (action === 'cycle-state')      cycleState();
+      if (action === 'prev-page')      setPage(runtime.pageIndex - 1);
+      if (action === 'next-page')      setPage(runtime.pageIndex + 1);
+      if (action === 'toggle-night')   setNight(!runtime.night);
+      if (action === 'open-checkin')   openCheckIn();
+      if (action === 'close-checkin')  closeCheckIn();
+      if (action === 'close-component') closeComponentDetail();
     });
 
     document.addEventListener('wheel', onWheel, { passive: true });
@@ -423,8 +612,31 @@
       else if (e.key === 'ArrowLeft' || e.key === 'k')  setPage(runtime.pageIndex - 1);
       else if (e.key === ' ')                           { e.preventDefault(); cycleState(); }
       else if (e.key === 'n' || e.key === 'N')          setNight(!runtime.night);
-      else if (e.key === 'Escape')                      closeCheckIn();
+      else if (e.key === 'c' || e.key === 'C')          openCheckIn();
+      else if (e.key === 'Escape')                      { closeCheckIn(); closeComponentDetail(); }
     });
+
+    // Insight row tap → component detail
+    document.addEventListener('click', (e) => {
+      const row = e.target.closest('.insight-row[data-comp]');
+      if (!row) return;
+      try { openComponentDetail(JSON.parse(row.dataset.comp)); } catch {}
+    });
+
+    // Action button on Ultra 2 device → open check-in
+    document.querySelectorAll('.action-button').forEach(btn => {
+      btn.addEventListener('click', () => openCheckIn());
+    });
+
+    // Crown click → next page
+    document.querySelectorAll('.crown').forEach(cr => {
+      cr.addEventListener('click', () => setPage(runtime.pageIndex + 1));
+    });
+
+    // Initialize 10x features
+    initParticles();
+    initLoader();
+    initTouch();
 
     // Auto-cycle every 7s so the prototype feels alive
     setInterval(cycleState, 7000);
