@@ -17,3 +17,8 @@ next-env.d.ts
 tsconfig.tsbuildinfo
 prisma/*.db
 prisma/*.db-journal
+ml/models/*.joblib
+ml/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
