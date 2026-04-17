@@ -393,7 +393,12 @@ function getTopOffset() {
   return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat') || '0') + 20;
 }
 
+let __runStartedAt = 0;
 function startGame() {
+  __runStartedAt = Date.now();
+  try {
+    window.parent.postMessage({ type: 'sr:run-started', at: __runStartedAt }, window.location.origin);
+  } catch (_) { /* sandboxed standalone: ignore */ }
   score = 0; lives = 3; speed = SPEED_BASE; lane = 1;
   targetX = LANES[lane]; elapsed = 0;
   nextObstacle = SPAWN_INTERVAL_BASE; nextGem = GEM_INTERVAL;
@@ -428,6 +433,13 @@ function die() {
 }
 
 function showDeathScreen() {
+  try {
+    const durationMs = __runStartedAt ? Date.now() - __runStartedAt : 0;
+    window.parent.postMessage(
+      { type: 'sr:game-over', value: Math.max(0, Math.floor(score)), durationMs },
+      window.location.origin,
+    );
+  } catch (_) { /* standalone: ignore */ }
   overlay.innerHTML = `
     <h1>Game <span>Over</span></h1>
     <div class="final-score">${score}</div>
