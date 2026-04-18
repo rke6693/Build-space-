@@ -1,0 +1,39 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Dreamhouse Deluxe",
+    "description": "§dThe ultimate build-a-home kit!§r\n60+ new blocks, 3D furniture, magic instant-build wands, and pet companions. Built for iPad.",
+    "uuid": "8ec7a10a-bb7f-4adb-ad87-53dd11daa338",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "1968dc71-4357-4a62-a4b2-ee8147ef02b9",
+      "version": [1, 0, 0]
+    },
+    {
+      "type": "script",
+      "language": "javascript",
+      "entry": "scripts/main.js",
+      "uuid": "488a329d-657b-4781-ae24-a80e6569981a",
+      "version": [1, 0, 0]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "093c2fad-8020-4302-a5b1-1bcf9ea724f9",
+      "version": [1, 0, 0]
+    },
+    {
+      "module_name": "@minecraft/server",
+      "version": "1.14.0"
+    }
+  ],
+  "metadata": {
+    "authors": ["Dreamhouse Team"],
+    "license": "MIT",
+    "product_type": "addon"
+  }
+}

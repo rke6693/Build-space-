@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:dining_table_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "S S"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:oak_planks"
+      },
+      "S": {
+        "item": "minecraft:stick"
+      }
+    },
+    "result": {
+      "item": "dh:dining_table",
+      "count": 1
+    }
+  }
+}

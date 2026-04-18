@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:fairy_glow_flower_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:glow_berries"
+      },
+      "S": {
+        "item": "minecraft:moss_block"
+      }
+    },
+    "result": {
+      "item": "dh:fairy_glow_flower",
+      "count": 8
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:bed_pink_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "S S"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:pink_dye"
+      },
+      "S": {
+        "item": "minecraft:oak_planks"
+      }
+    },
+    "result": {
+      "item": "dh:bed_pink",
+      "count": 1
+    }
+  }
+}

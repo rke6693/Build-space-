@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:fairy_stem_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:brown_mushroom"
+      },
+      "S": {
+        "item": "minecraft:brown_mushroom"
+      }
+    },
+    "result": {
+      "item": "dh:fairy_stem",
+      "count": 8
+    }
+  }
+}

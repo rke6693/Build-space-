@@ -1,0 +1,29 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "dh:puppy",
+      "materials": { "default": "entity_alphatest" },
+      "textures": {
+        "default": "textures/entity/puppy"
+      },
+      "geometry": {
+        "default": "geometry.dh.puppy"
+      },
+      "animations": {
+        "walk": "animation.dh.puppy.walk",
+        "idle": "animation.dh.puppy.idle",
+        "sit": "animation.dh.puppy.sit",
+        "controller": "controller.animation.dh.puppy"
+      },
+      "scripts": {
+        "animate": ["controller"]
+      },
+      "render_controllers": ["controller.render.dh.puppy"],
+      "spawn_egg": {
+        "base_color": "#C8875A",
+        "overlay_color": "#3C2010"
+      }
+    }
+  }
+}

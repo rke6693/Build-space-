@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:fairy_bark_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:oak_log"
+      },
+      "S": {
+        "item": "minecraft:oak_log"
+      }
+    },
+    "result": {
+      "item": "dh:fairy_bark",
+      "count": 8
+    }
+  }
+}

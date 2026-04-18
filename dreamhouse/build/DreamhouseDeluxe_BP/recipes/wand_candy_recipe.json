@@ -1,0 +1,31 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:wand_candy_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "  T",
+      " S ",
+      "B  "
+    ],
+    "key": {
+      "T": {
+        "item": "minecraft:sugar"
+      },
+      "S": {
+        "item": "minecraft:stick"
+      },
+      "B": {
+        "item": "minecraft:amethyst_shard"
+      }
+    },
+    "result": {
+      "item": "dh:wand_candy",
+      "count": 1
+    }
+  }
+}

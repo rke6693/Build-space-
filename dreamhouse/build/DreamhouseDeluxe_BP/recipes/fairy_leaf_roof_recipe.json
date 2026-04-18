@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:fairy_leaf_roof_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:oak_leaves"
+      },
+      "S": {
+        "item": "minecraft:oak_leaves"
+      }
+    },
+    "result": {
+      "item": "dh:fairy_leaf_roof",
+      "count": 8
+    }
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "resource_pack_name": "DreamhouseDeluxe",
+  "texture_name": "atlas.terrain",
+  "padding": 0,
+  "num_mip_levels": 0,
+  "texture_data": {
+    "dh_fairy_mushroom_red": {
+      "textures": "textures/blocks/fairy_mushroom_red"
+    },
+    "dh_fairy_mushroom_purple": {
+      "textures": "textures/blocks/fairy_mushroom_purple"
+    },
+    "dh_fairy_stem": {
+      "textures": "textures/blocks/fairy_stem"
+    },
+    "dh_fairy_flower_pink": {
+      "textures": "textures/blocks/fairy_flower_pink"
+    },
+    "dh_fairy_flower_yellow": {
+      "textures": "textures/blocks/fairy_flower_yellow"
+    },
+    "dh_fairy_vine": {
+      "textures": "textures/blocks/fairy_vine"
+    },
+    "dh_fairy_toadstool": {
+      "textures": "textures/blocks/fairy_toadstool"
+    },
+    "dh_fairy_brick": {
+      "textures": "textures/blocks/fairy_brick"
+    },
+    "dh_fairy_moss": {
+      "textures": "textures/blocks/fairy_moss"
+    },
+    "dh_fairy_glow_flower": {
+      "textures": "textures/blocks/fairy_glow_flower"
+    },
+    "dh_fairy_leaf_roof": {
+      "textures": "textures/blocks/fairy_leaf_roof"
+    },
+    "dh_fairy_bark": {
+      "textures": "textures/blocks/fairy_bark"
+    },
+    "dh_fairy_rose_petal": {
+      "textures": "textures/blocks/fairy_rose_petal"
+    },
+    "dh_fairy_ivy": {
+      "textures": "textures/blocks/fairy_ivy"
+    },
+    "dh_fairy_glass": {
+      "textures": "textures/blocks/fairy_glass"
+    },
+    "dh_candy_gumdrop_red": {
+      "textures": "textures/blocks/candy_gumdrop_red"
+    },
+    "dh_candy_gumdrop_blue": {
+      "textures": "textures/blocks/candy_gumdrop_blue"
+    },
+    "dh_candy_gumdrop_green": {
+      "textures": "textures/blocks/candy_gumdrop_green"
+    },
+    "dh_candy_peppermint_red": {
+      "textures": "textures/blocks/candy_peppermint_red"
+    },
+    "dh_candy_peppermint_green": {
+      "textures": "textures/blocks/candy_peppermint_green"
+    },
+    "dh_candy_frosting": {
+      "textures": "textures/blocks/candy_frosting"
+    },
+    "dh_candy_chocolate": {
+      "textures": "textures/blocks/candy_chocolate"
+    },
+    "dh_candy_lollipop": {
+      "textures": "textures/blocks/candy_lollipop"
+    },
+    "dh_candy_cotton_pink": {
+      "textures": "textures/blocks/candy_cotton_pink"
+    },
+    "dh_candy_cotton_blue": {
+      "textures": "textures/blocks/candy_cotton_blue"
+    },
+    "dh_candy_cane": {
+      "textures": "textures/blocks/candy_cane"
+    },
+    "dh_candy_jellybean": {
+      "textures": "textures/blocks/candy_jellybean"
+    },
+    "dh_candy_caramel": {
+      "textures": "textures/blocks/candy_caramel"
+    },
+    "dh_candy_sugar_glass": {
+      "textures": "textures/blocks/candy_sugar_glass"
+    },
+    "dh_candy_gingerbread": {
+      "textures": "textures/blocks/candy_gingerbread"
+    },
+    "dh_cozy_plank_pink": {
+      "textures": "textures/blocks/cozy_plank_pink"
+    },
+    "dh_cozy_plank_blue": {
+      "textures": "textures/blocks/cozy_plank_blue"
+    },
+    "dh_cozy_plank_yellow": {
+      "textures": "textures/blocks/cozy_plank_yellow"
+    },
+    "dh_cozy_plank_green": {
+      "textures": "textures/blocks/cozy_plank_green"
+    },
+    "dh_cozy_plank_purple": {
+      "textures": "textures/blocks/cozy_plank_purple"
+    },
+    "dh_cozy_plank_mint": {
+      "textures": "textures/blocks/cozy_plank_mint"
+    },
+    "dh_cozy_rainbow_glass": {
+      "textures": "textures/blocks/cozy_rainbow_glass"
+    },
+    "dh_cozy_carpet_pink": {
+      "textures": "textures/blocks/cozy_carpet_pink"
+    },
+    "dh_cozy_carpet_blue": {
+      "textures": "textures/blocks/cozy_carpet_blue"
+    },
+    "dh_cozy_checker": {
+      "textures": "textures/blocks/cozy_checker"
+    },
+    "dh_cozy_white_brick": {
+      "textures": "textures/blocks/cozy_white_brick"
+    },
+    "dh_cozy_cream_wall": {
+      "textures": "textures/blocks/cozy_cream_wall"
+    },
+    "dh_cozy_star_wall": {
+      "textures": "textures/blocks/cozy_star_wall"
+    },
+    "dh_cozy_heart_wall": {
+      "textures": "textures/blocks/cozy_heart_wall"
+    },
+    "dh_cozy_curtain": {
+      "textures": "textures/blocks/cozy_curtain"
+    },
+    "dh_furn_bed_pink": {
+      "textures": "textures/blocks/furn_bed_pink"
+    },
+    "dh_furn_bed_blue": {
+      "textures": "textures/blocks/furn_bed_blue"
+    },
+    "dh_furn_couch_pink": {
+      "textures": "textures/blocks/furn_couch_pink"
+    },
+    "dh_furn_couch_teal": {
+      "textures": "textures/blocks/furn_couch_teal"
+    },
+    "dh_furn_armchair": {
+      "textures": "textures/blocks/furn_armchair"
+    },
+    "dh_furn_dining_table": {
+      "textures": "textures/blocks/furn_dining_table"
+    },
+    "dh_furn_dining_chair": {
+      "textures": "textures/blocks/furn_dining_chair"
+    },
+    "dh_furn_coffee_table": {
+      "textures": "textures/blocks/furn_coffee_table"
+    },
+    "dh_furn_tv": {
+      "textures": "textures/blocks/furn_tv"
+    },
+    "dh_furn_fridge": {
+      "textures": "textures/blocks/furn_fridge"
+    },
+    "dh_furn_bookshelf_deco": {
+      "textures": "textures/blocks/furn_bookshelf_deco"
+    },
+    "dh_furn_lamp": {
+      "textures": "textures/blocks/furn_lamp"
+    }
+  }
+}

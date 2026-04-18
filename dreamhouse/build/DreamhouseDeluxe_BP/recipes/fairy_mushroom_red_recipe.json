@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:fairy_mushroom_red_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:red_dye"
+      },
+      "S": {
+        "item": "minecraft:red_mushroom"
+      }
+    },
+    "result": {
+      "item": "dh:fairy_mushroom_red",
+      "count": 8
+    }
+  }
+}

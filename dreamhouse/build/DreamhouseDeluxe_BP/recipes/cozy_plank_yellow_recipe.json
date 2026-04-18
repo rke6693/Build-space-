@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:cozy_plank_yellow_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:yellow_dye"
+      },
+      "S": {
+        "item": "minecraft:oak_planks"
+      }
+    },
+    "result": {
+      "item": "dh:cozy_plank_yellow",
+      "count": 8
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.dh.puppy": {
+      "initial_state": "idle",
+      "states": {
+        "idle": {
+          "animations": ["idle"],
+          "transitions": [
+            { "walking": "query.modified_move_speed > 0.1" },
+            { "sitting": "query.is_sitting" }
+          ]
+        },
+        "walking": {
+          "animations": ["walk"],
+          "transitions": [
+            { "idle": "query.modified_move_speed <= 0.1" },
+            { "sitting": "query.is_sitting" }
+          ]
+        },
+        "sitting": {
+          "animations": ["sit"],
+          "transitions": [
+            { "idle": "!query.is_sitting" }
+          ]
+        }
+      }
+    }
+  }
+}

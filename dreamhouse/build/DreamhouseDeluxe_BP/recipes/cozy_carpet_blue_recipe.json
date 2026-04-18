@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:cozy_carpet_blue_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:light_blue_dye"
+      },
+      "S": {
+        "item": "minecraft:white_wool"
+      }
+    },
+    "result": {
+      "item": "dh:cozy_carpet_blue",
+      "count": 8
+    }
+  }
+}

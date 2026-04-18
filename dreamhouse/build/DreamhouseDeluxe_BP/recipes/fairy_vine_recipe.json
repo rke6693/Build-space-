@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:fairy_vine_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:vine"
+      },
+      "S": {
+        "item": "minecraft:vine"
+      }
+    },
+    "result": {
+      "item": "dh:fairy_vine",
+      "count": 8
+    }
+  }
+}

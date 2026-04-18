@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:candy_gumdrop_blue_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:blue_dye"
+      },
+      "S": {
+        "item": "minecraft:slime_ball"
+      }
+    },
+    "result": {
+      "item": "dh:candy_gumdrop_blue",
+      "count": 8
+    }
+  }
+}

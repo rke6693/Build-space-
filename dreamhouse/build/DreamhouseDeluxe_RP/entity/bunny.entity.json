@@ -1,0 +1,28 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "dh:bunny",
+      "materials": { "default": "entity_alphatest" },
+      "textures": {
+        "default": "textures/entity/bunny"
+      },
+      "geometry": {
+        "default": "geometry.dh.bunny"
+      },
+      "animations": {
+        "walk": "animation.dh.bunny.hop",
+        "idle": "animation.dh.bunny.idle",
+        "controller": "controller.animation.dh.bunny"
+      },
+      "scripts": {
+        "animate": ["controller"]
+      },
+      "render_controllers": ["controller.render.dh.bunny"],
+      "spawn_egg": {
+        "base_color": "#E8DCD0",
+        "overlay_color": "#F0A0B0"
+      }
+    }
+  }
+}

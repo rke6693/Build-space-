@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:candy_chocolate_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:cocoa_beans"
+      },
+      "S": {
+        "item": "minecraft:cocoa_beans"
+      }
+    },
+    "result": {
+      "item": "dh:candy_chocolate",
+      "count": 8
+    }
+  }
+}

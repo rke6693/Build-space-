@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:cozy_rainbow_glass_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:red_dye"
+      },
+      "S": {
+        "item": "minecraft:glass"
+      }
+    },
+    "result": {
+      "item": "dh:cozy_rainbow_glass",
+      "count": 8
+    }
+  }
+}

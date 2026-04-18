@@ -1,0 +1,53 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:block": {
+    "description": {
+      "identifier": "dh:bed_pink",
+      "menu_category": {
+        "category": "items",
+        "group": "itemGroup.name.candles"
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.4
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 2
+      },
+      "minecraft:geometry": "geometry.dh.bed",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "dh_furn_bed_pink",
+          "render_method": "alpha_test",
+          "ambient_occlusion": true,
+          "face_dimming": true
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -7,
+          0,
+          -7
+        ],
+        "size": [
+          14,
+          8,
+          14
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -7,
+          0,
+          -7
+        ],
+        "size": [
+          14,
+          8,
+          14
+        ]
+      }
+    }
+  }
+}

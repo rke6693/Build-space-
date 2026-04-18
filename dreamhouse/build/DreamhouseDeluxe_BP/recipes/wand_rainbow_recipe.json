@@ -1,0 +1,31 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:wand_rainbow_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "  T",
+      " S ",
+      "B  "
+    ],
+    "key": {
+      "T": {
+        "item": "minecraft:white_wool"
+      },
+      "S": {
+        "item": "minecraft:stick"
+      },
+      "B": {
+        "item": "minecraft:amethyst_shard"
+      }
+    },
+    "result": {
+      "item": "dh:wand_rainbow",
+      "count": 1
+    }
+  }
+}

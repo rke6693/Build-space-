@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:fairy_moss_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:moss_block"
+      },
+      "S": {
+        "item": "minecraft:cobblestone"
+      }
+    },
+    "result": {
+      "item": "dh:fairy_moss",
+      "count": 8
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:candy_gingerbread_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:wheat"
+      },
+      "S": {
+        "item": "minecraft:cocoa_beans"
+      }
+    },
+    "result": {
+      "item": "dh:candy_gingerbread",
+      "count": 8
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:armchair_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "S S"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:yellow_dye"
+      },
+      "S": {
+        "item": "minecraft:white_wool"
+      }
+    },
+    "result": {
+      "item": "dh:armchair",
+      "count": 1
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "resource_pack_name": "DreamhouseDeluxe",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "dh_wand_fairy": {
+      "textures": "textures/items/wand_fairy"
+    },
+    "dh_wand_candy": {
+      "textures": "textures/items/wand_candy"
+    },
+    "dh_wand_cozy": {
+      "textures": "textures/items/wand_cozy"
+    },
+    "dh_wand_tree": {
+      "textures": "textures/items/wand_tree"
+    },
+    "dh_wand_rainbow": {
+      "textures": "textures/items/wand_rainbow"
+    }
+  }
+}

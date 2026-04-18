@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:candy_cane_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:red_dye"
+      },
+      "S": {
+        "item": "minecraft:bone"
+      }
+    },
+    "result": {
+      "item": "dh:candy_cane",
+      "count": 8
+    }
+  }
+}

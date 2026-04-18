@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:candy_frosting_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:sugar"
+      },
+      "S": {
+        "item": "minecraft:snow_block"
+      }
+    },
+    "result": {
+      "item": "dh:candy_frosting",
+      "count": 8
+    }
+  }
+}

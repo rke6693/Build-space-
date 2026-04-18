@@ -1,0 +1,54 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:block": {
+    "description": {
+      "identifier": "dh:lamp",
+      "menu_category": {
+        "category": "items",
+        "group": "itemGroup.name.candles"
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.4
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 2
+      },
+      "minecraft:geometry": "geometry.dh.lamp",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "dh_furn_lamp",
+          "render_method": "alpha_test",
+          "ambient_occlusion": true,
+          "face_dimming": true
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -4,
+          0,
+          -4
+        ],
+        "size": [
+          8,
+          15,
+          8
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -4,
+          0,
+          -4
+        ],
+        "size": [
+          8,
+          15,
+          8
+        ]
+      },
+      "minecraft:light_emission": 15
+    }
+  }
+}

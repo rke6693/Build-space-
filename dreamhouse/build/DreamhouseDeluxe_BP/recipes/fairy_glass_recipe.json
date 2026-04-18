@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:fairy_glass_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:amethyst_shard"
+      },
+      "S": {
+        "item": "minecraft:glass"
+      }
+    },
+    "result": {
+      "item": "dh:fairy_glass",
+      "count": 8
+    }
+  }
+}

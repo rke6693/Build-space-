@@ -1,0 +1,28 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Dreamhouse Deluxe",
+    "description": "§dTextures, models, and sounds for Dreamhouse Deluxe.§r",
+    "uuid": "093c2fad-8020-4302-a5b1-1bcf9ea724f9",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "ea4c2333-cf70-45e9-9d7e-157a32c2b45f",
+      "version": [1, 0, 0]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "8ec7a10a-bb7f-4adb-ad87-53dd11daa338",
+      "version": [1, 0, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["Dreamhouse Team"],
+    "license": "MIT",
+    "product_type": "addon"
+  }
+}

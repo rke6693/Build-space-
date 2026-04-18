@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:candy_peppermint_red_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:red_dye"
+      },
+      "S": {
+        "item": "minecraft:quartz_block"
+      }
+    },
+    "result": {
+      "item": "dh:candy_peppermint_red",
+      "count": 8
+    }
+  }
+}

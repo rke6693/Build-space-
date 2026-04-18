@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "dh:candy_jellybean_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "RRR",
+      "SSS",
+      "SSS"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:sugar"
+      },
+      "S": {
+        "item": "minecraft:red_dye"
+      }
+    },
+    "result": {
+      "item": "dh:candy_jellybean",
+      "count": 8
+    }
+  }
+}

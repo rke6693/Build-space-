@@ -1,0 +1,22 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.dh.bunny": {
+      "initial_state": "idle",
+      "states": {
+        "idle": {
+          "animations": ["idle"],
+          "transitions": [
+            { "hopping": "query.modified_move_speed > 0.1" }
+          ]
+        },
+        "hopping": {
+          "animations": ["walk"],
+          "transitions": [
+            { "idle": "query.modified_move_speed <= 0.1" }
+          ]
+        }
+      }
+    }
+  }
+}

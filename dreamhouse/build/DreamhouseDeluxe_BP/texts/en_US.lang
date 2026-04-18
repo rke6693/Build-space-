@@ -1,0 +1,79 @@
+pack.name=Dreamhouse Deluxe
+pack.description=The ultimate build-a-home kit! 60+ blocks, 3D furniture, magic wands, and pets.
+
+tile.dh:fairy_mushroom_red.name=Fairy Mushroom Cap (Red)
+tile.dh:fairy_mushroom_purple.name=Fairy Mushroom Cap (Purple)
+tile.dh:fairy_stem.name=Fairy Mushroom Stem
+tile.dh:fairy_flower_pink.name=Flower Wall (Pink)
+tile.dh:fairy_flower_yellow.name=Flower Wall (Yellow)
+tile.dh:fairy_vine.name=Vine Rope
+tile.dh:fairy_toadstool.name=Toadstool Floor
+tile.dh:fairy_brick.name=Fairy Brick
+tile.dh:fairy_moss.name=Mossy Fairy Stone
+tile.dh:fairy_glow_flower.name=Glow Flower Block
+tile.dh:fairy_leaf_roof.name=Leaf Roof
+tile.dh:fairy_bark.name=Bark Wall
+tile.dh:fairy_rose_petal.name=Rose Petal Floor
+tile.dh:fairy_ivy.name=Ivy Wall
+tile.dh:fairy_glass.name=Fairy Glass
+tile.dh:candy_gumdrop_red.name=Red Gumdrop Block
+tile.dh:candy_gumdrop_blue.name=Blue Gumdrop Block
+tile.dh:candy_gumdrop_green.name=Green Gumdrop Block
+tile.dh:candy_peppermint_red.name=Peppermint Wall (Red)
+tile.dh:candy_peppermint_green.name=Peppermint Wall (Green)
+tile.dh:candy_frosting.name=Frosting Trim
+tile.dh:candy_chocolate.name=Chocolate Floor
+tile.dh:candy_lollipop.name=Lollipop Block
+tile.dh:candy_cotton_pink.name=Cotton Candy (Pink)
+tile.dh:candy_cotton_blue.name=Cotton Candy (Blue)
+tile.dh:candy_cane.name=Candy Cane Block
+tile.dh:candy_jellybean.name=Jellybean Wall
+tile.dh:candy_caramel.name=Caramel Floor
+tile.dh:candy_sugar_glass.name=Sugar Glass
+tile.dh:candy_gingerbread.name=Gingerbread Brick
+tile.dh:cozy_plank_pink.name=Pastel Pink Plank
+tile.dh:cozy_plank_blue.name=Pastel Blue Plank
+tile.dh:cozy_plank_yellow.name=Pastel Yellow Plank
+tile.dh:cozy_plank_green.name=Pastel Green Plank
+tile.dh:cozy_plank_purple.name=Pastel Purple Plank
+tile.dh:cozy_plank_mint.name=Pastel Mint Plank
+tile.dh:cozy_rainbow_glass.name=Rainbow Glass
+tile.dh:cozy_carpet_pink.name=Pink Carpet Tile
+tile.dh:cozy_carpet_blue.name=Blue Carpet Tile
+tile.dh:cozy_checker.name=Checkerboard Floor
+tile.dh:cozy_white_brick.name=White Brick
+tile.dh:cozy_cream_wall.name=Cream Wallpaper
+tile.dh:cozy_star_wall.name=Star Wallpaper
+tile.dh:cozy_heart_wall.name=Heart Wallpaper
+tile.dh:cozy_curtain.name=Window Curtain Block
+
+## Furniture
+tile.dh:bed_pink.name=Cozy Bed (Pink)
+tile.dh:bed_blue.name=Cozy Bed (Blue)
+tile.dh:couch_pink.name=Couch (Pink)
+tile.dh:couch_teal.name=Couch (Teal)
+tile.dh:armchair.name=Armchair (Yellow)
+tile.dh:dining_table.name=Dining Table
+tile.dh:dining_chair.name=Dining Chair
+tile.dh:coffee_table.name=Coffee Table
+tile.dh:tv.name=Television
+tile.dh:fridge.name=Refrigerator
+tile.dh:bookshelf_deco.name=Decorative Bookshelf
+tile.dh:lamp.name=Glowing Lamp
+
+## Wands
+item.dh.wand_fairy.name=Fairy Cottage Wand
+item.dh.wand_candy.name=Candy Castle Wand
+item.dh.wand_cozy.name=Cozy Cabin Wand
+item.dh.wand_tree.name=Treehouse Wand
+item.dh.wand_rainbow.name=Rainbow Tent Wand
+
+## Chat commands
+## Type !wands in chat to receive all wands
+## Type !pets in chat to spawn your pets
+
+## Pets
+entity.dh:puppy.name=Dreamhouse Puppy
+entity.dh:bunny.name=Dreamhouse Bunny
+item.spawn_egg.entity.dh:puppy.name=Spawn Puppy
+item.spawn_egg.entity.dh:bunny.name=Spawn Bunny
