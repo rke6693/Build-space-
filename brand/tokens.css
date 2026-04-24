@@ -1,0 +1,59 @@
+/* Keel design tokens — CSS custom properties mirror brand/tokens.ts. */
+
+:root {
+  /* Surfaces */
+  --keel-bg: #0a0e1a;
+  --keel-bg-elev: #0f1629;
+  --keel-bg-elev-2: #141c33;
+  --keel-border: rgba(255, 255, 255, 0.08);
+  --keel-border-strong: rgba(255, 255, 255, 0.14);
+
+  /* Text */
+  --keel-text-primary: #f8fafc;
+  --keel-text-secondary: #94a3b8;
+  --keel-text-muted: #64748b;
+
+  /* Brand */
+  --keel-cyan: #22d3ee;
+  --keel-indigo: #7c5cff;
+  --keel-purple: #8b5cf6;
+
+  /* Semantic */
+  --keel-success: #10b981;
+  --keel-success-soft: #34d399;
+  --keel-warn: #f59e0b;
+  --keel-danger: #f43f5e;
+
+  /* Gradients */
+  --keel-gradient-brand: linear-gradient(135deg, #22d3ee 0%, #7c5cff 55%, #8b5cf6 100%);
+  --keel-gradient-shadow: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.22) 0%,
+    rgba(124, 92, 255, 0.08) 100%
+  );
+  --keel-gradient-money: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+
+  /* Typography */
+  --keel-font-sans: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
+  --keel-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Radius */
+  --keel-r-sm: 6px;
+  --keel-r-md: 10px;
+  --keel-r-lg: 14px;
+  --keel-r-xl: 20px;
+  --keel-r-pill: 999px;
+
+  /* Shadows */
+  --keel-shadow-card: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+    0 8px 24px rgba(0, 0, 0, 0.35);
+  --keel-shadow-glow: 0 0 0 1px rgba(139, 92, 246, 0.25),
+    0 8px 40px rgba(139, 92, 246, 0.18);
+
+  /* Motion */
+  --keel-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --keel-dur-fast: 120ms;
+  --keel-dur-base: 200ms;
+  --keel-dur-slow: 320ms;
+}

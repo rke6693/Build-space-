@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Keel">
+  <title>Keel</title>
+  <defs>
+    <linearGradient id="keel-grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="0.55" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="keel-sheen" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="keel-k" x1="14" y1="16" x2="50" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E0E7FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" ry="16" fill="url(#keel-grad)"/>
+  <rect width="64" height="64" rx="16" ry="16" fill="url(#keel-sheen)"/>
+  <g fill="url(#keel-k)">
+    <!-- vertical stem of K -->
+    <rect x="18" y="14" width="6" height="36" rx="2"/>
+    <!-- upper diagonal -->
+    <path d="M26.5 32 L42 14 L48.5 14 L32 32 Z"/>
+    <!-- lower diagonal -->
+    <path d="M26.5 32 L32 32 L48.5 50 L42 50 Z"/>
+  </g>
+  <!-- subtle inner stroke for crispness on dark surfaces -->
+  <rect x="0.5" y="0.5" width="63" height="63" rx="15.5" ry="15.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.06"/>
+</svg>

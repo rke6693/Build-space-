@@ -1,14 +1,21 @@
 import { defineConfig } from 'vitest/config';
-import path from 'node:path';
 
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['tests/unit/**/*.test.ts'],
+    globals: false,
+    include: ['tests/**/*.test.ts'],
+    testTimeout: 10_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/server/index.ts', 'src/**/types.ts', 'src/db/schema.ts'],
+    },
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      '@keel': new URL('./src', import.meta.url).pathname,
     },
   },
 });

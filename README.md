@@ -1,69 +1,102 @@
-# Space Runner — monetized 3D runner
+<div align="center">
+  <img src="brand/logo.svg" alt="Keel" width="240" />
+  <p>
+    <strong>The LLM optimization gateway.</strong><br/>
+    Route, cache, guardrail, and shadow-eval every call — self-hostable, Apache-2.0.
+  </p>
+  <p>
+    <a href="docs/QUICKSTART.md">Quickstart</a> ·
+    <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+    <a href="docs/RESEARCH.md">Why this exists</a> ·
+    <a href="docs/ROADMAP.md">Roadmap</a>
+  </p>
+</div>
 
-A Next.js 14 micro-SaaS built around the `public/game/index.html` endless runner.
-Free tier with 3 runs/day; **Pro ($4.99/mo)** removes the limit and unlocks the
-global leaderboard.
+---
 
-## Stack
+## What it is
 
-- **Next.js 14** (App Router, TypeScript) on Vercel
-- **Postgres** (Neon) via **Prisma**
-- **Auth.js v5**: magic-link email (Resend) + Google OAuth
-- **Stripe** Checkout + Customer Portal + signed webhooks
-- **Upstash Redis** for rate limiting (falls back to in-memory in dev)
-- **Vitest** for unit tests; **Playwright** for E2E
+Keel sits between your app and every LLM provider you use. It speaks OpenAI
+and Anthropic on both sides, so it's drop-in: change one base URL and you're
+routed.
 
-## Security posture (baked in, not bolted on)
+Once in the path, Keel does four things that move the P&L:
 
-| Surface | Control |
-|---|---|
-| Auth | Magic-link only in v1 (no password storage); rotating DB sessions; HttpOnly+Secure+SameSite cookies |
-| Login throttling | Per-IP+email sliding window (Upstash); in-memory fallback |
-| API | Every route zod-validated; every query owner-scoped (no IDOR); origin check on state-changing routes |
-| Anti-cheat | Server-issued run tokens (HMAC-SHA256), single-use, TTL, plausibility bounds |
-| Billing | Price IDs server-resolved from allowlist; webhook signature + event-ID dedupe |
-| Web | Strict CSP with per-request nonce; HSTS; frame-ancestors `'self'`; redacted logs |
-| Data | Emails redacted on public leaderboard; audit log for auth + billing events |
+1. **Smart routing** — pick the right provider per request, fail over when one is down.
+2. **Semantic cache** — pgvector-backed; matches near-duplicate prompts, not just exact hits.
+3. **Budget guardrails** — monthly USD limits per API key, hard-block or warn.
+4. **Shadow-eval routing** — the part nobody else ships. Continuously A/B a
+   cheaper candidate against your production model on live traffic. An
+   LLM-as-judge scores each attempt. Promote only when a rolling window
+   crosses your parity threshold. Savings compound while quality is proven.
 
-## Getting started
+## Why it's worth your attention
+
+- **LLM API spend grew from $3.5B → $8.4B in a single year (2024→2025)** and is projected to pass $15B by 2026.<sup>[1]</sup> This is a budgeted line item now, not a nice-to-have.
+- **Published semantic-cache case studies show 46–86% cost reductions** depending on prompt mix.<sup>[2][3][4]</sup> Caching alone, before routing, pays for the gateway many times over.
+- **EU AI Act Article 12 logging takes effect August 2, 2026**, with penalties up to €15M or 3% of worldwide turnover.<sup>[5]</sup> A gateway that logs every request/model/version is the cheapest path to compliance.
+
+See [`docs/RESEARCH.md`](docs/RESEARCH.md) for the full market case with citations.
+
+## Quick look
 
 ```bash
-cp .env.example .env.local
-# fill in real values for AUTH_SECRET, DATABASE_URL, STRIPE_*, RUN_TOKEN_SECRET
-npm install
-npx prisma migrate dev
-npm run dev
+# 1. boot Keel + Postgres
+docker compose -f docker/docker-compose.yml up --build
+
+# 2. point your client at it
+export OPENAI_BASE_URL=http://localhost:8787/v1
+export OPENAI_API_KEY=$KEEL_API_KEY
+
+# 3. call as normal
+curl -X POST http://localhost:8787/v1/chat/completions \
+  -H "Authorization: Bearer $KEEL_API_KEY" \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello, Keel."}]}'
 ```
 
-Stripe webhook for local dev:
-```bash
-stripe listen --forward-to localhost:3000/api/billing/webhook
-```
+Full walkthrough in [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
 
-## Scripts
-
-- `npm run dev` — dev server
-- `npm run build` — prod build
-- `npm test` — unit tests
-- `npm run e2e` — Playwright
-- `npm run typecheck` — TypeScript check
-- `npm run db:migrate` — Prisma migrations
-
-## Layout
+## Architecture at a glance
 
 ```
-app/
-  page.tsx, pricing/, login/, dashboard/, leaderboard/, play/
-  api/
-    auth/[...nextauth]/         # Auth.js
-    billing/{checkout,portal,webhook}/
-    run/start/                  # issues HMAC run token
-    scores/                     # verifies token + plausibility
-    leaderboard/
-lib/
-  auth, db, env, stripe, entitlement, ratelimit, runtoken, security, validation, logger
-public/game/index.html          # the actual 3D game, served in a sandboxed iframe
-prisma/schema.prisma
-middleware.ts                   # CSP nonce, auth gate
-tests/unit/                     # runtoken, validation, security
+┌──────────┐    POST /v1/*     ┌───────────────────────────────────┐    upstream    ┌──────────┐
+│  Client  │ ────────────────▶ │  Keel gateway (Hono, TS, Node 20) │ ─────────────▶ │ Provider │
+└──────────┘                   │                                   │                └──────────┘
+                               │   auth → budget → router          │
+                               │           │                       │
+                               │           ├── cache (pg+vec)      │
+                               │           ├── provider call       │
+                               │           └── shadow (async)      │
+                               │                                   │
+                               │   requests + shadow_attempts      │
+                               └───────────────▲───────────────────┘
+                                               │
+                                          ┌────┴────┐
+                                          │ Postgres│ (pgvector)
+                                          └─────────┘
 ```
+
+Every request/response pair is logged with the served model, cache status,
+token usage, cost, and latency. Shadow attempts are logged separately with
+judge score and cost delta. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+## Status
+
+v0.1.0 — **production-grade MVP foundation**. Core engine, HTTP gateway,
+tests, Docker, CI, landing page, brand system. What's next in
+[`docs/ROADMAP.md`](docs/ROADMAP.md): streaming, a Next.js dashboard, a
+managed cloud.
+
+## License
+
+Apache-2.0. Fork freely.
+
+---
+
+<sub>
+[1] Menlo Ventures, "2025 Mid-Year LLM Market Update." Model API spend doubled from $3.5B (2024) to $8.4B (2025); $15B projected for 2026.<br/>
+[2] VentureBeat, "Why your LLM bill is exploding — and how semantic caching can cut it by 73%."<br/>
+[3] AWS, "Optimize LLM response costs and latency with effective caching." 86% cost reduction at optimal similarity threshold; 88% latency improvement.<br/>
+[4] Percona engineering blog, "Semantic caching for LLM apps: reduce costs by 40–80% and speed up by 250x."<br/>
+[5] European Commission, EU AI Act Article 12 and enforcement timeline; Help Net Security and Raconteur coverage, April 2026.
+</sub>

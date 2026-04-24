@@ -1,19 +1,22 @@
 node_modules/
-.next/
-out/
+dist/
+coverage/
+.tsbuildinfo
+*.tsbuildinfo
+
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.log
+.env.*.local
+
 .DS_Store
-coverage/
-playwright-report/
-test-results/
-.vercel
-.turbo
-next-env.d.ts
-tsconfig.tsbuildinfo
-prisma/*.db
-prisma/*.db-journal
+.idea/
+.vscode/
+*.log
+npm-debug.log*
+
+# Local caches
+.cache/
+.turbo/
+
+# Docker volumes
+docker/data/

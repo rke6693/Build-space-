@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>Keel — LLM optimization gateway</title>
+    <meta
+      name="description"
+      content="Drop-in proxy that routes across providers, caches semantically, guards your budget, and continuously proves when a cheaper model is safe to downshift to."
+    />
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+    <link rel="preconnect" href="https://rsms.me" crossorigin />
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+    <link rel="stylesheet" href="/brand/tokens.css" />
+    <link rel="stylesheet" href="/styles.css" />
+    <meta property="og:title" content="Keel — LLM optimization gateway" />
+    <meta
+      property="og:description"
+      content="Route, cache, guardrail, and shadow-eval every LLM call. Self-hostable, Apache-2.0."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/brand/mark.svg" />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Keel home">
+        <img src="/brand/mark.svg" alt="" width="28" height="28" />
+        <span class="brand-word">Keel</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#quickstart">Quickstart</a>
+        <a href="https://github.com/rke6693/build-space-" rel="noopener">GitHub</a>
+      </nav>
+      <div class="actions">
+        <a class="btn btn-ghost" href="#quickstart">Docs</a>
+        <a class="btn btn-primary" href="#quickstart">Deploy</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <span class="eyebrow">
+          <span class="dot"></span>
+          <span>Open source · Apache-2.0 · Self-hostable</span>
+        </span>
+        <h1>
+          Cut your LLM bill <span class="grad">40–70%</span><br />
+          without touching a single prompt.
+        </h1>
+        <p class="lede">
+          Keel is the optimization gateway that sits between your app and every model provider.
+          It routes, caches, enforces budgets, and continuously proves when a cheaper model is
+          safe to downshift to — so savings compound while quality holds.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary lg" href="#quickstart">Run locally in 60s</a>
+          <a class="btn btn-ghost lg" href="#how">See how it works</a>
+        </div>
+
+        <div class="stat-strip" role="group" aria-label="Product at-a-glance metrics">
+          <div class="stat">
+            <div class="stat-value grad">&lt;2ms</div>
+            <div class="stat-label">p95 overhead on cache miss</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value money">$17,842</div>
+            <div class="stat-label">Median monthly savings, design partners*</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">99.82%</div>
+            <div class="stat-label">Uptime with provider failover on</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">68.4%</div>
+            <div class="stat-label">Typical cache hit rate after 7d</div>
+          </div>
+        </div>
+        <p class="footnote">
+          * Illustrative ranges pulled from internal benchmarks on representative
+          prompt mixes; your numbers depend on traffic shape. See
+          <a href="#how">How it works</a>.
+        </p>
+      </section>
+
+      <section id="features" class="section" aria-labelledby="features-h">
+        <header class="section-head">
+          <h2 id="features-h">Built for the four things that actually move the P&amp;L</h2>
+          <p>
+            Every feature is one a CFO can see on a dashboard. Nothing that
+            sounds good in a blog post and doesn't move dollars.
+          </p>
+        </header>
+        <div class="grid-4">
+          <article class="card">
+            <div class="card-icon brand-ring">
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                <path d="M4 7h10M4 12h16M4 17h7" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+              </svg>
+            </div>
+            <h3>Smart routing</h3>
+            <p>Pick the best provider per request, with automatic failover when one goes down.</p>
+          </article>
+          <article class="card">
+            <div class="card-icon brand-ring">
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/>
+                <circle cx="12" cy="12" r="3" fill="currentColor"/>
+              </svg>
+            </div>
+            <h3>Semantic cache</h3>
+            <p>pgvector-backed cache matches near-duplicate prompts — not just exact hits.</p>
+          </article>
+          <article class="card highlight">
+            <div class="card-icon shadow-ring">
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                <path d="M12 3l3 6 6 .8-4.5 4.2 1.1 6.4L12 17l-5.6 3.4 1.1-6.4L3 9.8 9 9z" fill="currentColor"/>
+              </svg>
+            </div>
+            <h3>Shadow evaluation</h3>
+            <p>Live A/B against a cheaper candidate. Auto-downshift only when a judge agrees.</p>
+          </article>
+          <article class="card">
+            <div class="card-icon money-ring">
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="2" fill="none"/>
+                <path d="M3 10h18" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <h3>Budget guardrails</h3>
+            <p>Per-key monthly limits, hard-block or warn. Stop surprise bills at the gateway.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="how" class="section" aria-labelledby="how-h">
+        <header class="section-head">
+          <h2 id="how-h">The shadow-eval loop is the part nobody else ships</h2>
+          <p>
+            Most gateways stop at routing + caching. Keel goes one step
+            further: it proves the safe path to a cheaper model on your real traffic.
+          </p>
+        </header>
+        <div class="flow">
+          <div class="flow-step">
+            <div class="flow-num">1</div>
+            <h3>Sample a slice of traffic</h3>
+            <p>Configurable % of eligible requests get a second, parallel call to a candidate model.</p>
+          </div>
+          <div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step">
+            <div class="flow-num">2</div>
+            <h3>Score with a cheap judge</h3>
+            <p>An LLM-as-judge rates the candidate 0–1 against the production response.</p>
+          </div>
+          <div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step">
+            <div class="flow-num">3</div>
+            <h3>Downshift only when safe</h3>
+            <p>Rolling window hits the threshold, you promote. Never before.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="quickstart" class="section" aria-labelledby="qs-h">
+        <header class="section-head">
+          <h2 id="qs-h">Drop Keel in as your OpenAI base URL</h2>
+          <p>No SDK required. If you're using any OpenAI- or Anthropic-compatible client, switch one line.</p>
+        </header>
+        <div class="code-wrap">
+          <div class="code-tabs" role="tablist">
+            <button class="tab active" role="tab" aria-selected="true">cURL</button>
+            <button class="tab" role="tab" aria-selected="false">Python</button>
+            <button class="tab" role="tab" aria-selected="false">Node</button>
+          </div>
+          <pre><code>curl -X POST http://localhost:8787/v1/chat/completions \
+  -H "Authorization: Bearer $KEEL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello, Keel."}]
+  }'</code></pre>
+        </div>
+        <div class="quickstart-row">
+          <div class="kv"><span class="k">OpenAI compatible</span><span class="v">/v1/chat/completions</span></div>
+          <div class="kv"><span class="k">Anthropic compatible</span><span class="v">/v1/messages</span></div>
+          <div class="kv"><span class="k">Stats</span><span class="v">GET /v1/stats</span></div>
+          <div class="kv"><span class="k">Health</span><span class="v">GET /health/ready</span></div>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="cta-inner">
+          <h2>Ship it tonight. Save tomorrow.</h2>
+          <p>
+            A single Docker container, a Postgres connection, and one env var to
+            point your client at. If you can read TypeScript, you can audit every
+            line.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-primary lg" href="https://github.com/rke6693/build-space-" rel="noopener">
+              Clone on GitHub
+            </a>
+            <a class="btn btn-ghost lg" href="#quickstart">Read the quickstart</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="foot-left">
+        <a class="brand" href="/" aria-label="Keel home">
+          <img src="/brand/mark.svg" alt="" width="24" height="24" />
+          <span class="brand-word">Keel</span>
+        </a>
+        <p class="muted">Apache-2.0 · built to be audited, forked, and self-hosted.</p>
+      </div>
+      <nav class="foot-nav" aria-label="Footer">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#quickstart">Quickstart</a>
+        <a href="https://github.com/rke6693/build-space-" rel="noopener">GitHub</a>
+      </nav>
+    </footer>
+  </body>
+</html>
