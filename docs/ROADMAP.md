@@ -66,15 +66,19 @@ design partners with, in order.
   OSS core stays Apache-2.0; cloud stays closed, but exports are always
   portable.
 
-## v0.5+ — compliance + enterprise
+## v0.5+ — compliance (self-serve only)
+
+These ship behind the Business tier paywall. Anything that requires a sales
+call, an account-manager, or a custom contract is intentionally out of scope
+— see the operating model note at the bottom of this file.
 
 - [ ] **EU AI Act Article 12 evidence export.** One button → zip of all logs
   for a time range with model versions, request/response payloads,
   routing decisions, judge scores, in an auditor-friendly format.
-- [ ] **SSO + SCIM** for cloud.
 - [ ] **Audit log append-only store.** Per-org, cryptographically hash-chained.
 - [ ] **Data residency.** Pin request/response storage to EU / US regions.
-- [ ] **Soc 2 Type 1 / Type 2.** Meaningful only once there are paying customers.
+- [ ] **SOC 2 Type 1 → Type 2.** Pursued once Business-tier MRR justifies the
+  $10–20k cost. Type 2 only after 12 months of Type 1.
 
 ## Explicit non-goals
 
@@ -82,3 +86,25 @@ design partners with, in order.
 - A prompt IDE, prompt versioning UI, or "playground." Other products do this well.
 - A vendor-lock-in dashboard. Export everything. Self-host everything.
 - Competing with provider-native prompt caching. We pass it through.
+- **Custom enterprise contracts, named CSMs, dedicated phone support, or any
+  motion that requires synchronous human interaction.** Keel is built and run
+  asynchronously. Buyers who require sales calls or account managers are not
+  the target. The Business tier is the ceiling; everything above is by exception.
+- **SSO + SCIM in v0.5.** Deferred until Business-tier demand demonstrably
+  needs it. Adds support burden disproportionate to revenue at this stage.
+
+## Operating model
+
+Keel is run as a small, async, written-first project:
+
+- All support is via email and GitHub issues; no live chat, no calls.
+- All product communication is via the changelog, blog, and brand-only
+  social accounts.
+- All sales are self-serve through Stripe; no quotes, no PoCs, no demos
+  beyond the public 2-minute screen-recording on the landing page.
+- The roadmap is public and conservative; features ship when they're ready,
+  not when a single buyer asks.
+
+This shape caps the revenue ceiling but keeps the time cost predictable —
+which is the deliberate trade.
+

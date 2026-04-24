@@ -91,6 +91,14 @@ managed cloud.
 
 Apache-2.0. Fork freely.
 
+## Project posture
+
+Keel is run async and written-first. There are no live demos, no quotes,
+and no sales calls. Everything ships through the changelog, the docs, and
+public release notes. Bugs and ideas live on
+[GitHub Issues](https://github.com/rke6693/build-space-/issues); anything
+else is `hello@keel.dev`.
+
 ---
 
 <sub>

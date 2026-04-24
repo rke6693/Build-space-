@@ -50,6 +50,12 @@ letter-spacing (-0.02em) for display sizes; normal elsewhere.
 - **Specific.** Always attach a number. "p95 overhead under 2ms," not "low overhead."
 - **Confident, not breathless.** The product does real work; let it speak.
 - **Engineers first.** Every benefit is also measurable.
+- **Team voice, not founder voice.** All public communication is signed
+  "The Keel Team" — never a personal byline. No author photos, no founder
+  quotes, no "I built this because…" framing. Keel is a product, not a
+  personality.
+- **Async by default.** Copy never implies a live channel. Use "email us at
+  `hello@keel.dev`" or "open an issue," never "book a call" or "chat with us."
 
 ## Do / Don't
 

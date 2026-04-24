@@ -307,6 +307,40 @@ a:focus-visible, button:focus-visible {
 .cta-inner h2 { margin: 0 0 12px; font-size: clamp(26px, 3.4vw, 40px); letter-spacing: -0.02em; }
 .cta-inner p { max-width: 620px; margin: 0 auto 24px; color: var(--keel-text-secondary); }
 
+/* ----- About ----- */
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.about-card {
+  padding: 22px;
+  background: var(--keel-bg-elev);
+  border: 1px solid var(--keel-border);
+  border-radius: var(--keel-r-lg);
+  box-shadow: var(--keel-shadow-card);
+}
+.about-card h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--keel-text-primary);
+}
+.about-card p {
+  margin: 0;
+  color: var(--keel-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.about-card a {
+  color: var(--keel-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(139, 92, 246, 0.5);
+}
+.about-card a:hover { text-decoration-color: var(--keel-purple); }
+
 /* ----- Footer ----- */
 .footer {
   max-width: 1280px; margin: 0 auto; padding: 28px 32px 48px;
@@ -323,6 +357,7 @@ a:focus-visible, button:focus-visible {
   .nav { display: none; }
   .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .about-grid { grid-template-columns: 1fr; }
   .quickstart-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .flow {
     grid-template-columns: 1fr;
