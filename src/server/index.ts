@@ -22,10 +22,14 @@ async function main(): Promise<void> {
   // ---- Providers ----
   const providers: Provider[] = [];
   if (cfg.providers.anthropic) {
-    providers.push(new AnthropicProvider(cfg.env.ANTHROPIC_API_KEY!));
+    providers.push(
+      new AnthropicProvider(cfg.env.ANTHROPIC_API_KEY!, { timeoutMs: cfg.env.UPSTREAM_TIMEOUT_MS }),
+    );
   }
   if (cfg.providers.openai) {
-    providers.push(new OpenAIProvider(cfg.env.OPENAI_API_KEY!));
+    providers.push(
+      new OpenAIProvider(cfg.env.OPENAI_API_KEY!, { timeoutMs: cfg.env.UPSTREAM_TIMEOUT_MS }),
+    );
   }
   if (providers.length === 0) {
     logger.warn('no upstream provider credentials configured — gateway will 502 on /v1/*');
@@ -109,6 +113,14 @@ async function main(): Promise<void> {
     staticApiKeys: cfg.apiKeys,
     routingOverrides: cfg.routingOverrides,
     version: '0.1.0',
+    rateLimit: {
+      capacity: cfg.env.RATE_LIMIT_CAPACITY,
+      refillRatePerSec: cfg.env.RATE_LIMIT_REFILL_PER_SEC,
+    },
+    maxBodyBytes: cfg.env.MAX_BODY_BYTES,
+    corsOrigins: cfg.env.CORS_ORIGINS === '*'
+      ? '*'
+      : cfg.env.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
   });
 
   const port = cfg.env.PORT;

@@ -2,6 +2,8 @@ export type KeelErrorCode =
   | 'auth_missing'
   | 'auth_invalid'
   | 'budget_exceeded'
+  | 'rate_limited'
+  | 'payload_too_large'
   | 'bad_request'
   | 'upstream_error'
   | 'upstream_timeout'
@@ -34,6 +36,10 @@ function defaultStatusFor(code: KeelErrorCode): number {
       return 401;
     case 'budget_exceeded':
       return 402;
+    case 'rate_limited':
+      return 429;
+    case 'payload_too_large':
+      return 413;
     case 'bad_request':
       return 400;
     case 'not_found':

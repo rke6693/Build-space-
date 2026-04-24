@@ -1,4 +1,5 @@
 import { logger } from '../../util/logger.js';
+import { registry as metrics } from '../metrics.js';
 import { costUsd } from '../pricing.js';
 import type { ProviderRegistry } from '../providers/base.js';
 import type { CompletionRequest, CompletionResponse } from '../types.js';
@@ -149,6 +150,11 @@ export class ShadowController {
     costDeltaUsd: number,
     ok: boolean,
   ): Promise<void> {
+    metrics.shadowAttempts.inc({
+      candidate_ok: ok ? 'true' : 'false',
+      primary: primaryModel,
+      candidate: candidateModel,
+    });
     if (!this.opts.shadowLogger) return;
     await this.opts.shadowLogger.logAttempt({
       requestId,

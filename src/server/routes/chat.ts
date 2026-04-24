@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { registry as metrics } from '../../core/metrics.js';
 import type { Router } from '../../core/router.js';
 import type { CompletionRequest, Message, RoutingContext } from '../../core/types.js';
 import type { Repo } from '../../db/repo.js';
@@ -97,6 +98,16 @@ export function chatRoutes(deps: { router: Router; repo: Repo | null }): Hono<{
       response.usage.outputTokens,
       response.usage.cachedInputTokens ?? 0,
     );
+
+    // Metrics: cache + cost.
+    if (resolvedCtx.cacheStatus && resolvedCtx.cacheStatus !== 'miss') {
+      metrics.cacheHits.inc({ status: resolvedCtx.cacheStatus });
+    } else {
+      metrics.cacheMisses.inc();
+    }
+    if (cost > 0) {
+      metrics.costUsd.inc({ served_model: response.model }, cost);
+    }
 
     if (deps.repo) {
       await deps.repo

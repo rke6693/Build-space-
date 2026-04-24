@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { registry as metrics } from '../../core/metrics.js';
 import { costUsd } from '../../core/pricing.js';
 import type { Router } from '../../core/router.js';
 import type { CompletionRequest, Message, RoutingContext } from '../../core/types.js';
@@ -104,6 +105,15 @@ export function messagesRoutes(deps: { router: Router; repo: Repo | null }): Hon
       response.usage.outputTokens,
       response.usage.cachedInputTokens ?? 0,
     );
+
+    if (resolvedCtx.cacheStatus && resolvedCtx.cacheStatus !== 'miss') {
+      metrics.cacheHits.inc({ status: resolvedCtx.cacheStatus });
+    } else {
+      metrics.cacheMisses.inc();
+    }
+    if (cost > 0) {
+      metrics.costUsd.inc({ served_model: response.model }, cost);
+    }
 
     if (deps.repo) {
       await deps.repo

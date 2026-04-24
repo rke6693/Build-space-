@@ -31,6 +31,12 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+
+  RATE_LIMIT_CAPACITY: z.coerce.number().int().min(1).default(60),
+  RATE_LIMIT_REFILL_PER_SEC: z.coerce.number().min(0.001).default(1),
+  MAX_BODY_BYTES: z.coerce.number().int().min(1024).default(1024 * 1024),
+  CORS_ORIGINS: z.string().default('*'),
+  UPSTREAM_TIMEOUT_MS: z.coerce.number().int().min(1000).default(60_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

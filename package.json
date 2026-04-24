@@ -23,6 +23,7 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "bench": "tsx scripts/benchmark.ts",
+    "bench:load": "tsx scripts/loadtest.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "docker:build": "docker build -t keel:local -f docker/Dockerfile .",
     "docker:up": "docker compose -f docker/docker-compose.yml up --build"

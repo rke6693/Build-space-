@@ -83,7 +83,11 @@ judge score and cost delta. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ## Status
 
 v0.1.0 — **production-grade MVP foundation**. Core engine, HTTP gateway,
-tests, Docker, CI, landing page, brand system. What's next in
+rate limiting, body-size limits, upstream timeouts, Prometheus `/metrics`,
+unit + integration tests, Docker, CI, landing page, brand system.
+
+Before any public launch, walk every gate in
+[`docs/PRE-LAUNCH.md`](docs/PRE-LAUNCH.md). What's next in
 [`docs/ROADMAP.md`](docs/ROADMAP.md): streaming, a Next.js dashboard, a
 managed cloud.
 

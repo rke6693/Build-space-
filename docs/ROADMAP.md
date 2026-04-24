@@ -21,6 +21,19 @@ dates.
 - [x] Brand system (`brand/`) + polished static landing page (`web/`)
 - [x] Unit + component tests for core engine
 
+## v0.1.1 — launch-hardening (shipped)
+
+Pulled forward from v0.2 because they're launch-blockers, not nice-to-haves.
+
+- [x] **Token-bucket rate limiting** per api_key_id (in-memory, configurable burst + refill)
+- [x] **Body-size limit** middleware (default 1 MiB, configurable)
+- [x] **Default upstream timeout** on Anthropic + OpenAI provider calls (60s default)
+- [x] **CORS policy** with configurable origins
+- [x] **Prometheus `/metrics`** endpoint with no extra deps — counters for requests, errors, cache hits/misses, shadow attempts, cumulative cost; histogram for end-to-end latency
+- [x] **End-to-end integration tests** — boots the real Hono app, drives it via `app.request()`, exercises auth, cache, size limit, rate limit, metrics, and both endpoints
+- [x] **Load-test script** (`npm run bench:load`) that drives N requests at concurrency C and reports p50/p95/p99 overhead — proves the README's "<2ms p95 on miss" claim
+- [x] **Pre-launch verification doc** ([`PRE-LAUNCH.md`](PRE-LAUNCH.md)) — 12 gates that must pass before any public launch
+
 ## v0.2 — "people can actually deploy this" (next)
 
 Priority items that turn the MVP into a thing a single operator can onboard
@@ -36,8 +49,8 @@ design partners with, in order.
   `X-Keel-Request-Id`, returned in responses, logged on shadow attempts.
 - [ ] **Provider health / circuit-breaker.** When a provider's error rate in
   a 60s window exceeds a threshold, stop routing to it for a cooldown.
-- [ ] **Prometheus `/metrics`.** Latency histograms, cost counters, cache hit
-  rate, shadow pair means.
+- [ ] **Redis-backed rate limiter** for multi-node deployments (in-memory
+  is fine for single-node OSS / Cloud-tier launch).
 - [ ] **Terraform + Fly.io one-click deploy.** Minimum viable hosted story.
 
 ## v0.3 — differentiation (the moat)

@@ -4,13 +4,16 @@ import type { CompletionRequest, CompletionResponse, Message } from '../types.js
 import type { Provider } from './base.js';
 
 const ANTHROPIC_MODEL_PREFIXES = ['claude-'];
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 export class AnthropicProvider implements Provider {
   readonly id = 'anthropic' as const;
   private client: Anthropic;
+  private readonly timeoutMs: number;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, opts: { timeoutMs?: number } = {}) {
     this.client = new Anthropic({ apiKey });
+    this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   supports(model: string): boolean {
@@ -20,6 +23,7 @@ export class AnthropicProvider implements Provider {
   async complete(req: CompletionRequest, signal?: AbortSignal): Promise<CompletionResponse> {
     const { system, messages } = splitSystem(req.messages);
     const started = Date.now();
+    const effectiveSignal = signal ?? AbortSignal.timeout(this.timeoutMs);
 
     let res: Anthropic.Messages.Message;
     try {
@@ -36,7 +40,7 @@ export class AnthropicProvider implements Provider {
           ...(req.topP !== undefined ? { top_p: req.topP } : {}),
           ...(req.stop && req.stop.length > 0 ? { stop_sequences: req.stop } : {}),
         },
-        signal ? { signal } : undefined,
+        { signal: effectiveSignal },
       );
     } catch (err) {
       throw toKeelError(err);

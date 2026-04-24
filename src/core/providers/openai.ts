@@ -4,13 +4,16 @@ import type { CompletionRequest, CompletionResponse, Message } from '../types.js
 import type { Provider } from './base.js';
 
 const OPENAI_MODEL_PREFIXES = ['gpt-', 'o1-', 'o3-', 'text-embedding-'];
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 export class OpenAIProvider implements Provider {
   readonly id = 'openai' as const;
   private client: OpenAI;
+  private readonly timeoutMs: number;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, opts: { timeoutMs?: number } = {}) {
     this.client = new OpenAI({ apiKey });
+    this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   supports(model: string): boolean {
@@ -19,6 +22,7 @@ export class OpenAIProvider implements Provider {
 
   async complete(req: CompletionRequest, signal?: AbortSignal): Promise<CompletionResponse> {
     const started = Date.now();
+    const effectiveSignal = signal ?? AbortSignal.timeout(this.timeoutMs);
 
     let res: OpenAI.Chat.Completions.ChatCompletion;
     try {
@@ -31,7 +35,7 @@ export class OpenAIProvider implements Provider {
           ...(req.topP !== undefined ? { top_p: req.topP } : {}),
           ...(req.stop && req.stop.length > 0 ? { stop: req.stop } : {}),
         },
-        signal ? { signal } : undefined,
+        { signal: effectiveSignal },
       );
     } catch (err) {
       throw toKeelError(err);
@@ -60,10 +64,11 @@ export class OpenAIProvider implements Provider {
   }
 
   async embed(input: string, model: string, signal?: AbortSignal): Promise<number[]> {
+    const effectiveSignal = signal ?? AbortSignal.timeout(this.timeoutMs);
     try {
       const res = await this.client.embeddings.create(
         { input, model },
-        signal ? { signal } : undefined,
+        { signal: effectiveSignal },
       );
       const vec = res.data[0]?.embedding;
       if (!vec) throw new KeelError('upstream_error', 'empty embedding response');
