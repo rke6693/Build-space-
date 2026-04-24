@@ -40,6 +40,22 @@ See [`docs/RESEARCH.md`](docs/RESEARCH.md) for the full market case with citatio
 
 ## Quick look
 
+**See it running with no API keys, in 30 seconds:**
+
+```bash
+git clone https://github.com/rke6693/build-space-.git keel && cd keel
+cp .env.example .env
+echo 'DEMO_MODE=true' >> .env
+npm install && npm run dev
+# open http://localhost:8787/dashboard/
+```
+
+Demo mode swaps in a synthetic provider and an in-process traffic generator
+so the dashboard is alive on first load. Disable when you're ready for real
+traffic.
+
+**Real usage:**
+
 ```bash
 # 1. boot Keel + Postgres
 docker compose -f docker/docker-compose.yml up --build
@@ -55,6 +71,8 @@ curl -X POST http://localhost:8787/v1/chat/completions \
 ```
 
 Full walkthrough in [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
+Deploy to Fly.io with `bash scripts/deploy-fly.sh` (set `KEEL_API_KEYS`
+plus at least one provider key first).
 
 ## Architecture at a glance
 
@@ -82,14 +100,15 @@ judge score and cost delta. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Status
 
-v0.1.0 — **production-grade MVP foundation**. Core engine, HTTP gateway,
-rate limiting, body-size limits, upstream timeouts, Prometheus `/metrics`,
-unit + integration tests, Docker, CI, landing page, brand system.
+v0.1.1 — **production-grade MVP foundation, hardened**. Core engine, HTTP
+gateway, rate limiting, body-size limits, upstream timeouts, Prometheus
+`/metrics`, unit + integration tests, load-test harness, Docker, CI,
+landing page, brand system, **demo mode**, **live dashboard**, and Fly.io
+one-shot deploy script.
 
 Before any public launch, walk every gate in
 [`docs/PRE-LAUNCH.md`](docs/PRE-LAUNCH.md). What's next in
-[`docs/ROADMAP.md`](docs/ROADMAP.md): streaming, a Next.js dashboard, a
-managed cloud.
+[`docs/ROADMAP.md`](docs/ROADMAP.md): streaming, admin API, a managed cloud.
 
 ## License
 

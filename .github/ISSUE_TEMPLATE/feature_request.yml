@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose new functionality.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening, please skim [docs/ROADMAP.md](../docs/ROADMAP.md) — your idea may already be tracked.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the underlying problem?
+      description: Don't pitch a solution; describe the pain. We'll find the right shape together.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: A possible solution
+      description: Optional. If you've already thought about it, share. If not, no worries.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How blocking is this for you?
+      options:
+        - "Nice to have"
+        - "Would unlock real adoption"
+        - "Blocking my deployment today"
+    validations:
+      required: true

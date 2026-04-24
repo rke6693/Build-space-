@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Keel — Live Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+    <link rel="preconnect" href="https://rsms.me" crossorigin />
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+    <link rel="stylesheet" href="/brand/tokens.css" />
+    <link rel="stylesheet" href="/dashboard/dashboard.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="brand" href="/" aria-label="Keel home">
+        <img src="/brand/mark.svg" alt="" width="28" height="28" />
+        <span class="brand-word">Keel</span>
+      </a>
+      <nav>
+        <a href="/dashboard/" class="active" aria-current="page">
+          <span class="dot"></span>Overview
+        </a>
+        <a href="#requests"><span class="dot"></span>Requests</a>
+        <a href="#shadow"><span class="dot"></span>Shadow eval</a>
+        <a href="#models"><span class="dot"></span>Models</a>
+      </nav>
+      <div class="env-pill">
+        <span class="env-led" id="env-led"></span>
+        <span id="env-label">connecting…</span>
+      </div>
+    </aside>
+
+    <main id="main" class="main">
+      <header class="topline">
+        <div>
+          <h1>Live overview</h1>
+          <p class="muted">Auto-refreshing every <span id="refresh-secs">5</span>s · last <span id="last-updated">—</span></p>
+        </div>
+        <div class="topline-actions">
+          <span class="badge" id="demo-badge" hidden>DEMO MODE</span>
+          <button id="refresh-now" class="btn btn-ghost">Refresh now</button>
+        </div>
+      </header>
+
+      <section class="stat-grid" aria-label="Top-line metrics">
+        <article class="stat-card">
+          <div class="stat-label">Requests (24h)</div>
+          <div class="stat-value" id="m-requests">—</div>
+          <div class="stat-sub muted" id="m-requests-sub">&nbsp;</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Cache hit rate</div>
+          <div class="stat-value grad" id="m-cache">—</div>
+          <div class="stat-sub muted">exact + semantic</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Spend (24h)</div>
+          <div class="stat-value money" id="m-cost">—</div>
+          <div class="stat-sub muted" id="m-savings">&nbsp;</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">p95 latency</div>
+          <div class="stat-value" id="m-p95">—</div>
+          <div class="stat-sub muted">end-to-end</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Errors</div>
+          <div class="stat-value" id="m-errors">—</div>
+          <div class="stat-sub muted">5xx + 4xx (auth excl.)</div>
+        </article>
+      </section>
+
+      <section class="panel-grid">
+        <article id="shadow" class="panel highlight">
+          <header class="panel-head">
+            <h2>Shadow evaluation</h2>
+            <span class="status-pill" id="shadow-pill">Inactive</span>
+          </header>
+          <p class="muted">Continuously compares cheaper candidate models against your primary on live traffic. Promotion is gated on rolling-window parity.</p>
+          <div id="shadow-pairs" class="shadow-list" aria-live="polite">
+            <div class="empty">No pairs configured. Set <code>SHADOW_CANDIDATES</code> in your env to begin.</div>
+          </div>
+        </article>
+
+        <article id="models" class="panel">
+          <header class="panel-head">
+            <h2>Model mix</h2>
+          </header>
+          <p class="muted">Cumulative spend by served model. Rolls up everything since process start.</p>
+          <div id="model-bars" class="bars">
+            <div class="empty">No traffic yet.</div>
+          </div>
+        </article>
+      </section>
+
+      <section id="requests" class="panel">
+        <header class="panel-head">
+          <h2>Throughput</h2>
+        </header>
+        <p class="muted">Last 30 samples · point every 5 seconds · sourced from <code>/metrics</code>.</p>
+        <svg id="throughput-chart" viewBox="0 0 800 180" preserveAspectRatio="none" role="img" aria-label="Throughput sparkline"></svg>
+      </section>
+
+      <footer class="dash-footer">
+        <span class="muted">Data refresh: every 5s · <a href="/v1/stats" target="_blank" rel="noopener">/v1/stats</a> · <a href="/metrics" target="_blank" rel="noopener">/metrics</a></span>
+        <a href="/" class="muted">← back to landing</a>
+      </footer>
+    </main>
+
+    <dialog id="auth-dialog" aria-labelledby="auth-title">
+      <form method="dialog" id="auth-form">
+        <h2 id="auth-title">API key</h2>
+        <p class="muted">The dashboard calls <code>/v1/stats</code> with this Bearer token. Stored only in your browser (<code>localStorage</code>).</p>
+        <input id="auth-input" type="password" autocomplete="off" placeholder="kl_…" required />
+        <div class="dialog-actions">
+          <button type="submit" class="btn btn-primary">Connect</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/dashboard/dashboard.js"></script>
+  </body>
+</html>

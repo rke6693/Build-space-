@@ -7,6 +7,7 @@ import { AnthropicProvider } from '../core/providers/anthropic.js';
 import type { Provider } from '../core/providers/base.js';
 import { OpenAIProvider } from '../core/providers/openai.js';
 import { StaticProviderRegistry } from '../core/providers/registry.js';
+import { SyntheticProvider } from '../core/providers/synthetic.js';
 import { LlmJudge } from '../core/shadow/judge.js';
 import { ShadowController, StaticShadowPlan } from '../core/shadow/shadow.js';
 import { ShadowStats } from '../core/shadow/stats.js';
@@ -15,24 +16,34 @@ import { Repo } from '../db/repo.js';
 import { loadConfig } from '../config.js';
 import { logger } from '../util/logger.js';
 import { createApp } from './app.js';
+import { startDemoTraffic } from './demo.js';
 
 async function main(): Promise<void> {
   const cfg = loadConfig();
 
   // ---- Providers ----
   const providers: Provider[] = [];
-  if (cfg.providers.anthropic) {
-    providers.push(
-      new AnthropicProvider(cfg.env.ANTHROPIC_API_KEY!, { timeoutMs: cfg.env.UPSTREAM_TIMEOUT_MS }),
-    );
-  }
-  if (cfg.providers.openai) {
-    providers.push(
-      new OpenAIProvider(cfg.env.OPENAI_API_KEY!, { timeoutMs: cfg.env.UPSTREAM_TIMEOUT_MS }),
-    );
-  }
-  if (providers.length === 0) {
-    logger.warn('no upstream provider credentials configured — gateway will 502 on /v1/*');
+  if (cfg.env.DEMO_MODE) {
+    logger.warn('DEMO_MODE is enabled — using synthetic provider, no real API calls');
+    providers.push(new SyntheticProvider());
+  } else {
+    if (cfg.providers.anthropic) {
+      providers.push(
+        new AnthropicProvider(cfg.env.ANTHROPIC_API_KEY!, {
+          timeoutMs: cfg.env.UPSTREAM_TIMEOUT_MS,
+        }),
+      );
+    }
+    if (cfg.providers.openai) {
+      providers.push(
+        new OpenAIProvider(cfg.env.OPENAI_API_KEY!, {
+          timeoutMs: cfg.env.UPSTREAM_TIMEOUT_MS,
+        }),
+      );
+    }
+    if (providers.length === 0) {
+      logger.warn('no upstream provider credentials configured — gateway will 502 on /v1/*');
+    }
   }
   const registry = new StaticProviderRegistry(providers);
 
@@ -121,6 +132,7 @@ async function main(): Promise<void> {
     corsOrigins: cfg.env.CORS_ORIGINS === '*'
       ? '*'
       : cfg.env.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
+    demoMode: cfg.env.DEMO_MODE,
   });
 
   const port = cfg.env.PORT;
@@ -132,14 +144,23 @@ async function main(): Promise<void> {
         postgres: !!pool,
         shadow: !!shadow,
         cache: cache instanceof MemoryCache ? 'memory' : 'postgres',
+        demo_mode: cfg.env.DEMO_MODE,
       },
       'keel listening',
     );
   });
 
+  // Demo mode: drive synthetic traffic so the dashboard is alive on first load.
+  let demoStop: (() => void) | null = null;
+  if (cfg.env.DEMO_MODE) {
+    const demoKey = cfg.apiKeys[0] ?? 'kl_demo';
+    demoStop = startDemoTraffic({ app, apiKey: demoKey, rps: cfg.env.DEMO_RPS }).stop;
+  }
+
   // Graceful shutdown.
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'shutting down');
+    demoStop?.();
     if (pool) await pool.end().catch(() => {});
     process.exit(0);
   };

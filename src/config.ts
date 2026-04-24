@@ -37,6 +37,17 @@ const envSchema = z.object({
   MAX_BODY_BYTES: z.coerce.number().int().min(1024).default(1024 * 1024),
   CORS_ORIGINS: z.string().default('*'),
   UPSTREAM_TIMEOUT_MS: z.coerce.number().int().min(1000).default(60_000),
+
+  /**
+   * Demo mode: replaces real providers with a synthetic provider and starts
+   * an in-process traffic generator so a fresh `git clone` produces a live
+   * dashboard with believable data, without API keys. Never enable in prod.
+   */
+  DEMO_MODE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  DEMO_RPS: z.coerce.number().min(0.1).max(50).default(1.5),
 });
 
 export type Env = z.infer<typeof envSchema>;

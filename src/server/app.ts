@@ -38,6 +38,8 @@ export interface AppDeps {
   maxBodyBytes?: number;
   /** CORS allowed origins. Default '*' (open). Set to specific origins for prod. */
   corsOrigins?: string | string[];
+  /** Tagged in /v1/info so the dashboard can adapt UI to demo mode. */
+  demoMode?: boolean;
 }
 
 /** Create a fully-wired Hono app. Pure function — no side effects. */
@@ -75,7 +77,15 @@ export function createApp(deps: AppDeps): Hono {
   app.onError(errorHandler);
 
   // Public, no-auth routes.
-  app.route('/', healthRoutes({ pool: deps.pool, version: deps.version }));
+  app.route(
+    '/',
+    healthRoutes({
+      pool: deps.pool,
+      version: deps.version,
+      demoMode: deps.demoMode === true,
+      providers: deps.registry.available(),
+    }),
+  );
   app.route('/', metricsRoutes());
 
   // Landing page + brand assets (optional, on by default). Serves the hand-
@@ -84,6 +94,11 @@ export function createApp(deps: AppDeps): Hono {
   if (deps.serveLanding !== false) {
     app.use('/brand/*', serveStatic({ root: './' }));
     app.use('/styles.css', serveStatic({ path: './web/styles.css' }));
+    // Live dashboard. Static SPA; auth happens client-side via the same
+    // Bearer token used for /v1/stats. /v1/stats is on the authed sub-app
+    // below, so the dashboard remains useless without a valid key.
+    app.use('/dashboard/*', serveStatic({ root: './web' }));
+    app.get('/dashboard', (c) => c.redirect('/dashboard/'));
     app.get('/', serveStatic({ path: './web/index.html' }));
   }
 

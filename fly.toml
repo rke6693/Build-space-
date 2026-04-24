@@ -1,0 +1,55 @@
+# Fly.io deployment config for Keel.
+# Bring up with: fly launch --copy-config --no-deploy   (first time only)
+# Then: fly deploy
+#
+# This config is intentionally minimal. Tighten resources, scaling, and
+# regions once you know your real traffic shape.
+
+app = "keel"          # rename to your app name
+primary_region = "iad" # ashburn — change to closest to your users
+
+[build]
+  dockerfile = "docker/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  LOG_LEVEL = "info"
+  PORT = "8787"
+  # Sane defaults for a small box.
+  RATE_LIMIT_CAPACITY = "120"
+  RATE_LIMIT_REFILL_PER_SEC = "2"
+  MAX_BODY_BYTES = "1048576"
+  CORS_ORIGINS = "*"
+  UPSTREAM_TIMEOUT_MS = "60000"
+  # Demo mode: flip to "true" only on a public showcase deployment.
+  DEMO_MODE = "false"
+
+# Secrets to set with `fly secrets set ...`:
+#   KEEL_API_KEYS=kl_prod_...
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   OPENAI_API_KEY=sk-...
+#   DATABASE_URL=postgres://...   # set automatically when you `fly postgres attach`
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "stop"   # cost-saving; fly machines start in ~1s
+  auto_start_machines = true
+  min_machines_running = 1      # keep one warm so /metrics scraping doesn't fail
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+    method = "get"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# When you outgrow shared-cpu-1x: bump to performance-1x (1 CPU, 2 GB).
+# A single perf-1x can comfortably push 5–10k req/s of cache-hit traffic.
