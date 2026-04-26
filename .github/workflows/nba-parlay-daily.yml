@@ -1,0 +1,56 @@
+name: NBA Parlay — daily report
+
+on:
+  schedule:
+    # 14:30 UTC = 10:30 AM US/Eastern (DST), 09:30 AM during winter.
+    - cron: "30 14 * * *"
+  workflow_dispatch:
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: nba_parlay
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: nba_parlay/requirements.txt
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Restore data + model cache
+        uses: actions/cache@v4
+        with:
+          path: nba_parlay/.cache/nba_parlay
+          key: nba-parlay-cache-${{ hashFiles('nba_parlay/config.yaml') }}-${{ github.run_id }}
+          restore-keys: |
+            nba-parlay-cache-${{ hashFiles('nba_parlay/config.yaml') }}-
+
+      - name: Materialize config
+        run: |
+          if [ ! -f config.yaml ]; then cp config.example.yaml config.yaml; fi
+
+      - name: Fetch latest season data
+        run: nba-parlay fetch
+
+      - name: Train (only if no artifacts exist)
+        run: |
+          if [ ! -d .cache/nba_parlay/models/props ]; then
+            nba-parlay train
+          fi
+
+      - name: Send daily report
+        env:
+          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: nba-parlay daily

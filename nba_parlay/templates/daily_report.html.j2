@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NBA Parlay — {{ report_date }}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #f6f7f9; margin: 0; padding: 24px; }
+  .wrap { max-width: 760px; margin: 0 auto; background: #fff; padding: 28px;
+          border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 28px 0 8px; color: #444; text-transform: uppercase; letter-spacing: 0.06em; }
+  .sub { color: #6b7280; font-size: 13px; margin-bottom: 18px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+  th { background: #fafbfc; color: #555; font-weight: 600; }
+  .parlay { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.ev { background: #ecfdf5; color: #047857; }
+  .badge.k  { background: #eff6ff; color: #1d4ed8; }
+  .leg { padding: 6px 0; border-bottom: 1px dashed #eee; }
+  .leg:last-child { border-bottom: none; }
+  .meta { color: #6b7280; font-size: 12px; }
+  .footer { color: #9ca3af; font-size: 11px; margin-top: 24px; line-height: 1.5; }
+  code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>NBA Elite Parlays — {{ report_date }}</h1>
+  <div class="sub">{{ games | length }} games on the slate · {{ legs | length }} candidate legs ·
+       {{ parlays | length }} parlays surfaced</div>
+
+  {% if parlays %}
+  <h2>Top parlays by expected value</h2>
+  {% for p in parlays %}
+    <div class="parlay">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <strong>Parlay #{{ loop.index }}</strong> &middot;
+          combined <code>{{ "%+d"|format(p.american) }}</code> ({{ "%.2f"|format(p.combined_decimal) }}x)
+        </div>
+        <div>
+          <span class="badge ev">EV {{ "%.1f"|format(p.expected_value*100) }}%</span>
+          <span class="badge k">Kelly {{ "%.2f"|format(p.kelly_fraction*100) }}%</span>
+        </div>
+      </div>
+      <div class="meta">model joint {{ "%.1f"|format(p.joint_prob*100) }}% &middot;
+           book implied {{ "%.1f"|format(p.implied_prob*100) }}% &middot;
+           edge {{ "%.1f"|format(p.edge*100) }}pts
+           {% if p.correlation_adjustment != 1.0 %}&middot; corr ×{{ "%.2f"|format(p.correlation_adjustment) }}{% endif %}
+      </div>
+      {% for leg in p.legs %}
+        <div class="leg">
+          <div><strong>{{ leg.selection }}</strong>
+               {% if leg.side %}{{ leg.side|capitalize }}{% endif %}
+               {% if leg.point is not none %}{{ leg.point }}{% endif %}
+               <span class="meta"> &middot; {{ leg.market }} &middot; {{ leg.book }}</span>
+          </div>
+          <div class="meta">model {{ "%.1f"|format(leg.model_prob*100) }}% vs book {{ "%.1f"|format(leg.implied_prob*100) }}%
+               &middot; price {{ "%.2f"|format(leg.price_decimal) }}x
+               &middot; edge {{ "%.1f"|format(leg.edge*100) }}pts</div>
+        </div>
+      {% endfor %}
+      {% if p.notes %}<div class="meta" style="margin-top:6px;">notes: {{ p.notes|join(", ") }}</div>{% endif %}
+    </div>
+  {% endfor %}
+  {% else %}
+  <p>No parlays cleared the edge threshold today. The model passes when the slate doesn&rsquo;t offer value.</p>
+  {% endif %}
+
+  <h2>Game predictions</h2>
+  <table>
+    <thead><tr><th>Matchup</th><th>Total</th><th>Spread</th><th>Home win%</th></tr></thead>
+    <tbody>
+    {% for g in games %}
+      <tr>
+        <td>{{ g.away }} @ {{ g.home }}</td>
+        <td>{{ "%.1f"|format(g.total) }}</td>
+        <td>{{ "%+.1f"|format(g.spread) }}</td>
+        <td>{{ "%.0f"|format(g.home_win_prob*100) }}%</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    Predictions are statistical estimates derived from historical play-by-play
+    and box-score data via the <a href="https://github.com/shufinskiy/nba_data">shufinskiy/nba_data</a>
+    archives. Probabilities are not guarantees. Sports betting carries financial
+    risk; never stake more than you can afford to lose. For entertainment and
+    research purposes only.
+  </div>
+</div>
+</body>
+</html>

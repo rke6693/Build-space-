@@ -1,0 +1,78 @@
+# NBA Parlay configuration. Copy to config.yaml and edit.
+
+data:
+  # Where downloaded archives + parquet caches live.
+  cache_dir: ./.cache/nba_parlay
+  # Seasons to use for training (NBA "season start year"; e.g. 2023 == 2023-24).
+  train_seasons: [2018, 2019, 2020, 2021, 2022, 2023]
+  # Season currently being predicted (must also be downloaded for in-season features).
+  current_season: 2024
+  # Datasets to pull from shufinskiy/nba_data. Each becomes a release-tag fetch.
+  shufinskiy_datasets:
+    - nbastats        # team + player box stats from stats.nba.com
+    - pbpstats        # play-by-play
+    - shotdetail      # shot-level data
+    - datanba         # data.nba.com box scores
+
+odds:
+  # Sportsbook odds source. The Odds API (https://the-odds-api.com).
+  provider: theoddsapi
+  region: us
+  # Which markets to pull for each game. Player props are included for top books.
+  markets:
+    - h2h            # moneyline
+    - spreads
+    - totals
+    - player_points
+    - player_rebounds
+    - player_assists
+    - player_threes
+  # Books to include. Empty = all available.
+  bookmakers: [draftkings, fanduel, betmgm, caesars]
+
+models:
+  # Where trained model artifacts are written.
+  artifact_dir: ./.cache/nba_parlay/models
+  # LightGBM hyperparameters used as defaults; override per target if needed.
+  lightgbm:
+    num_leaves: 63
+    learning_rate: 0.05
+    n_estimators: 800
+    min_child_samples: 30
+    feature_fraction: 0.8
+    bagging_fraction: 0.8
+    bagging_freq: 5
+  # Quantile regression points used to build per-prop predictive distributions.
+  prop_quantiles: [0.1, 0.25, 0.5, 0.75, 0.9]
+
+parlay:
+  # How many "elite" parlays to surface in the daily report.
+  top_n: 5
+  # Number of legs per parlay (the optimizer searches 2..max_legs).
+  min_legs: 2
+  max_legs: 4
+  # Only consider legs with model edge >= edge_threshold (probability points).
+  edge_threshold: 0.05
+  # Minimum implied book probability to consider (avoid total moonshots as legs).
+  min_leg_prob: 0.45
+  # Maximum implied book probability per leg (avoid heavy favorites that don't move the needle).
+  max_leg_prob: 0.85
+  # Bankroll fraction for fractional Kelly recommendation (0..1).
+  kelly_fraction: 0.25
+  # Correlation handling: "penalize" multiplies joint by (1 - rho) factor; "block" forbids correlated legs from same game.
+  correlation_mode: penalize
+
+report:
+  # SMTP-based delivery; works with Gmail App Passwords, SES, Postmark, etc.
+  smtp:
+    host: smtp.gmail.com
+    port: 587
+    use_tls: true
+  # Recipients of the daily report.
+  recipients:
+    - you@example.com
+  # From-address shown in the email.
+  from_address: "NBA Parlay Bot <bot@example.com>"
+  subject_prefix: "[NBA Parlay]"
+  # Time (US/Eastern) the daily pipeline expects to run.
+  daily_run_local: "10:30"
