@@ -1,69 +1,104 @@
-# Space Runner — monetized 3D runner
+# Squishymon: Echoes of Lumenfen
 
-A Next.js 14 micro-SaaS built around the `public/game/index.html` endless runner.
-Free tier with 3 runs/day; **Pro ($4.99/mo)** removes the limit and unlocks the
-global leaderboard.
+A complete browser game about staying soft in a world built to press everything flat. You play Gloob, a translucent marsh creature who stores pressure by squishing and releases it as a spring-loaded jump.
 
-## Stack
+No build step, no runtime dependencies, and no third-party requests: three generated PNGs, two self-hosted font files, some CSS, and about three thousand lines of ES modules.
 
-- **Next.js 14** (App Router, TypeScript) on Vercel
-- **Postgres** (Neon) via **Prisma**
-- **Auth.js v5**: magic-link email (Resend) + Google OAuth
-- **Stripe** Checkout + Customer Portal + signed webhooks
-- **Upstash Redis** for rate limiting (falls back to in-memory in dev)
-- **Vitest** for unit tests; **Playwright** for E2E
+![Gloob mid-spring over the Lantern Run](docs/screenshots/gameplay.jpg)
 
-## Security posture (baked in, not bolted on)
+| | |
+| --- | --- |
+| ![Title screen](docs/screenshots/title.jpg) | ![The Press in the Pressure Chamber](docs/screenshots/boss.jpg) |
 
-| Surface | Control |
-|---|---|
-| Auth | Magic-link only in v1 (no password storage); rotating DB sessions; HttpOnly+Secure+SameSite cookies |
-| Login throttling | Per-IP+email sliding window (Upstash); in-memory fallback |
-| API | Every route zod-validated; every query owner-scoped (no IDOR); origin check on state-changing routes |
-| Anti-cheat | Server-issued run tokens (HMAC-SHA256), single-use, TTL, plausibility bounds |
-| Billing | Price IDs server-resolved from allowlist; webhook signature + event-ID dedupe |
-| Web | Strict CSP with per-request nonce; HSTS; frame-ancestors `'self'`; redacted logs |
-| Data | Emails redacted on public leaderboard; audit log for auth + billing events |
-
-## Getting started
+## Play
 
 ```bash
-cp .env.example .env.local
-# fill in real values for AUTH_SECRET, DATABASE_URL, STRIPE_*, RUN_TOKEN_SECRET
-npm install
-npx prisma migrate dev
-npm run dev
+npm start
 ```
 
-Stripe webhook for local dev:
+Then open <http://127.0.0.1:4173>. The server binds to loopback only and serves nothing outside `index.html`, `src/`, `styles/`, and `assets/`.
+
+## Controls
+
+| Action | Keyboard | Gamepad | Touch |
+| --- | --- | --- | --- |
+| Move | `A` / `D` or arrows | Left stick or D-pad | Two large move buttons |
+| Squish | Hold `Space` | Any face button or RT | Hold the yellow button |
+| Spring | Release `Space` | Release | Release |
+| Pause | `P` or `Escape` | — | Pause in the header |
+| Sound | `M` | — | Sound in the header |
+
+There is no attack button. Gloob's elastic body is the verb: bounce on Needlers and Drifters, break amber locks with a charged landing, ride the brass shelves, jump the Press's shockwaves, and strike its coral eye during the opening after a slam.
+
+A squish held through a landing keeps charging, and a squish pressed just before touchdown is buffered — you never lose a jump to a frame of bad timing.
+
+| | |
+| --- | --- |
+| ![The how-to-play panel](docs/screenshots/howto.jpg) | ![Portrait phone layout with the touch dock](docs/screenshots/mobile.jpg) |
+
+## Campaign
+
+1. **Lantern Run** — collect eight Echo Seeds and reach the coral beacon.
+2. **Root Vault** — gather ten seeds and break three cages to rescue captive Plinks.
+3. **Pressure Chamber** — face the Press, a preservation automaton convinced that one permanent shape is the safest shape. At half health it stops being patient.
+
+The story follows Gloob and the guiding mote Mote through Lumenfen's flooded research ruins. Field notes unlock as characters and creatures are encountered. Once you finish an act it stays available from the title screen, so you can replay a single chapter for a better time.
+
+## What is in the box
+
+**Movement and world**
+
+- Fixed 120 Hz simulation with an accumulator, so physics is identical on a 60 Hz laptop and a 144 Hz monitor
+- Squish charging with coyote grace and an input buffer across landings
+- Moving brass shelves that carry the player, Bloomspring pads, patrolling Needlers, floating Drifters
+- Echo chains: seeds gathered in quick succession raise a multiplier and lift the pickup arpeggio a scale degree at a time
+- Checkpoints, hearts, mercy frames, per-act best times, and a full-run best
+
+**Presentation**
+
+- Canvas rendering at the device pixel ratio: parallax plate, wet reflections, rain, grain, fog, reactive lighting, particles, camera impact, and squash-and-stretch
+- Procedural Web Audio for the entire soundtrack and every cue — no audio files ship with the game
+- All canvas colours read from the same CSS custom properties as the page chrome, so the field and the UI can never drift apart
+
+**Comfort and access**
+
+- Assist mode: five hearts, a faster charge, longer mercy, and a slower Press
+- Motion preference: follow the system, force full, or force reduced
+- Keyboard, touch, and gamepad, all merged into one input snapshot
+- Live-region narration for objectives, damage, unlocks, and act changes; every dialog is a native `<dialog>` with an accessible name
+- Progress, settings, and field notes persist locally, and the game says so plainly when a browser blocks storage
+
+## Verify
+
 ```bash
-stripe listen --forward-to localhost:3000/api/billing/webhook
+npm run check
 ```
 
-## Scripts
+That runs three things:
 
-- `npm run dev` — dev server
-- `npm run build` — prod build
-- `npm test` — unit tests
-- `npm run e2e` — Playwright
-- `npm run typecheck` — TypeScript check
-- `npm run db:migrate` — Prisma migrations
+| Command | What it covers |
+| --- | --- |
+| `npm run check:syntax` | Parses every shipped module with `node --check` |
+| `npm run check:static` | Markup/module contracts, token-only CSS, image a11y attributes, art checksums |
+| `npm test` | 88 unit tests over the simulation, save format, level data, input, and server path policy |
+
+The simulation is deliberately free of `document`, `window`, and `navigator`, so the full rule set — physics, damage, the boss state machine, act flow — is exercised headlessly in Node. The static check enforces that.
 
 ## Layout
 
 ```
-app/
-  page.tsx, pricing/, login/, dashboard/, leaderboard/, play/
-  api/
-    auth/[...nextauth]/         # Auth.js
-    billing/{checkout,portal,webhook}/
-    run/start/                  # issues HMAC run token
-    scores/                     # verifies token + plausibility
-    leaderboard/
-lib/
-  auth, db, env, stripe, entitlement, ratelimit, runtoken, security, validation, logger
-public/game/index.html          # the actual 3D game, served in a sandboxed iframe
-prisma/schema.prisma
-middleware.ts                   # CSP nonce, auth gate
-tests/unit/                     # runtoken, validation, security
+index.html            markup and the ids src/ui/dom.js requires
+server.mjs            zero-dependency dev server with a strict path policy
+src/core/             constants, math, the event queue
+src/data/             creatures, story beats, level geometry
+src/game/             simulation, level building, input, save format
+src/audio/            procedural Web Audio
+src/render/           viewport, palette, effects, scene
+src/ui/               DOM lookup, HUD, dialogs, panels, announcer
+assets/art/           the three generated plates
+assets/fonts/         self-hosted variable fonts and their OFL licenses
+tests/                unit tests plus whole-project static checks
+docs/                 architecture notes, asset provenance, screenshots
 ```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how a frame flows through those pieces, and [docs/ASSET_PROVENANCE.md](docs/ASSET_PROVENANCE.md) for the art paths, dimensions, checksums, and exact generation prompts.

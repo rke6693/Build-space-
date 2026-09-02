@@ -1,0 +1,96 @@
+/* Hallmark · tokens: Hum · game register: Lumenfen */
+:root {
+  --color-paper: oklch(97% 0.012 95);
+  --color-paper-2: oklch(94% 0.016 95);
+  --color-paper-3: oklch(90% 0.022 95);
+  --color-ink: oklch(20% 0.012 250);
+  --color-ink-2: oklch(32% 0.018 250);
+  --color-muted: oklch(45% 0.02 250);
+  --color-rule: oklch(76% 0.028 95);
+  --color-rule-strong: oklch(48% 0.03 250);
+  --color-accent: oklch(86% 0.18 95);
+  --color-accent-deep: oklch(62% 0.16 95);
+  --color-accent-ink: oklch(19% 0.025 95);
+  --color-accent-2: oklch(66% 0.18 235);
+  --color-accent-2-deep: oklch(46% 0.14 235);
+  --color-accent-2-ink: oklch(18% 0.022 235);
+  --color-accent-3: oklch(68% 0.24 18);
+  --color-accent-3-deep: oklch(48% 0.18 18);
+  --color-accent-3-ink: oklch(19% 0.025 18);
+  --color-mint: oklch(80% 0.16 150);
+  --color-mint-deep: oklch(48% 0.12 150);
+  --color-lavender: oklch(74% 0.16 305);
+  --color-focus: oklch(54% 0.2 265);
+  --color-error: oklch(56% 0.22 28);
+  --color-success: oklch(52% 0.15 150);
+
+  --color-game-night: oklch(14% 0.045 246);
+  --color-game-deep: oklch(18% 0.052 238);
+  --color-game-sky: oklch(40% 0.09 232);
+  --color-game-water: oklch(28% 0.09 222);
+  --color-game-stone: oklch(25% 0.035 224);
+  --color-game-stone-hi: oklch(44% 0.05 210);
+  --color-game-moss: oklch(38% 0.1 145);
+  --color-game-moss-hi: oklch(64% 0.16 138);
+  --color-game-spore: oklch(91% 0.19 102);
+  --color-game-cyan: oklch(77% 0.16 210);
+  --color-game-coral: oklch(69% 0.24 25);
+  --color-game-brass: oklch(66% 0.11 77);
+  --color-game-thorn: oklch(48% 0.15 135);
+  --color-game-shadow: oklch(9% 0.025 245);
+
+  --font-display: "Bricolage Grotesque", "Plus Jakarta Sans", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-label: "Plus Jakarta Sans", sans-serif;
+
+  --text-xs: 0.7rem;
+  --text-sm: 0.82rem;
+  --text-base: 1rem;
+  --text-md: 1.2rem;
+  --text-lg: 1.5rem;
+  --text-xl: 1.9rem;
+  --text-2xl: 2.45rem;
+  --text-3xl: 3.15rem;
+  --text-display: clamp(3.1rem, 8vw + 1rem, 7rem);
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --touch-dock-clearance: 7rem;
+
+  --radius-sm: 0.5rem;
+  --radius-input: 0.75rem;
+  --radius-card: 1.25rem;
+  --radius-hero: 1.75rem;
+  --radius-pill: 999px;
+
+  --rule-hair: 1px;
+  --rule-strong: 2px;
+  --rule-heavy: 3px;
+  --focus-inset: -3px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 200;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  --shadow-contact: 0 2px 0 color-mix(in oklch, var(--color-ink) 18%, transparent);
+  --shadow-soft: 0 18px 50px color-mix(in oklch, var(--color-game-shadow) 26%, transparent);
+  --shadow-ui: 0 8px 28px color-mix(in oklch, var(--color-game-shadow) 34%, transparent);
+}

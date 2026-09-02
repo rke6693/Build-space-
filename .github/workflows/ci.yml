@@ -1,37 +1,49 @@
-name: ci
+name: check
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   check:
     runs-on: ubuntu-latest
-    env:
-      # Stub values for build-time env validation.
-      NEXTAUTH_URL: http://localhost:3000
-      AUTH_SECRET: test-secret-test-secret-test-secret
-      DATABASE_URL: postgresql://user:pw@localhost/db
-      STRIPE_SECRET_KEY: sk_test_stub
-      STRIPE_WEBHOOK_SECRET: whsec_stub
-      STRIPE_PRICE_PRO_MONTHLY: price_stub
-      RUN_TOKEN_SECRET: test-run-token-secret-at-least-32-bytes-long
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npx prisma generate
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - name: npm audit (prod only, fail on high)
-        run: npm audit --omit=dev --audit-level=high
-      - name: Secret scan
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          config-path: .gitleaks.toml
-        continue-on-error: true
+          node-version: ${{ matrix.node }}
+
+      # The project has no dependencies, so there is nothing to install.
+      - name: Parse every module
+        run: npm run check:syntax
+
+      - name: Static project checks
+        run: npm run check:static
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Dev server boots and serves the game
+        run: |
+          node server.mjs &
+          server=$!
+          trap 'kill $server' EXIT
+          for i in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:4173/ >/dev/null && break
+            sleep 0.25
+          done
+          curl -fsS http://127.0.0.1:4173/ >/dev/null
+          curl -fsS http://127.0.0.1:4173/src/main.js >/dev/null
+          curl -fsS http://127.0.0.1:4173/styles/app.css >/dev/null
+          curl -fsS http://127.0.0.1:4173/assets/art/gloob.png >/dev/null
+          # Anything outside the shipped directories must be refused.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4173/package.json)" = "404"

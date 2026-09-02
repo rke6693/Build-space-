@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en" data-theme="hum">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <meta name="description" content="Squishymon: Echoes of Lumenfen — a tactile creature platformer about staying soft in a world built to press everything flat." />
+    <!-- Inline so the game makes no favicon request; data URIs cannot read CSS tokens,
+         so these two colours are the only literals outside styles/tokens.css. -->
+    <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M16 3c6 0 11 6 11 13 0 7-5 13-11 13S5 23 5 16C5 9 10 3 16 3Z" fill="%23c9e356"/><circle cx="12" cy="15" r="2.6" fill="%231b1f2a"/><circle cx="20" cy="15" r="2.6" fill="%231b1f2a"/></svg>' />
+    <link rel="preload" as="font" type="font/woff2" href="assets/fonts/bricolage-grotesque-latin.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="assets/fonts/plus-jakarta-sans-latin.woff2" crossorigin />
+    <link rel="preload" as="image" href="assets/art/lumenfen-marsh.png" fetchpriority="high" />
+    <link rel="stylesheet" href="styles/tokens.css" />
+    <link rel="stylesheet" href="styles/app.css" />
+    <title>Squishymon · Echoes of Lumenfen</title>
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-sound" viewBox="0 0 24 24">
+        <path d="M5 9v6h4l5 4V5L9 9H5Z" />
+        <path d="M17 9.5c1.4 1.4 1.4 3.6 0 5M19.5 7c2.8 2.8 2.8 7.2 0 10" />
+      </symbol>
+      <symbol id="icon-mute" viewBox="0 0 24 24">
+        <path d="M5 9v6h4l5 4V5L9 9H5Z" />
+        <path d="m17 10 4 4m0-4-4 4" />
+      </symbol>
+      <symbol id="icon-book" viewBox="0 0 24 24">
+        <path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22V5.5Z" />
+        <path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22V5.5Z" />
+      </symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24">
+        <path d="M7 5v14M17 5v14" />
+      </symbol>
+      <symbol id="icon-gear" viewBox="0 0 24 24">
+        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+        <path d="M19.4 13a7.9 7.9 0 0 0 0-2l2-1.5-2-3.4-2.3 1a7.9 7.9 0 0 0-1.7-1L14.8 3H9.2l-.6 2.6a7.9 7.9 0 0 0-1.7 1l-2.3-1-2 3.4L4.6 11a7.9 7.9 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7.9 7.9 0 0 0 1.7 1l.6 2.6h5.6l.6-2.6a7.9 7.9 0 0 0 1.7-1l2.3 1 2-3.4Z" />
+      </symbol>
+      <symbol id="icon-arrow" viewBox="0 0 24 24">
+        <path d="M5 12h14M14 7l5 5-5 5" />
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" />
+      </symbol>
+    </svg>
+
+    <div id="app" class="game-app" data-mode="title">
+      <header class="nav-slab" id="gameHeader">
+        <button class="slab-mark" id="homeButton" type="button" aria-label="Open the Squishymon game menu">
+          SQUISHYMON
+          <span>Echoes of Lumenfen</span>
+        </button>
+
+        <div class="run-status" role="group" aria-label="Current run status">
+          <div class="status-cell status-cell--chapter">
+            <span class="status-label">PLACE</span>
+            <strong id="chapterStatus">LUMENFEN</strong>
+          </div>
+          <div class="status-cell">
+            <span class="status-label">SEEDS</span>
+            <strong id="seedStatus">0 / 8</strong>
+          </div>
+          <div class="status-cell">
+            <span class="status-label">HEARTS</span>
+            <strong id="heartStatus" role="img" aria-label="Three hearts">● ● ●</strong>
+          </div>
+          <div class="status-cell status-cell--time">
+            <span class="status-label">TIME</span>
+            <strong id="timeStatus">0:00</strong>
+          </div>
+        </div>
+
+        <nav class="slab-actions" aria-label="Game controls">
+          <button class="icon-button" id="bestiaryButton" type="button" aria-label="Open field notes" title="Field notes">
+            <svg aria-hidden="true"><use href="#icon-book"></use></svg>
+            <span>FIELD NOTES</span>
+          </button>
+          <button class="icon-button" id="settingsButton" type="button" aria-label="Open settings" title="Settings">
+            <svg aria-hidden="true"><use href="#icon-gear"></use></svg>
+            <span>SETTINGS</span>
+          </button>
+          <button class="icon-button" id="soundButton" type="button" aria-pressed="false" aria-label="Turn sound on" title="Sound">
+            <svg aria-hidden="true"><use id="soundUse" href="#icon-mute"></use></svg>
+            <span id="soundLabel">SOUND OFF</span>
+          </button>
+          <button class="icon-button" id="pauseButton" type="button" aria-label="Pause game" title="Pause" disabled>
+            <svg aria-hidden="true"><use href="#icon-pause"></use></svg>
+            <span>PAUSE</span>
+          </button>
+        </nav>
+      </header>
+
+      <main class="stage" id="stage">
+        <canvas id="gameCanvas" width="1280" height="720" tabindex="-1" aria-label="Squishymon game field. Move with A and D or the arrow keys. Hold Space to squish, then release to spring.">
+          Your browser needs canvas support to play Squishymon.
+        </canvas>
+
+        <section class="title-screen" id="titleScreen" aria-labelledby="gameTitle">
+          <div class="title-copy reveal" style="--i: 0">
+            <p class="title-kicker">A small creature. A very large machine.</p>
+            <h1 id="gameTitle">SQUISHYMON</h1>
+            <p class="title-sub">Echoes of Lumenfen</p>
+            <p class="title-lede">Stay soft. Store the pressure. Spring back harder.</p>
+            <div class="title-actions">
+              <button class="btn btn--pear btn--lg" id="startButton" type="button">
+                <span id="startLabel">Begin the bloom</span>
+                <svg aria-hidden="true"><use href="#icon-arrow"></use></svg>
+              </button>
+              <button class="btn btn--soft" id="howButton" type="button">How to play</button>
+            </div>
+
+            <div class="chapter-select" id="chapterSelect" hidden>
+              <p class="status-label" id="chapterSelectLabel">START FROM</p>
+              <div class="chapter-select__row" role="group" aria-labelledby="chapterSelectLabel" id="chapterButtons"></div>
+            </div>
+
+            <dl class="title-stats" id="titleStats" hidden>
+              <div><dt>Best run</dt><dd id="statBestTime">—</dd></div>
+              <div><dt>Runs won</dt><dd id="statWins">0</dd></div>
+              <div><dt>Best echo chain</dt><dd id="statChain">0</dd></div>
+            </dl>
+
+            <p class="continue-note" id="continueNote" hidden>Your last visit left a faint glow. Starting again keeps your field notes.</p>
+          </div>
+
+          <figure class="title-creature reveal" style="--i: 1">
+            <img src="assets/art/gloob.png" width="1236" height="1272" alt="Gloob, a translucent chartreuse Squishymon with a tiny leaf sprout and fireflies glowing inside" fetchpriority="high" />
+            <figcaption>Gloob can turn pressure into lift.</figcaption>
+          </figure>
+
+          <div class="title-annotation" aria-hidden="true">
+            <span></span>
+            <p>Built from jelly.<br />Held together by nerve.</p>
+          </div>
+        </section>
+
+        <section class="hud" id="hud" aria-label="Game heads-up display" hidden>
+          <div class="objective-ribbon" id="objectiveRibbon">
+            <div class="objective-ribbon__top">
+              <span class="status-label">CURRENT WORK</span>
+              <span class="objective-hearts" id="objectiveHearts" role="img" aria-label="Three hearts">● ● ●</span>
+            </div>
+            <strong id="objectiveText">Gather 8 Echo Seeds</strong>
+          </div>
+
+          <div class="chain-pip" id="chainPip" hidden aria-hidden="true">
+            <span id="chainCount">×2</span>
+            <i id="chainDecay"></i>
+          </div>
+
+          <div class="boss-meter" id="bossMeter" hidden>
+            <div class="boss-meter__label">
+              <span id="bossPhaseLabel">THE PRESS</span>
+              <span id="bossHealthText">6 / 6</span>
+            </div>
+            <div class="boss-meter__track" id="bossHealthTrack" role="progressbar" aria-label="The Press health" aria-valuemin="0" aria-valuemax="6" aria-valuenow="6"><i id="bossHealthFill"></i></div>
+          </div>
+
+          <div class="act-banner" id="actBanner" hidden aria-hidden="true">
+            <span class="status-label" id="actBannerAct">ACT I</span>
+            <strong id="actBannerName">LANTERN RUN</strong>
+            <p id="actBannerLine">Rain has stopped.</p>
+          </div>
+
+          <div class="charge-dock" id="chargeDock">
+            <div class="charge-copy">
+              <span class="status-label">SQUISH</span>
+              <strong id="chargeLabel">Ready</strong>
+            </div>
+            <div class="charge-track" role="progressbar" aria-label="Squish charge" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="chargeTrack">
+              <i id="chargeFill"></i>
+            </div>
+            <span class="key-hint">HOLD SPACE · RELEASE TO SPRING</span>
+          </div>
+
+          <div class="touch-controls" id="touchControls" role="group" aria-label="Touch controls">
+            <div class="touch-controls__move">
+              <button class="touch-button" id="leftButton" type="button" aria-label="Move left">←</button>
+              <button class="touch-button" id="rightButton" type="button" aria-label="Move right">→</button>
+            </div>
+            <button class="touch-button touch-button--squish" id="squishButton" type="button">HOLD TO SQUISH</button>
+          </div>
+        </section>
+
+        <section class="end-screen" id="endScreen" hidden aria-live="polite">
+          <div class="end-screen__art" aria-hidden="true">
+            <img src="assets/art/gloob.png" width="1236" height="1272" alt="" loading="lazy" />
+          </div>
+          <div class="end-screen__copy">
+            <p class="title-kicker" id="endKicker">LUMENFEN BREATHES AGAIN</p>
+            <h2 id="endTitle">Softness won.</h2>
+            <p id="endText">The marsh remembers every shape it was allowed to become.</p>
+            <dl class="run-summary">
+              <div><dt>Echo Seeds</dt><dd id="finalSeeds">0</dd></div>
+              <div><dt>Rescued</dt><dd id="finalRescues">0</dd></div>
+              <div><dt>Best chain</dt><dd id="finalChain">0</dd></div>
+              <div><dt>Time</dt><dd id="finalTime">0:00</dd></div>
+            </dl>
+            <p class="record-note" id="recordNote" hidden>New best run.</p>
+            <div class="title-actions">
+              <button class="btn btn--pear" id="replayButton" type="button">Play again</button>
+              <button class="btn btn--soft" id="notesFromEndButton" type="button">Read field notes</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="rotate-note" aria-hidden="true">Turn your phone sideways for the widest patch of marsh.</div>
+      </main>
+
+      <footer class="foot-marquee" id="titleFooter" aria-label="Squishymon footer">
+        <div class="foot-marquee__track" aria-hidden="true">
+          <span>SQUISH · STORE · SPRING · SAVE LUMENFEN · STAY SOFT ·</span>
+          <span>SQUISH · STORE · SPRING · SAVE LUMENFEN · STAY SOFT ·</span>
+        </div>
+        <p class="visually-hidden">Squish, store, spring, save Lumenfen, stay soft.</p>
+      </footer>
+    </div>
+
+    <dialog class="story-dialog" id="storyDialog" aria-labelledby="storySpeaker">
+      <div class="story-dialog__surface">
+        <figure class="story-portrait" id="storyPortrait">
+          <img id="storyPortraitImage" src="assets/art/gloob.png" width="1236" height="1272" alt="" />
+          <span class="mote-portrait" id="motePortrait" hidden aria-hidden="true"><i></i></span>
+        </figure>
+        <div class="story-copy">
+          <span class="status-label" id="storyChapter">PROLOGUE</span>
+          <h2 id="storySpeaker">Mote</h2>
+          <p id="storyText" aria-live="polite" aria-atomic="true">Gloob? Good. You still wobble.</p>
+          <div class="story-progress" id="storyProgress" role="progressbar" aria-label="Dialogue progress" aria-valuemin="1" aria-valuemax="1" aria-valuenow="1"></div>
+          <div class="story-actions">
+            <button class="btn btn--pear" id="storyNextButton" type="button">Keep listening</button>
+            <button class="btn btn--soft" id="storySkipButton" type="button">Skip scene</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="panel-dialog how-dialog" id="howDialog" aria-labelledby="howTitle">
+      <form method="dialog">
+        <button class="dialog-close" value="close" aria-label="Close how to play">
+          <svg aria-hidden="true"><use href="#icon-close"></use></svg>
+        </button>
+      </form>
+      <div class="dialog-heading">
+        <p class="title-kicker">THE WHOLE TRICK</p>
+        <h2 id="howTitle">Pressure becomes lift.</h2>
+      </div>
+      <ol class="how-list">
+        <li><span class="how-mark how-mark--move" aria-hidden="true">↔</span><div><strong>Move</strong><p>Use A / D, the arrow keys, a gamepad stick, or the two large touch buttons.</p></div></li>
+        <li><span class="how-mark how-mark--squish" aria-hidden="true"></span><div><strong>Squish</strong><p>Hold Space, a gamepad face button, or the yellow button while grounded. Gloob stores the pressure. Hold it through a landing and the charge carries over.</p></div></li>
+        <li><span class="how-mark how-mark--spring" aria-hidden="true">↑</span><div><strong>Spring</strong><p>Release to launch. Land on Needlers and Drifters, break amber locks, ride the moving shelves, and strike the Press while its eye is open.</p></div></li>
+      </ol>
+      <p class="how-aside">There is no attack button. Gloob’s body is the verb.</p>
+    </dialog>
+
+    <dialog class="panel-dialog field-dialog" id="fieldDialog" aria-labelledby="fieldTitle">
+      <form method="dialog">
+        <button class="dialog-close" value="close" aria-label="Close field notes">
+          <svg aria-hidden="true"><use href="#icon-close"></use></svg>
+        </button>
+      </form>
+      <div class="dialog-heading">
+        <p class="title-kicker">FIELD NOTES</p>
+        <h2 id="fieldTitle">Things that refuse one shape.</h2>
+        <p>Entries appear when Gloob meets someone new.</p>
+      </div>
+      <div class="field-grid" id="fieldGrid"></div>
+    </dialog>
+
+    <dialog class="panel-dialog settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+      <form method="dialog">
+        <button class="dialog-close" value="close" aria-label="Close settings">
+          <svg aria-hidden="true"><use href="#icon-close"></use></svg>
+        </button>
+      </form>
+      <div class="dialog-heading">
+        <p class="title-kicker">COMFORT</p>
+        <h2 id="settingsTitle">Set the marsh to your pace.</h2>
+        <p>Changes apply immediately and are remembered on this device.</p>
+      </div>
+      <div class="setting-list">
+        <div class="setting-row">
+          <div>
+            <strong>Sound</strong>
+            <p>Procedural ambience, rain, and every cue.</p>
+          </div>
+          <button class="btn btn--soft toggle" id="soundToggle" type="button" role="switch" aria-checked="false">Off</button>
+        </div>
+        <div class="setting-row">
+          <div>
+            <strong>Assist mode</strong>
+            <p>Five hearts, a faster squish charge, longer mercy after a hit, and a slower Press.</p>
+          </div>
+          <button class="btn btn--soft toggle" id="assistToggle" type="button" role="switch" aria-checked="false">Off</button>
+        </div>
+        <div class="setting-row">
+          <div>
+            <strong>Motion</strong>
+            <p>Reduced motion trims screen shake, rain, and particle counts.</p>
+          </div>
+          <div class="segmented" role="group" aria-label="Motion">
+            <button class="segmented__option" id="motionSystem" type="button" aria-pressed="true">System</button>
+            <button class="segmented__option" id="motionFull" type="button" aria-pressed="false">Full</button>
+            <button class="segmented__option" id="motionReduced" type="button" aria-pressed="false">Reduced</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <strong>Saved progress</strong>
+            <p>Field notes, best times, and unlocked acts on this device.</p>
+          </div>
+          <button class="btn btn--soft" id="resetSaveButton" type="button">Erase</button>
+        </div>
+      </div>
+      <p class="settings-note" id="settingsNote" hidden>This browser is blocking local storage, so progress will not persist.</p>
+    </dialog>
+
+    <dialog class="pause-dialog" id="pauseDialog" aria-labelledby="pauseTitle">
+      <div class="pause-dialog__mark" aria-hidden="true"><span></span><span></span></div>
+      <p class="title-kicker">THE MARSH CAN WAIT</p>
+      <h2 id="pauseTitle">Paused.</h2>
+      <p>Take the pressure off for a minute.</p>
+      <div class="pause-actions">
+        <button class="btn btn--pear" id="resumeButton" type="button">Return to the marsh</button>
+        <button class="btn btn--soft" id="restartButton" type="button">Restart this act</button>
+        <button class="btn btn--soft" id="quitButton" type="button">Back to title</button>
+      </div>
+    </dialog>
+
+    <div class="announcer visually-hidden" id="announcer" aria-live="polite" aria-atomic="true"></div>
+    <div class="toast" id="toast" role="status" hidden></div>
+
+    <noscript>
+      <p class="noscript-message">Squishymon needs JavaScript for physics, sound, and the marsh to wake up.</p>
+    </noscript>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
