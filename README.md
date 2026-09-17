@@ -49,6 +49,22 @@ stripe listen --forward-to localhost:3000/api/billing/webhook
 - `npm run typecheck` — TypeScript check
 - `npm run db:migrate` — Prisma migrations
 
+## Hermes voice relay (Apple Watch)
+
+Press the Action button on an Apple Watch Ultra 2, speak, and what you said
+reaches your Hermes agent as a structured action — a reminder with a due date, a
+line on a list, a note. The watch transcribes on-device and signs the payload;
+the relay interprets it and fans it out to Telegram, SMS, a webhook, or email.
+
+- Watch and iPhone app: [`hermes-watch/`](hermes-watch/) (watchOS 11+, XcodeGen)
+- Pairing and delivery log: `/hermes`
+- Configuration: see *Hermes voice relay* in `.env.example` — every var is
+  optional, and captures still work with none of them set.
+
+Security: device secrets are exchanged once at pairing and sealed at rest with
+AES-256-GCM; every request is HMAC-signed over method, path, timestamp, nonce
+and body digest, with single-use nonces for replay protection.
+
 ## Layout
 
 ```
@@ -60,10 +76,19 @@ app/
     run/start/                  # issues HMAC run token
     scores/                     # verifies token + plausibility
     leaderboard/
+    hermes/
+      pair/                     # redeem a pairing code for a device secret
+      capture/                  # signed, idempotent, batched voice captures
+      inbox/                    # agent replies, polled by the watch
+      device/                   # session-authed pairing codes + revocation
+      telegram/webhook/         # inbound replies from the agent
+  hermes/                       # pairing + capture dashboard
 lib/
   auth, db, env, stripe, entitlement, ratelimit, runtoken, security, validation, logger
+  hermes/                       # crypto, device auth, intent, chrono, llm, dispatch, channels
 public/game/index.html          # the actual 3D game, served in a sandboxed iframe
+hermes-watch/                   # watchOS + iOS apps (XcodeGen project)
 prisma/schema.prisma
 middleware.ts                   # CSP nonce, auth gate
-tests/unit/                     # runtoken, validation, security
+tests/unit/                     # runtoken, validation, security, hermes
 ```

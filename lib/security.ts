@@ -1,5 +1,3 @@
-import crypto from 'node:crypto';
-
 // Origin check for state-changing requests. Prevents trivial CSRF even where
 // SameSite=Lax would allow (e.g., top-level POST via form submit).
 export function isSameOrigin(req: Request, expectedOrigin: string): boolean {
@@ -16,7 +14,14 @@ export function isSameOrigin(req: Request, expectedOrigin: string): boolean {
 }
 
 export function generateCspNonce(): string {
-  return crypto.randomBytes(16).toString('base64');
+  // Web Crypto, not node:crypto. This module is imported by middleware.ts, which
+  // runs on the Edge runtime — a `node:` import there fails the production build
+  // outright. getRandomValues is a CSPRNG and is present in both runtimes.
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
 }
 
 export function buildCsp(nonce: string): string {

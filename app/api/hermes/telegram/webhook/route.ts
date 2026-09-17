@@ -54,11 +54,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true }); // ack so Telegram stops retrying
   }
 
-  // Which user owns this chat? The bot is bound to one chat id, so attribute it
-  // to the account that most recently paired a device.
+  // Which user owns this chat? The bot token and chat id are global
+  // configuration, so this channel is single-tenant by construction: one bot,
+  // one chat, one person's agent. Attribute replies to the most recently active
+  // device. `nulls: 'last'` matters — Postgres sorts NULLs first on DESC, so
+  // without it a device that has never checked in would outrank a live one.
+  //
+  // If this ever needs to serve several users, the chat id has to move onto the
+  // user record and be looked up here instead.
   const owner = await db.hermesDevice.findFirst({
-    where: { revokedAt: null },
-    orderBy: { lastSeenAt: 'desc' },
+    where: { revokedAt: null, lastSeenAt: { not: null } },
+    orderBy: { lastSeenAt: { sort: 'desc', nulls: 'last' } },
     select: { userId: true },
   });
   if (!owner) return NextResponse.json({ ok: true });
