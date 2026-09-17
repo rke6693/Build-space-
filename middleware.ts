@@ -9,7 +9,10 @@ import { generateCspNonce, buildCsp } from './lib/security';
 // NOTE: Full session validation happens server-side in route handlers. The
 // cookie check here is a cheap fast-path to redirect unauthenticated users.
 
-const PROTECTED_PREFIXES = ['/dashboard', '/play', '/api/scores', '/api/billing/checkout', '/api/billing/portal', '/api/run'];
+// NOTE: /api/hermes/{capture,inbox,pair} are deliberately absent. Those carry a
+// device HMAC signature instead of a session cookie — gating them here would
+// lock out the watch. /api/hermes/device is browser-only, so it stays gated.
+const PROTECTED_PREFIXES = ['/dashboard', '/play', '/hermes', '/api/scores', '/api/billing/checkout', '/api/billing/portal', '/api/run', '/api/hermes/device'];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

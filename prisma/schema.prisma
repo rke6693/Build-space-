@@ -27,6 +27,11 @@ model User {
   runs          Run[]
   auditLogs     AuditLog[]
 
+  hermesDevices  HermesDevice[]
+  hermesPairings HermesPairing[]
+  hermesCaptures HermesCapture[]
+  hermesMessages HermesMessage[]
+
   @@index([createdAt])
 }
 
@@ -151,6 +156,10 @@ enum AuditEvent {
   WEBHOOK_REJECTED
   SCORE_REJECTED
   RATE_LIMITED
+  HERMES_DEVICE_PAIRED
+  HERMES_DEVICE_REVOKED
+  HERMES_SIGNATURE_REJECTED
+  HERMES_CAPTURE_RECEIVED
 }
 
 model AuditLog {
@@ -166,4 +175,154 @@ model AuditLog {
 
   @@index([userId, createdAt])
   @@index([event, createdAt])
+}
+
+// ---------- Hermes voice relay (Apple Watch) ----------
+//
+// A "capture" is one press-and-speak event on the watch. The device transcribes
+// on-device, signs the payload with its paired secret, and POSTs it here. The
+// server classifies it, then fans it out to the user's Hermes agent over every
+// channel they have configured (Telegram, SMS, webhook, email).
+
+enum HermesPlatform {
+  WATCHOS
+  IOS
+  MACOS
+  OTHER
+}
+
+// A paired device. `secretCiphertext` is AES-256-GCM encrypted at rest with a
+// key derived from AUTH_SECRET — rotating AUTH_SECRET invalidates all pairings.
+model HermesDevice {
+  id               String         @id @default(cuid())
+  userId           String
+  name             String
+  platform         HermesPlatform @default(WATCHOS)
+  model            String?
+  secretCiphertext String
+  createdAt        DateTime       @default(now())
+  lastSeenAt       DateTime?
+  revokedAt        DateTime?
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  captures  HermesCapture[]
+  nonces    HermesNonce[]
+
+  @@index([userId, createdAt])
+}
+
+// Short-lived, single-use code shown in the web dashboard and typed on the phone.
+model HermesPairing {
+  id         String    @id @default(cuid())
+  userId     String
+  codeHash   String    @unique // sha256 of the display code; the plaintext never lands in the DB
+  expiresAt  DateTime
+  redeemedAt DateTime?
+  deviceId   String?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// Replay protection for signed device requests. Rows expire after the signature
+// window; a unique (deviceId, nonce) insert is what actually blocks a replay.
+model HermesNonce {
+  id        String   @id @default(cuid())
+  deviceId  String
+  nonce     String
+  expiresAt DateTime
+
+  device HermesDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, nonce])
+  @@index([expiresAt])
+}
+
+enum CaptureIntent {
+  REMINDER
+  TASK
+  LIST_ADD
+  NOTE
+  MESSAGE
+  QUESTION
+  TIMER
+  UNKNOWN
+}
+
+enum CaptureStatus {
+  PENDING
+  DELIVERED
+  PARTIAL
+  FAILED
+}
+
+model HermesCapture {
+  id          String        @id @default(cuid())
+  userId      String
+  deviceId    String
+  clientId    String // device-generated UUID — the idempotency key
+  transcript  String        @db.Text
+  intent      CaptureIntent @default(UNKNOWN)
+  title       String?
+  listName    String?
+  dueAt       DateTime?
+  confidence  Float         @default(0)
+  classifier  String        @default("heuristic") // heuristic | llm
+  status      CaptureStatus @default(PENDING)
+  capturedAt  DateTime // when the user actually spoke (may predate delivery when offline)
+  createdAt   DateTime      @default(now())
+  meta        Json?
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device     HermesDevice     @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deliveries HermesDelivery[]
+
+  @@unique([deviceId, clientId])
+  @@index([userId, capturedAt(sort: Desc)])
+}
+
+enum DeliveryChannel {
+  TELEGRAM
+  SMS
+  WEBHOOK
+  EMAIL
+}
+
+enum DeliveryStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model HermesDelivery {
+  id         String          @id @default(cuid())
+  captureId  String
+  channel    DeliveryChannel
+  status     DeliveryStatus
+  detail     String?
+  latencyMs  Int?
+  createdAt  DateTime        @default(now())
+
+  capture HermesCapture @relation(fields: [captureId], references: [id], onDelete: Cascade)
+
+  @@index([captureId])
+  @@index([channel, createdAt])
+}
+
+// Replies coming back *from* the Hermes agent (e.g. Telegram webhook), surfaced
+// in the watch inbox.
+model HermesMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  channel   DeliveryChannel
+  body      String   @db.Text
+  externalId String? @unique
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
 }
