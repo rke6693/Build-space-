@@ -1,0 +1,91 @@
+{
+  "nominal": {
+    "push_window_N": [
+      2.86,
+      8.3
+    ],
+    "trip_speed_mm_s": 8.57,
+    "stroke_time_s": {
+      "4.0N": 5.59,
+      "5.0N": 3.25,
+      "5.5N": 2.69,
+      "6.0N": 2.3,
+      "7.0N": 1.78,
+      "8.0N": 1.45
+    },
+    "damper_torque_Ncm_at_20rpm": 1.32,
+    "trip_torque_Ncm": 1.8
+  },
+  "scenarios": [
+    {
+      "scenario": "Adult, as instructed: gentle 5.5 N push",
+      "opened": true,
+      "t_open_s": 2.91,
+      "trips": 0,
+      "max_travel_mm": 11.2
+    },
+    {
+      "scenario": "Adult, habitual firm push: 12 N",
+      "opened": false,
+      "t_open_s": null,
+      "trips": 1,
+      "max_travel_mm": 0.8
+    },
+    {
+      "scenario": "Child: repeated 30 N jabs",
+      "opened": false,
+      "t_open_s": null,
+      "trips": 8,
+      "max_travel_mm": 0.8
+    },
+    {
+      "scenario": "Child: pushes harder as it resists (4 N + 3 N/s)",
+      "opened": false,
+      "t_open_s": null,
+      "trips": 1,
+      "max_travel_mm": 9.6
+    },
+    {
+      "scenario": "Child: 'inching' (12 N taps, never lets go fully)",
+      "opened": false,
+      "t_open_s": null,
+      "trips": 1,
+      "max_travel_mm": 0.8
+    },
+    {
+      "scenario": "Adult with 5 Hz tremor: 5.5 N \u00b1 2 N",
+      "opened": true,
+      "t_open_s": 2.88,
+      "trips": 0,
+      "max_travel_mm": 11.2
+    }
+  ],
+  "success_map": {
+    "p_open_5.5N_cv10": 1.0,
+    "p_open_5.5N_cv30": 0.4,
+    "p_open_5.5N_cv50": 0.0,
+    "p_open_10N_cv10": 0.0,
+    "p_open_4N_cv10": 1.0
+  },
+  "tolerance": {
+    "units": 3000,
+    "window_low_N_p1_p50_p99": [
+      2.3,
+      2.85,
+      3.4
+    ],
+    "window_high_N_p1_p50_p99": [
+      7.32,
+      8.31,
+      9.29
+    ],
+    "share_opening_at_5.5N": 1.0,
+    "share_tripping_at_10N": 1.0,
+    "stroke_time_at_5.5N_s_p1_p50_p99": [
+      1.68,
+      2.7,
+      4.44
+    ],
+    "share_return_spring_beats_friction": 1.0
+  }
+}

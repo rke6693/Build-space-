@@ -67,3 +67,9 @@ prisma/schema.prisma
 middleware.ts                   # CSP nonce, auth gate
 tests/unit/                     # runtoken, validation, security
 ```
+
+## Other projects in this repo
+
+- [`child-resistant-package/`](child-resistant-package/README.md): **TortoiseLatch**, a
+  child-resistant latch that opens to a gentle push and locks when pushed hard. Includes a
+  physics model, parametric OpenSCAD CAD and an interactive demo.

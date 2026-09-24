@@ -1,0 +1,789 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- page -->
+<title>TortoiseLatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112..125,600..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1ec;
+  --panel: #f8f9f6;
+  --ink: #16201b;
+  --muted: #56625b;
+  --line: #cdd4cc;
+  --tub: #dce5df;
+  --frame: #c6cfc8;
+  --slot: #28312c;
+  --slider: #2a54d0;
+  --slider-2: #7c98ec;
+  --carrier: #d9661c;
+  --carrier-2: #9a3d0c;
+  --steel: #87939a;
+  --teal: #178f84;
+  --ok: #1d8547;
+  --ok-soft: rgba(29, 133, 71, 0.16);
+  --trip: #c9352a;
+  --trip-soft: rgba(201, 53, 42, 0.14);
+  --focus: #2a54d0;
+  --display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #0f1311;
+    --panel: #171c19;
+    --ink: #e4eae6;
+    --muted: #97a39c;
+    --line: #2d3530;
+    --tub: #222c26;
+    --frame: #36423b;
+    --slot: #090b0a;
+    --slider: #6d8cf2;
+    --slider-2: #a3b6f7;
+    --carrier: #ee8440;
+    --carrier-2: #ffc08f;
+    --steel: #9aa5aa;
+    --teal: #3cc2b4;
+    --ok: #3fbf73;
+    --ok-soft: rgba(63, 191, 115, 0.18);
+    --trip: #f0655a;
+    --trip-soft: rgba(240, 101, 90, 0.18);
+    --focus: #a3b6f7;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #0f1311;
+  --panel: #171c19;
+  --ink: #e4eae6;
+  --muted: #97a39c;
+  --line: #2d3530;
+  --tub: #222c26;
+  --frame: #36423b;
+  --slot: #090b0a;
+  --slider: #6d8cf2;
+  --slider-2: #a3b6f7;
+  --carrier: #ee8440;
+  --carrier-2: #ffc08f;
+  --steel: #9aa5aa;
+  --teal: #3cc2b4;
+  --ok: #3fbf73;
+  --ok-soft: rgba(63, 191, 115, 0.18);
+  --trip: #f0655a;
+  --trip-soft: rgba(240, 101, 90, 0.18);
+  --focus: #a3b6f7;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.5 var(--body);
+  padding-inline: 16px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 40px; display: grid; gap: 28px; }
+
+header.top { display: grid; gap: 10px; max-width: 760px; }
+.eyebrow {
+  margin: 0; font: 600 12px/1.2 var(--display); font-stretch: 118%;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+}
+h1 {
+  margin: 0; font-family: var(--display); font-weight: 800; font-stretch: 122%;
+  font-size: clamp(30px, 5.2vw, 50px); line-height: 1.02; letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+h1 .hard { color: var(--trip); }
+h1 .soft { color: var(--ok); }
+.lede { margin: 0; color: var(--muted); max-width: 64ch; font-size: 17px; }
+
+h2 {
+  margin: 0; font: 700 13px/1.2 var(--display); font-stretch: 118%;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+}
+
+.bench {
+  display: grid; gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.95fr);
+  grid-template-areas: "front inside gauges";
+  align-items: start;
+}
+.pane {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px; display: grid; gap: 10px; min-width: 0;
+}
+.pane.front { grid-area: front; }
+.pane.inside { grid-area: inside; }
+.pane.gauges { grid-area: gauges; }
+.pane header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pane header span { font: 12px/1.3 var(--mono); color: var(--muted); }
+svg.view { width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+.hint { margin: 0; font-size: 14px; color: var(--muted); }
+kbd {
+  font: 12px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 4px; padding: 0 4px; background: var(--paper); color: var(--ink);
+}
+
+#pad { cursor: grab; outline: none; }
+#pad.held { cursor: grabbing; }
+#pad:focus-visible .pad-face { stroke: var(--focus); stroke-width: 0.9; }
+
+.state {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px;
+  background: var(--paper); border: 1px solid var(--line); font-weight: 700;
+}
+.state .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--steel); flex: none; }
+.state[data-s="travel"] .dot { background: var(--slider); }
+.state[data-s="tripped"] { background: var(--trip-soft); border-color: var(--trip); }
+.state[data-s="tripped"] .dot { background: var(--trip); }
+.state[data-s="open"] { background: var(--ok-soft); border-color: var(--ok); }
+.state[data-s="open"] .dot { background: var(--ok); }
+.state small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+
+.gauge { display: grid; gap: 6px; }
+.gauge .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.gauge .label { font-size: 14px; color: var(--muted); }
+.gauge .val { font: 500 18px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.scale { position: relative; height: 22px; border-radius: 5px; background: var(--paper); border: 1px solid var(--line); overflow: hidden; }
+.scale .band { position: absolute; top: 0; bottom: 0; }
+.scale .needle { position: absolute; top: -1px; bottom: -1px; width: 3px; margin-left: -1.5px; background: var(--ink); border-radius: 2px; }
+.scale .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--slider); opacity: 0.85; }
+.scale .mark { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--ok); }
+.ticks { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+.result { margin: 0; font-size: 14px; min-height: 1.5em; }
+.result b { font-family: var(--mono); font-weight: 500; }
+.counters { display: flex; gap: 16px; font: 13px var(--mono); color: var(--muted); }
+.counters b { color: var(--ink); font-weight: 500; }
+
+button {
+  font: 700 14px/1.2 var(--body); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+button.primary { background: var(--ok); border-color: var(--ok); color: #fff; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.runs { display: grid; gap: 14px; }
+.runs .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.presets { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.preset { text-align: left; display: grid; gap: 3px; padding: 10px 12px; }
+.preset .who { font: 600 11px/1.2 var(--display); font-stretch: 115%; letter-spacing: 0.08em; text-transform: uppercase; }
+.preset[data-who="adult"] .who { color: var(--ok); }
+.preset[data-who="child"] .who { color: var(--trip); }
+.preset .meta { font-weight: 400; font-size: 13px; color: var(--muted); }
+.preset[aria-pressed="true"] { border-color: var(--slider); box-shadow: inset 0 0 0 1px var(--slider); }
+.trace { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; }
+.trace canvas { width: 100%; height: 190px; display: block; }
+.trace p { margin: 0; font-size: 13px; color: var(--muted); }
+
+.why { display: grid; gap: 18px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.why article { display: grid; gap: 6px; align-content: start; }
+.why h3 { margin: 0; font: 800 19px/1.15 var(--display); font-stretch: 115%; text-wrap: balance; }
+.why p { margin: 0; color: var(--muted); max-width: 42ch; }
+.spec { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 0; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.spec div { display: grid; gap: 2px; padding-right: 12px; }
+.spec dt { font-size: 13px; color: var(--muted); }
+.spec dd { margin: 0; font: 500 16px var(--mono); font-variant-numeric: tabular-nums; }
+footer { font-size: 13px; color: var(--muted); max-width: 80ch; }
+
+@media (max-width: 960px) {
+  .bench { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "front inside" "gauges gauges"; }
+  .presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .spec { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 12px; }
+}
+@media (max-width: 620px) {
+  .bench { grid-template-columns: minmax(0, 1fr); grid-template-areas: "front" "gauges" "inside"; }
+  .why { grid-template-columns: minmax(0, 1fr); }
+  .presets { grid-template-columns: minmax(0, 1fr); }
+  .spec { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Child-resistant latch &middot; working concept</p>
+    <h1><span class="soft">Push gently</span> and it opens. <span class="hard">Push hard</span> and it locks.</h1>
+    <p class="lede">A soft-close damper sits behind the turtle pad. A calm 3&ndash;8&nbsp;N push glides the latch open in about three seconds. Any push over 8.3&nbsp;N trips a pawl, and the pawl holds until you let go completely. Pushing harder is what children do, and it is exactly what locks this latch.</p>
+  </header>
+
+  <main class="bench">
+    <section class="pane front" aria-labelledby="front-h">
+      <header><h2 id="front-h">Outside</h2><span>front of the tub, mm</span></header>
+      <svg class="view" id="front" viewBox="-26 0 52 66" role="img" aria-label="Front of the package with the turtle pad"></svg>
+      <p class="hint">Press the turtle and drag it up, keeping your pointer just ahead of it. Or focus it and hold <kbd>&uarr;</kbd> to push gently, <kbd>Shift</kbd>+<kbd>&uarr;</kbd> to push hard.</p>
+    </section>
+
+    <section class="pane inside" aria-labelledby="inside-h">
+      <header><h2 id="inside-h">Inside</h2><span>section behind the rack</span></header>
+      <svg class="view" id="inside" viewBox="-26 0 52 66" role="img" aria-label="Section view of the governor: slider, damper pinion, carrier and pawl"></svg>
+      <div class="legend">
+        <span><i style="background:var(--slider)"></i>slider + ratchet</span>
+        <span><i style="background:var(--carrier)"></i>damper carrier</span>
+        <span><i style="background:var(--carrier-2)"></i>pawl</span>
+        <span><i style="background:var(--teal)"></i>lid tongue</span>
+      </div>
+    </section>
+
+    <section class="pane gauges" aria-labelledby="gauges-h">
+      <header><h2 id="gauges-h">Readout</h2><span id="clock">live</span></header>
+      <div class="state" id="state" data-s="home" aria-live="polite">
+        <span class="dot"></span>
+        <div><span id="state-t">Locked at home</span><small id="state-s">Press the pad in, then slide it up.</small></div>
+      </div>
+      <div class="gauge">
+        <div class="row"><span class="label">Thumb force</span><span class="val" id="f-val">0.0 N</span></div>
+        <div class="scale" id="f-scale">
+          <div class="band" id="band-ok" style="background:var(--ok-soft)"></div>
+          <div class="band" id="band-trip" style="background:var(--trip-soft)"></div>
+          <div class="needle" id="f-needle"></div>
+        </div>
+        <div class="ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>16 N</span></div>
+      </div>
+      <div class="gauge">
+        <div class="row"><span class="label">Governor load</span><span class="val" id="g-val">0 %</span></div>
+        <div class="scale"><div class="fill" id="g-fill" style="width:0%;background:var(--carrier)"></div></div>
+        <div class="ticks"><span>idle</span><span>trips at 100 %</span></div>
+      </div>
+      <div class="gauge">
+        <div class="row"><span class="label">Slider travel</span><span class="val" id="x-val">0.0 mm</span></div>
+        <div class="scale"><div class="fill" id="x-fill" style="width:0%"></div><div class="mark" style="left:93.33%"></div></div>
+        <div class="ticks"><span>home</span><span>lid releases at 11.2 mm</span></div>
+      </div>
+      <p class="result" id="result">No attempt yet.</p>
+      <div class="counters"><span>opened <b id="n-open">0</b></span><span>tripped <b id="n-trip">0</b></span></div>
+      <div class="tools">
+        <button type="button" id="close-lid" class="primary" hidden>Close the lid</button>
+        <button type="button" id="sound">Sound: on</button>
+      </div>
+    </section>
+  </main>
+
+  <section class="runs" aria-labelledby="runs-h">
+    <div class="head">
+      <h2 id="runs-h">Replay a push</h2>
+      <span class="hint">Each runs for six seconds through the same model, then lets go.</span>
+    </div>
+    <div class="presets" id="presets"></div>
+    <div class="trace">
+      <canvas id="trace" aria-label="Trace of slider travel and thumb force over the last eight seconds"></canvas>
+      <p id="trace-cap">Example trace: gentle and steady, 5.5 N. Drag the pad or replay a push to record your own.</p>
+    </div>
+  </section>
+
+  <section class="why" aria-label="How the latch works">
+    <article>
+      <h3>Force sets the pace</h3>
+      <p>The slider drives a one-way rotary damper through a rack and pinion. Resistance rises with speed, so a light push gives a slow, even glide. Letting go lets the spring snap the slider home.</p>
+    </article>
+    <article>
+      <h3>Too much force trips it</h3>
+      <p>The damper body sits in a carrier that pivots on the damper&rsquo;s own axis. Past 1.8&nbsp;N&middot;cm of reaction torque the carrier swings 7&deg; over a detent and its pawl drops into the ratchet.</p>
+    </article>
+    <article>
+      <h3>Only letting go resets it</h3>
+      <p>The detent holds the pawl in. A lug on the slider pushes it back out only in the last 0.7&nbsp;mm before home. Taps and jiggles make no progress, and every attempt starts from the bottom.</p>
+    </article>
+  </section>
+  <dl class="spec">
+    <div><dt>Opening window</dt><dd>2.9&ndash;8.3 N</dd></div>
+    <div><dt>Stroke</dt><dd>12 mm</dd></div>
+    <div><dt>Time at 5.5 N</dt><dd>2.7 s</dd></div>
+    <div><dt>Trip torque</dt><dd>1.8 N&middot;cm</dd></div>
+    <div><dt>Damper</dt><dd>1.3 N&middot;cm @ 20 rpm</dd></div>
+  </dl>
+  <footer>Concept design. The motion comes from the same quasi-static model as <code>child-resistant-package/sim/governor.py</code> in the repository. The latch has not yet been prototyped or tested with children or older adults, and child resistance must be shown with a 16&nbsp;CFR&nbsp;1700.20 panel.</footer>
+</div>
+
+<script>
+(() => {
+  // ---- mechanism model (mm, N, s): mirrors sim/governor.py Params ----
+  const P = {
+    stroke: 12, unlockAt: 11.2, b: 0.7, bReturn: 0.025, s0: 1.5, k: 0.05, fr: 0.8,
+    fTrip: 6, tau: 0.004, pressRel: 5, pitch: 0.8, homeTol: 0.3,
+  };
+  const WIN_LO = P.s0 + P.k * P.unlockAt + P.fr;   // 2.86 N
+  const WIN_HI = P.s0 + P.fr + P.fTrip;            // 8.30 N
+  const K_THUMB = 0.8;                             // N per mm the pointer leads the pad
+  const F_MAX_GAUGE = 16;
+
+  const S = { x: 0, fFilt: 0, tripped: false, blockX: Infinity, lidOpen: false, lidLift: 0 };
+  const stats = { open: 0, trip: 0 };
+  let attempt = null;
+
+  function step(dt, F, pressed) {
+    const drive = F - P.s0 - P.k * S.x;
+    let v = drive > P.fr ? (drive - P.fr) / P.b : drive < -P.fr ? (drive + P.fr) / P.bReturn : 0;
+    const atHome = S.x <= P.homeTol;
+    if (atHome && !pressed && v > 0) v = 0;
+    if (S.tripped && S.x >= S.blockX - 1e-9 && v > 0) v = 0;
+    const fd = v > 0 ? P.b * v : 0;
+    S.fFilt += (1 - Math.exp(-dt / P.tau)) * (fd - S.fFilt);
+    if (!S.tripped && !atHome && v > 0 && S.fFilt >= P.fTrip) {
+      S.tripped = true;
+      S.blockX = (Math.floor(S.x / P.pitch) + 1) * P.pitch;
+      events.push("trip");
+    }
+    let x = S.x + v * dt;
+    if (S.tripped) x = Math.min(x, S.blockX);
+    x = Math.max(0, Math.min(P.stroke, x));
+    if (x <= P.homeTol && v < 0) x = 0;
+    if (x <= P.homeTol) { S.tripped = false; S.blockX = Infinity; }
+    if (!S.tripped && !S.lidOpen && x >= P.unlockAt) { S.lidOpen = true; events.push("open"); }
+    S.x = x;
+    return v;
+  }
+  let events = [];
+
+  // ---- SVG helpers (model Z up -> SVG y down) ----
+  const NS = "http://www.w3.org/2000/svg";
+  const Y = z => 60 - z;
+  const AX = [-9.625, 27];
+  const rad = d => d * Math.PI / 180;
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) {
+      const v = String(attrs[k]);
+      // theme tokens go through style so var() resolves in every engine
+      if (v.includes("var(")) e.style.setProperty(k, v); else e.setAttribute(k, v);
+    }
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  const rect = (x0, x1, z0, z1, attrs, parent) =>
+    el("rect", Object.assign({ x: x0, y: Y(z1), width: x1 - x0, height: z1 - z0 }, attrs), parent);
+  const pts = arr => arr.map(p => `${p[0].toFixed(3)},${Y(p[1]).toFixed(3)}`).join(" ");
+  const polar = (r, a) => [AX[0] + r * Math.cos(rad(a)), AX[1] + r * Math.sin(rad(a))];
+  const local = (x, y, a) => [AX[0] + x * Math.cos(rad(a)) - y * Math.sin(rad(a)),
+                              AX[1] + x * Math.sin(rad(a)) + y * Math.cos(rad(a))];
+  function zigzag(xc, z0, z1, w, n) {
+    const p = [[xc, z0]];
+    for (let i = 0; i < n; i++) p.push([xc + (i % 2 ? -w / 2 : w / 2), z0 + (i + 0.5) * (z1 - z0) / n]);
+    p.push([xc, z1]);
+    return pts(p);
+  }
+  function gear(cx, cz, rr, ro, n) {
+    const p = [];
+    for (let i = 0; i < n; i++) {
+      const a = 360 / n * i;
+      [[rr, a - 12], [ro, a - 5], [ro, a + 5], [rr, a + 12]].forEach(([r, d]) =>
+        p.push([cx + r * Math.cos(rad(d)), cz + r * Math.sin(rad(d))]));
+    }
+    return pts(p);
+  }
+
+  // ---- outside view ----
+  const front = document.getElementById("front");
+  rect(-26, 26, -6, 60, { fill: "var(--tub)" }, front);
+  const lidF = el("g", {}, front);
+  rect(-26, 26, 52, 55.5, { fill: "var(--teal)", opacity: 0.85 }, lidF);
+  rect(-26, 26, 52, 52.5, { fill: "var(--ink)", opacity: 0.15 }, lidF);
+  const gapF = rect(-26, 26, 52, 52, { fill: "var(--slot)" }, front);
+  rect(-20, 20, 0, 52, { fill: "var(--frame)", stroke: "var(--line)", "stroke-width": 0.3 }, front);
+  rect(-4, 4, 4.6, 26, { fill: "var(--slot)", rx: 0.6 }, front);
+  for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) {
+    const cx = sx * 15.5, z = 24 + i * 6;
+    el("polyline", { points: pts([[cx - 3, z], [cx, z + 2.6], [cx + 3, z]]), fill: "none",
+      stroke: "var(--muted)", "stroke-width": 0.9, "stroke-linecap": "round", "stroke-linejoin": "round" }, front);
+  }
+  const label = el("text", { x: 0, y: Y(-3.2), "text-anchor": "middle", "font-size": 2.5,
+    "font-family": "var(--display)", "font-weight": 700, fill: "var(--muted)", "letter-spacing": 0.25 }, front);
+  label.textContent = "PRESS · SLIDE UP SLOWLY";
+  const stemF = rect(-3.6, 3.6, 5, 13.5, { fill: "var(--slider)", opacity: 0.8 }, front);
+  const thumb = el("g", { opacity: 0 }, front);
+  const thumbSpring = el("polyline", { fill: "none", "stroke-width": 0.6, "stroke-linejoin": "round" }, thumb);
+  const thumbDot = el("circle", { r: 1.6, "fill-opacity": 0.25, "stroke-width": 0.5 }, thumb);
+  const pad = el("g", { id: "pad", tabindex: 0, role: "slider", "aria-valuemin": 0, "aria-valuemax": 12,
+    "aria-valuenow": 0, "aria-valuetext": "0 millimetres, locked",
+    "aria-label": "Turtle pad. Hold Up arrow to push gently, Shift and Up arrow to push hard." }, front);
+  const padInner = el("g", {}, pad);
+  rect(-11, 11, 2.3, 16.3, { class: "pad-face", rx: 3, fill: "var(--slider)" }, padInner);
+  const turtle = el("g", { transform: `translate(0 ${Y(9.1)})`, fill: "none", stroke: "var(--panel)",
+    "stroke-width": 0.45, opacity: 0.95 }, padInner);
+  el("ellipse", { cx: 0, cy: 0, rx: 4.4, ry: 5.3 }, turtle);
+  el("circle", { cx: 0, cy: -6.9, r: 1.4, fill: "var(--panel)" }, turtle);
+  for (const [lx, ly] of [[-4.1, -3.7], [4.1, -3.7], [-4.1, 3.7], [4.1, 3.7]])
+    el("circle", { cx: lx, cy: ly, r: 1.0, fill: "var(--panel)" }, turtle);
+  for (const [hx, hy] of [[0, 0], [0, -2.7], [0, 2.7], [2.35, -1.35], [-2.35, -1.35], [2.35, 1.35], [-2.35, 1.35]]) {
+    const hp = [];
+    for (let i = 0; i < 6; i++) hp.push(`${(hx + 1.3 * Math.cos(rad(60 * i))).toFixed(2)},${(hy + 1.3 * Math.sin(rad(60 * i))).toFixed(2)}`);
+    el("polygon", { points: hp.join(" ") }, turtle);
+  }
+
+  // ---- inside view ----
+  const inside = document.getElementById("inside");
+  rect(-26, 26, -6, 60, { fill: "var(--panel)" }, inside);
+  el("path", { d: `M-20 ${Y(52)}h40v52h-40z M-18.4 ${Y(50.4)}v48.8h36.8v-48.8z`, fill: "var(--frame)",
+    "fill-rule": "evenodd" }, inside);
+  el("circle", { cx: AX[0], cy: Y(AX[1]), r: 8.6, fill: "none", stroke: "var(--frame)", "stroke-width": 1.4 }, inside);
+  rect(6.3, 8.3, 2, 45, { fill: "var(--frame)" }, inside);
+  rect(0.4, 4.0, 44, 50.4, { fill: "var(--frame)" }, inside);
+  rect(-6, 6, 44, 45.6, { fill: "var(--frame)" }, inside);
+  rect(-14.9, -13.3, 13.6, 16.2, { fill: "var(--frame)" }, inside);
+  const bump = polar(12.615, 115.5);
+  rect(-18.4, bump[0], bump[1] + 0.2, bump[1] + 1.0, { fill: "var(--frame)" }, inside);
+  el("circle", { cx: bump[0], cy: Y(bump[1]), r: 0.8, fill: "var(--frame)" }, inside);
+  for (const [a, s] of [[112, 1], [119, -1]]) {
+    const c = polar(10.8, a), d = 1.75;
+    el("circle", { cx: c[0] + s * d * Math.sin(rad(a)), cy: Y(c[1] - s * d * Math.cos(rad(a))), r: 0.6,
+      fill: "var(--frame)" }, inside);
+  }
+  const springI = el("polyline", { fill: "none", stroke: "var(--steel)", "stroke-width": 0.35 }, inside);
+  const tongue = el("g", {}, inside);
+  rect(-5, 5, 41.8, 52, { fill: "var(--teal)", opacity: 0.9 }, tongue);
+  rect(-5, 5, 41.8, 43.95, { fill: "var(--ink)", opacity: 0.25 }, tongue);
+
+  const sliderI = el("g", {}, inside);
+  rect(-6, 6, 4, 29.5, { fill: "var(--slider)" }, sliderI);
+  rect(-3, 3, 29.5, 32, { fill: "var(--slider-2)" }, sliderI);
+  rect(0.4, 4.0, 4, 7, { fill: "var(--slider)" }, sliderI);
+  const saw = [[-5.99, 8.5]];
+  for (let i = 0; i < 15; i++) saw.push([-6.6, 8.5 + (i + 1) * 0.8], [-6.0, 8.5 + (i + 1) * 0.8]);
+  saw.push([-5.99, 20.5]);
+  el("polygon", { points: pts(saw), fill: "var(--slider)" }, sliderI);
+  el("polygon", { points: pts([[-5.99, 20.58], [-6.7, 21.33], [-6.7, 22.6], [-5.99, 22.6]]), fill: "var(--slider)" }, sliderI);
+
+  const carrier = el("g", {}, inside);
+  const ch = Math.sqrt(7.5 * 7.5 - 2.3 * 2.3);
+  el("path", { d: `M-7.325 ${Y(AX[1] + ch)} A7.5 7.5 0 1 0 -7.325 ${Y(AX[1] - ch)} Z`, fill: "var(--carrier)" }, carrier);
+  const tl = [local(6.5, -1.1, 112), local(10.8, -1.1, 112), local(10.8, 1.1, 112), local(6.5, 1.1, 112)];
+  el("polygon", { points: pts(tl), fill: "var(--carrier)" }, carrier);
+  const tt = polar(10.8, 112);
+  el("circle", { cx: tt[0], cy: Y(tt[1]), r: 1.1, fill: "var(--carrier)" }, carrier);
+  const fx = polar(7, 215);
+  rect(fx[0] - 0.4, fx[0] + 0.4, fx[1] - 8, fx[1], { fill: "var(--carrier)" }, carrier);
+  el("polygon", { points: pts([local(1.2, -1.0, -67), local(6.6, -1.0, -67), local(6.6, -0.05, -67),
+    local(1.2, -0.05, -67)]), fill: "var(--carrier-2)" }, carrier);
+  el("polygon", { points: pts([local(5.4, -0.05, -67), local(6.6, -0.05, -67), local(6.6, 0.25, -67)]),
+    fill: "var(--carrier-2)" }, carrier);
+
+  const pinion = el("polygon", { points: gear(AX[0], AX[1], 2.4, 3.5, 12), fill: "var(--ink)", opacity: 0.35 }, inside);
+  el("circle", { cx: AX[0], cy: Y(AX[1]), r: 1.0, fill: "var(--panel)" }, inside);
+  const tripRing = el("circle", { cx: -6.3, cy: Y(21.2), r: 2.4, fill: "none", stroke: "var(--trip)",
+    "stroke-width": 0.5, opacity: 0 }, inside);
+
+  // ---- readout elements ----
+  const $ = id => document.getElementById(id);
+  const pct = f => (100 * Math.max(0, Math.min(F_MAX_GAUGE, f)) / F_MAX_GAUGE).toFixed(2) + "%";
+  $("band-ok").style.left = pct(WIN_LO);
+  $("band-ok").style.width = (100 * (WIN_HI - WIN_LO) / F_MAX_GAUGE).toFixed(2) + "%";
+  $("band-trip").style.left = pct(WIN_HI);
+  $("band-trip").style.right = "0";
+
+  // ---- sound ----
+  let audio = null, soundOn = true;
+  function ensureAudio() {
+    if (audio || !soundOn) return;
+    try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
+  }
+  function click(kind) {
+    if (!audio || !soundOn) return;
+    try {
+      const t = audio.currentTime, n = audio.sampleRate * 0.05;
+      const buf = audio.createBuffer(1, n, audio.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (n * (kind === "trip" ? 0.08 : 0.2)));
+      const src = audio.createBufferSource(), bp = audio.createBiquadFilter(), g = audio.createGain();
+      bp.type = "bandpass"; bp.frequency.value = kind === "trip" ? 2400 : 900; bp.Q.value = 3;
+      g.gain.value = kind === "trip" ? 0.6 : 0.4;
+      src.buffer = buf; src.connect(bp); bp.connect(g); g.connect(audio.destination); src.start(t);
+    } catch (e) { /* audio is optional */ }
+  }
+  $("sound").addEventListener("click", () => {
+    soundOn = !soundOn;
+    $("sound").textContent = "Sound: " + (soundOn ? "on" : "off");
+    if (soundOn) ensureAudio();
+  });
+
+  // ---- input: pointer, keyboard, presets ----
+  let dragging = false, grabOffset = 0, pointerZ = 0, keyForce = 0, preset = null;
+  function svgZ(e) {
+    const p = front.createSVGPoint();
+    p.x = e.clientX; p.y = e.clientY;
+    return 60 - p.matrixTransform(front.getScreenCTM().inverse()).y;
+  }
+  pad.addEventListener("pointerdown", e => {
+    if (preset) stopPreset();
+    ensureAudio();
+    dragging = true;
+    pointerZ = svgZ(e);
+    grabOffset = pointerZ - S.x;
+    front.setPointerCapture(e.pointerId);
+    pad.classList.add("held");
+    pad.focus({ preventScroll: true });
+    e.preventDefault();
+  });
+  front.addEventListener("pointermove", e => { if (dragging) pointerZ = svgZ(e); });
+  const endDrag = () => { dragging = false; pad.classList.remove("held"); };
+  front.addEventListener("pointerup", endDrag);
+  front.addEventListener("pointercancel", endDrag);
+  lidF.addEventListener("click", () => { if (S.lidOpen) closeLid(); });
+  pad.addEventListener("keydown", e => {
+    if (e.key !== "ArrowUp") return;
+    if (preset) stopPreset();
+    ensureAudio();
+    keyForce = e.shiftKey ? 12 : 5.5;
+    e.preventDefault();
+  });
+  pad.addEventListener("keyup", e => { if (e.key === "ArrowUp" || e.key === "Shift") keyForce = e.key === "Shift" && keyForce ? 5.5 : 0; });
+  pad.addEventListener("blur", () => { keyForce = 0; });
+
+  function closeLid() {
+    S.lidOpen = false;
+    $("close-lid").hidden = true;
+  }
+  $("close-lid").addEventListener("click", closeLid);
+
+  const PRESETS = [
+    { who: "adult", name: "Gentle and steady", meta: "5.5 N, as the label asks", f: t => 5.5 * Math.min(t / 0.3, 1) },
+    { who: "adult", name: "Firm push", meta: "12 N, the twist-cap habit", f: t => 12 * Math.min(t / 0.15, 1) },
+    { who: "adult", name: "Gentle, with a tremor", meta: "5.5 N ± 2 N at 5 Hz", f: t => 5.5 * Math.min(t / 0.3, 1) + 2 * Math.sin(2 * Math.PI * 5 * t) },
+    { who: "child", name: "Jabbing", meta: "30 N jabs, letting go between", f: t => (t % 0.8) < 0.15 ? 30 : 0 },
+    { who: "child", name: "Pushing harder", meta: "4 N, rising 3 N every second", f: t => 4 + 3 * t },
+    { who: "child", name: "Tapping, never letting go", meta: "12 N taps, 1.2 N between", f: t => (t % 0.5) < 0.1 ? 12 : 1.2 },
+  ];
+  const presetBox = $("presets");
+  PRESETS.forEach((p, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "preset"; b.dataset.who = p.who; b.setAttribute("aria-pressed", "false");
+    b.innerHTML = `<span class="who">${p.who === "adult" ? "Adult" : "Child"}</span><span>${p.name}</span><span class="meta">${p.meta}</span>`;
+    b.addEventListener("click", () => startPreset(i));
+    presetBox.appendChild(b);
+    p.btn = b;
+  });
+  function resetLatch() {
+    Object.assign(S, { x: 0, fFilt: 0, tripped: false, blockX: Infinity, lidOpen: false });
+    $("close-lid").hidden = true;
+  }
+  function startPreset(i) {
+    ensureAudio();
+    if (preset) preset.p.btn.setAttribute("aria-pressed", "false");
+    resetLatch();
+    dragging = false; keyForce = 0;
+    preset = { p: PRESETS[i], t: 0 };
+    preset.p.btn.setAttribute("aria-pressed", "true");
+    trace.length = 0; traceT = 0;
+    $("trace-cap").textContent = `Replaying: ${preset.p.name.toLowerCase()} (${preset.p.meta}).`;
+  }
+  function stopPreset() {
+    if (!preset) return;
+    preset.p.btn.setAttribute("aria-pressed", "false");
+    preset = null;
+  }
+
+  // ---- attempt bookkeeping: an attempt runs from leaving home to open, trip or return ----
+  function track(F, prevX) {
+    if (!attempt && prevX <= P.homeTol && S.x > P.homeTol) attempt = { t: 0, peak: 0, maxX: 0, done: false };
+    if (!attempt) return;
+    if (!attempt.done) {
+      attempt.t += dtSub;
+      attempt.peak = Math.max(attempt.peak, F);
+      attempt.maxX = Math.max(attempt.maxX, S.x);
+    }
+    if (S.x <= P.homeTol && prevX > P.homeTol) {
+      if (!attempt.done) finishAttempt("home");
+      attempt = null;
+    }
+  }
+  function finishAttempt(kind) {
+    if (!attempt) return;
+    const who = preset ? `${preset.p.name}: ` : "";
+    const r = $("result");
+    if (kind === "open") {
+      r.innerHTML = `${who}opened in <b>${attempt.t.toFixed(1)} s</b>, peak push <b>${attempt.peak.toFixed(1)} N</b>.`;
+    } else if (kind === "trip") {
+      r.innerHTML = `${who}tripped at <b>${S.x.toFixed(1)} mm</b>, peak push <b>${attempt.peak.toFixed(1)} N</b>. Let go to reset.`;
+    } else {
+      r.innerHTML = `${who}let go at <b>${attempt.maxX.toFixed(1)} mm</b>, before the lid released.`;
+    }
+    attempt.done = true;
+  }
+  let dtSub = 0.001;
+
+  // ---- trace ----
+  const trace = [];
+  let traceT = 0;
+  const canvas = $("trace"), ctx = canvas.getContext("2d");
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function drawTrace() {
+    const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const C = { ink: css("--ink"), muted: css("--muted"), line: css("--line"), okSoft: css("--ok-soft"),
+      trip: css("--trip"), tripSoft: css("--trip-soft"), slider: css("--slider"), ok: css("--ok"), steel: css("--steel") };
+    const L = 44, R = 8, span = 8, t1 = Math.max(span, traceT), t0 = t1 - span;
+    const top = { y0: 8, y1: 78, max: 12 }, bot = { y0: 102, y1: h - 18, max: 20 };
+    const tx = t => L + (t - t0) / span * (w - L - R);
+    const ty = (b, v) => b.y1 - Math.max(0, Math.min(b.max, v)) / b.max * (b.y1 - b.y0);
+    ctx.font = "11px " + css("--mono");
+    ctx.textBaseline = "middle";
+    // bands and grid
+    ctx.fillStyle = C.okSoft; ctx.fillRect(L, ty(bot, WIN_HI), w - L - R, ty(bot, WIN_LO) - ty(bot, WIN_HI));
+    ctx.fillStyle = C.tripSoft; ctx.fillRect(L, bot.y0, w - L - R, ty(bot, WIN_HI) - bot.y0);
+    ctx.strokeStyle = C.line; ctx.lineWidth = 1;
+    for (const [b, vals, unit] of [[top, [0, 6, 12], "mm"], [bot, [0, 10, 20], "N"]]) {
+      for (const v of vals) {
+        const y = Math.round(ty(b, v)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(w - R, y); ctx.stroke();
+        ctx.fillStyle = C.muted; ctx.textAlign = "right"; ctx.fillText(`${v} ${unit}`, L - 6, y);
+      }
+    }
+    ctx.setLineDash([4, 3]); ctx.strokeStyle = C.ok;
+    const yu = ty(top, P.unlockAt); ctx.beginPath(); ctx.moveTo(L, yu); ctx.lineTo(w - R, yu); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.textAlign = "right"; ctx.fillStyle = C.muted;
+    ctx.fillText("travel · lid releases at 11.2 mm", w - R - 4, ty(top, 8.6));
+    ctx.fillText("thumb force · green opens, red trips", w - R - 4, ty(bot, 16));
+    for (let s = Math.ceil(t0); s <= t1; s++) {
+      ctx.textAlign = "center"; ctx.fillText(`${s} s`, tx(s), h - 7);
+    }
+    // series
+    const seg = trace.filter(p => p.t >= t0);
+    ctx.lineWidth = 1.2; ctx.strokeStyle = C.steel; ctx.beginPath();
+    seg.forEach((p, i) => { const x = tx(p.t), y = ty(bot, p.f); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.stroke();
+    ctx.lineWidth = 2.2;
+    for (let i = 1; i < seg.length; i++) {
+      const a = seg[i - 1], b = seg[i];
+      ctx.strokeStyle = b.s === "tripped" ? C.trip : b.s === "open" ? C.ok : b.s === "home" ? C.steel : C.slider;
+      ctx.beginPath(); ctx.moveTo(tx(a.t), ty(top, a.x)); ctx.lineTo(tx(b.t), ty(top, b.x)); ctx.stroke();
+    }
+    if (seg.length) {
+      const e = seg[seg.length - 1];
+      ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(tx(e.t), ty(top, e.x), 3, 0, 7); ctx.fill();
+    }
+  }
+
+  // ---- state + render ----
+  function stateOf() {
+    if (S.lidOpen) return "open";
+    if (S.tripped) return "tripped";
+    return S.x <= P.homeTol ? "home" : "travel";
+  }
+  const STATE_TEXT = {
+    home: ["Locked at home", "Press the pad in, then slide it up."],
+    travel: ["Gliding", "Keep it gentle and steady."],
+    tripped: ["Tripped", "The pawl is holding. Let go completely to reset."],
+    open: ["Open", "Close the lid and it re-locks by itself."],
+  };
+  let lastState = "";
+  function render(F, now) {
+    const st = stateOf();
+    if (st !== lastState) {
+      $("state").dataset.s = st;
+      $("state-t").textContent = STATE_TEXT[st][0];
+      $("state-s").textContent = STATE_TEXT[st][1];
+      $("close-lid").hidden = !S.lidOpen;
+      lastState = st;
+    }
+    const x = S.x;
+    pad.setAttribute("transform", `translate(0 ${(-x).toFixed(3)})`);
+    padInner.setAttribute("opacity", (dragging || preset || keyForce) ? 0.82 : 1);
+    stemF.setAttribute("y", Y(13.5 + x));
+    pad.setAttribute("aria-valuenow", x.toFixed(1));
+    pad.setAttribute("aria-valuetext", `${x.toFixed(1)} millimetres, ${STATE_TEXT[st][0].toLowerCase()}`);
+    S.lidLift += ((S.lidOpen ? 4.5 : 0) - S.lidLift) * 0.2;
+    lidF.setAttribute("transform", `translate(0 ${(-S.lidLift).toFixed(3)})`);
+    gapF.setAttribute("y", Y(52 + S.lidLift)); gapF.setAttribute("height", Math.max(0, S.lidLift));
+    tongue.setAttribute("transform", `translate(0 ${(-S.lidLift * 2.4).toFixed(3)})`);
+    tongue.setAttribute("opacity", Math.max(0, 1 - S.lidLift / 5).toFixed(2));
+
+    // thumb spring glyph
+    if (dragging) {
+      const zTop = 16.3 + x, zThumb = pointerZ - grabOffset + 16.3;
+      const col = F > WIN_HI ? "var(--trip)" : F >= WIN_LO ? "var(--ok)" : "var(--muted)";
+      thumb.setAttribute("opacity", 1);
+      thumbSpring.setAttribute("points", zThumb > zTop + 0.5 ? zigzag(0, zTop, zThumb, 2.4, 10) : "");
+      thumbSpring.setAttribute("stroke", col);
+      thumbDot.setAttribute("cx", 0); thumbDot.setAttribute("cy", Y(Math.max(zThumb, zTop)));
+      thumbDot.setAttribute("fill", col); thumbDot.setAttribute("stroke", col);
+    } else thumb.setAttribute("opacity", 0);
+
+    sliderI.setAttribute("transform", `translate(0 ${(-x).toFixed(3)})`);
+    pinion.setAttribute("transform", `rotate(${(-x / 3 * 180 / Math.PI).toFixed(2)} ${AX[0]} ${Y(AX[1])})`);
+    carrier.setAttribute("transform", S.tripped ? `rotate(-7 ${AX[0]} ${Y(AX[1])})` : "");
+    tripRing.setAttribute("opacity", S.tripped ? 1 : 0);
+    springI.setAttribute("points", zigzag(2.2, 7 + x, 44, 3.2, 18));
+
+    $("f-val").textContent = `${Math.max(0, F).toFixed(1)} N`;
+    $("f-needle").style.left = pct(Math.max(0, F));
+    const load = S.tripped ? 100 : Math.min(100, 100 * S.fFilt / P.fTrip);
+    $("g-val").textContent = S.tripped ? "tripped" : `${load.toFixed(0)} %`;
+    $("g-fill").style.width = load.toFixed(1) + "%";
+    $("x-val").textContent = `${x.toFixed(1)} mm`;
+    $("x-fill").style.width = (100 * x / P.stroke).toFixed(2) + "%";
+    $("x-fill").style.background = S.tripped ? "var(--trip)" : S.lidOpen ? "var(--ok)" : "var(--slider)";
+    $("n-open").textContent = stats.open;
+    $("n-trip").textContent = stats.trip;
+    $("clock").textContent = preset ? `replay ${preset.t.toFixed(1)} / 6.0 s` : "live";
+  }
+
+  // ---- main loop ----
+  let last = performance.now(), sampleAcc = 0;
+  function currentForce() {
+    if (preset) return preset.t < 6 ? preset.p.f(preset.t) : 0;
+    if (dragging) return Math.max(-3, Math.min(40, K_THUMB * (pointerZ - grabOffset - S.x)));
+    return keyForce;
+  }
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    let F = 0;
+    const sub = Math.max(1, Math.round(dt / 0.001)), h = dt / sub;
+    for (let i = 0; i < sub; i++) {
+      F = currentForce();
+      const pressed = dragging || !!preset || keyForce > 0;
+      const prevX = S.x;
+      dtSub = h;
+      step(h, F, pressed);
+      track(F, prevX);
+      for (const ev of events) {
+        if (ev === "trip") { stats.trip++; click("trip"); finishAttempt("trip"); }
+        if (ev === "open") { stats.open++; click("open"); finishAttempt("open"); }
+      }
+      events = [];
+      if (preset) {
+        preset.t += h;
+        if (preset.t >= 7.5) { stopPreset(); }
+      }
+      // the strip chart only advances while something is happening
+      if (!(preset || dragging || keyForce > 0 || S.x > 0)) continue;
+      traceT += h; sampleAcc += h;
+      if (sampleAcc >= 1 / 60) {
+        sampleAcc = 0;
+        trace.push({ t: traceT, x: S.x, f: Math.max(0, F), s: stateOf() });
+        while (trace.length && trace[0].t < traceT - 9) trace.shift();
+      }
+    }
+    render(F, now);
+    drawTrace();
+    requestAnimationFrame(frame);
+  }
+
+  // Example trace so the chart opens in a working state: gentle 5.5 N push, then let go.
+  (function seed() {
+    const g = PRESETS[0].f;
+    let acc = 0;
+    for (let t = 0; t < 7.5; t += 0.001) {
+      const F = t < 6 ? g(t) : 0;
+      step(0.001, F, true);
+      acc += 0.001;
+      if (acc >= 1 / 60) { acc = 0; trace.push({ t, x: S.x, f: F, s: stateOf() }); }
+    }
+    traceT = 7.5;
+    events = [];
+    resetLatch();
+  })();
+  requestAnimationFrame(t => { last = t; frame(t); });
+})();
+</script>
