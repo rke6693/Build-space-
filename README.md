@@ -63,7 +63,26 @@ app/
 lib/
   auth, db, env, stripe, entitlement, ratelimit, runtoken, security, validation, logger
 public/game/index.html          # the actual 3D game, served in a sandboxed iframe
+public/wonder/index.html        # "The Long Way Here" — a 4-minute real-time film (see below)
 prisma/schema.prisma
 middleware.ts                   # CSP nonce, auth gate
 tests/unit/                     # runtoken, validation, security
 ```
+
+## The Long Way Here (`/wonder`)
+
+A four-minute film rendered live in the browser, from the first light of the
+universe to the pale blue dot, and then to you. It's a single self-contained HTML
+file with no images, video, or audio files:
+
+- **Visuals**: one WebGL fragment shader. It includes a ray-traced Schwarzschild
+  black hole with gravitational lensing and a Doppler-beamed accretion disk,
+  layered nebulae, a procedural Earth (oceans, clouds, city lights,
+  atmospheric scattering), and a pull-back to 6.06 billion km, where Voyager 1
+  took the Pale Blue Dot photo.
+- **Score**: generated live with the Web Audio API. It uses detuned pads, a
+  procedural reverb impulse, and bells timed to the picture.
+- **Ending**: tap to light stars for people you love. The constellation is
+  saved in `localStorage`, so it's still there next time.
+
+Keys: `→` skips a chapter, `M` mutes. Resolution adapts to keep the frame rate smooth.

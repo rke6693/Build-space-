@@ -48,9 +48,9 @@ export function middleware(req: NextRequest) {
   requestHeaders.set('x-csp-nonce', nonce);
 
   const res = NextResponse.next({ request: { headers: requestHeaders } });
-  // Skip CSP on the /game iframe path — it ships its own CSP in next.config.mjs
-  // because the game bundle uses inline scripts we do not want to rewrite.
-  if (!pathname.startsWith('/game')) {
+  // Skip CSP on the /game iframe and the /wonder film — each ships its own CSP in
+  // next.config.mjs because they are static pages with inline scripts.
+  if (!pathname.startsWith('/game') && !pathname.startsWith('/wonder')) {
     res.headers.set('Content-Security-Policy', csp);
   }
   res.headers.set('x-csp-nonce', nonce);

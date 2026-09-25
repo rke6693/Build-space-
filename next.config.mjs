@@ -5,6 +5,10 @@ const nextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: '1mb' },
   },
+  async rewrites() {
+    // "The Long Way Here" is a single static page; give it a clean URL.
+    return [{ source: '/wonder', destination: '/wonder/index.html' }];
+  },
   async headers() {
     return [
       {
@@ -24,6 +28,13 @@ const nextConfig = {
         headers: [
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'" },
+        ],
+      },
+      {
+        // Standalone WebGL film: inline shader + script, Google Fonts, nothing else.
+        source: '/wonder/:path*',
+        headers: [
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'" },
         ],
       },
     ];

@@ -21,6 +21,8 @@ export default function Landing() {
         <div className="row" style={{ marginTop: 32 }}>
           <Link href="/play" className="btn">Play now</Link>
           <Link href="/pricing" className="btn secondary">Go Pro — $4.99/mo</Link>
+          {/* Static page outside the App Router, so a plain anchor. */}
+          <a href="/wonder" className="btn secondary">Watch: The Long Way Here</a>
         </div>
       </section>
       <section style={{ marginTop: 64 }}>
