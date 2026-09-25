@@ -71,18 +71,29 @@ tests/unit/                     # runtoken, validation, security
 
 ## The Long Way Here (`/wonder`)
 
-A four-minute film rendered live in the browser, from the first light of the
-universe to the pale blue dot, and then to you. It's a single self-contained HTML
-file with no images, video, or audio files:
+A narrated six-minute film rendered live in the browser, from the first light of
+the universe to the pale blue dot, and then to you. It's one self-contained HTML
+file with no images, video or audio files.
 
-- **Visuals**: one WebGL fragment shader. It includes a ray-traced Schwarzschild
-  black hole with gravitational lensing and a Doppler-beamed accretion disk,
-  layered nebulae, a procedural Earth (oceans, clouds, city lights,
-  atmospheric scattering), and a pull-back to 6.06 billion km, where Voyager 1
-  took the Pale Blue Dot photo.
-- **Score**: generated live with the Web Audio API. It uses detuned pads, a
-  procedural reverb impulse, and bells timed to the picture.
-- **Ending**: tap to light stars for people you love. The constellation is
-  saved in `localStorage`, so it's still there next time.
+- **Six chapters, six shaders.** The Big Bang and the cosmic microwave background;
+  a volumetric stellar nursery where the first stars ignite and one goes supernova;
+  a ray-traced Schwarzschild black hole that tears a star apart and grows jets; an
+  Earthrise seen from the Moon's surface; a sunrise over Earth's limb with
+  Rayleigh/Mie scattering, aurora, city lights and lightning; a Saturn flyby; and
+  Voyager 1 turning back for the Pale Blue Dot at 6.06 billion km.
+- **HDR pipeline.** Scenes render to half-float targets, then go through a
+  six-level bloom, an anamorphic streak and lens flares, ACES tone mapping,
+  chromatic aberration on impacts, grain and letterboxing. Resolution adapts to
+  hold the frame rate. WebGL1 falls back to direct tone mapping.
+- **Narration.** The script is spoken with the best English voice the device
+  offers (Web Speech API). Captions reveal word by word in sync with the voice,
+  and the story clock slows if a slower voice needs more time.
+- **Score.** Generated live with Web Audio: pads, a formant "choir", strings,
+  bells, taiko build-ups, risers and impacts, all timed to the picture.
+- **Instruments.** On-screen readouts track the age of the universe, temperature,
+  distance to the event horizon, gravitational time dilation, altitude and
+  light-time home.
+- **Ending.** Tap to light stars for people you love. The constellation is saved
+  in `localStorage`, so it's still there next time.
 
-Keys: `→` skips a chapter, `M` mutes. Resolution adapts to keep the frame rate smooth.
+Keys: `→` skips a chapter, `M` mutes, `V` toggles the voice.
