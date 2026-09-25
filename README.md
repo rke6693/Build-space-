@@ -63,6 +63,7 @@ app/
 lib/
   auth, db, env, stripe, entitlement, ratelimit, runtoken, security, validation, logger
 public/game/index.html          # the actual 3D game, served in a sandboxed iframe
+public/film/index.html          # "After Eden", a 1-bit animated short (standalone page at /film/index.html)
 prisma/schema.prisma
 middleware.ts                   # CSP nonce, auth gate
 tests/unit/                     # runtoken, validation, security
