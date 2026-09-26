@@ -1,0 +1,957 @@
+'use strict';
+// =============================================================================
+// SYNTHWING 64 — game.js
+// Scene flow (boot → logo → title → briefing → stage → results → … → ending),
+// the per-frame world update, collisions, scoring, Resonance, camera
+// direction, dialogue and saving.
+// =============================================================================
+
+const DIFFS = [
+  { name: 'CADET', dmg: 0.55, fire: 0.6, bullet: 0.8, hp: 0.8 },
+  { name: 'PILOT', dmg: 1, fire: 1, bullet: 1, hp: 1 },
+  { name: 'ACE', dmg: 1.45, fire: 1.45, bullet: 1.2, hp: 1.3 },
+];
+const DEFAULT_SETTINGS = { steer: 'stick', sens: 3, invertY: false, lefty: false, diff: 1, res: 240, crt: true, dither: true, shake: true, flash: true, music: 8, sfx: 9, haptics: true, fps: false };
+const SAVE_KEY = 'synthwing64.save.v1';
+
+const Game = {
+  renderer: null, cam: new Camera(), frustum: new Frustum(),
+  state: 'boot', stateT: 0, paused: false, overlay: null,
+  save: null, settings: null,
+  time: 0, realTime: 0, dt: 0,
+  // world
+  stage: null, stageIdx: 0, env: null, rail: null, terrain: null, speed: 58, railD: 0, stageTime: 0, bar: 0, barDur: 2,
+  player: null, enemies: [], pbullets: [], homing: [], ebullets: [], pickups: [], props: [], wingmen: [], boss: null, bomb: null,
+  scriptIdx: 0, phase: 'intro', phaseT: 0, checkpointHit: false,
+  score: 0, stageStartScore: 0, stats: null, res: { level: 0, meter: 0, idle: 0 },
+  diff: DIFFS[1], volleyId: 0,
+  // feel
+  trauma: 0, flashA: 0, flashCol: [1, 1, 1], aberration: 0, timeScale: 1, hitstopT: 0, slowmoT: 0, saturation: 1, glitch: 0,
+  // beat flags (set each frame from the sequencer)
+  onBeat: false, on8th: false, onBar: false, stepCrossed: false, beatIndex: 0, barIndex: 0, stepIndex: 0,
+  // dialogue
+  dialog: { queue: [], cur: null }, said: new Set(), banners: [], warnT: 0, bossCard: 0,
+  reticle: { x: 0.5, y: 0.5, nx: 0.5, ny: 0.5, ok: false },
+  restore: 0, silence: false, invincible: false,
+
+  // ---------------------------------------------------------------------------
+  init(canvas) {
+    this.renderer = new Renderer(canvas);
+    this.renderer.env = TEX.env; this.renderer.atlas = TEX.atlas;
+    this.loadSave();
+    this.applySettings();
+    this.player = new Player();
+    this.setState('boot');
+  },
+  loadSave() {
+    const s = Store.get(SAVE_KEY, null) || {};
+    this.save = Object.assign({ unlocked: 1, best: {}, medals: {}, forks: {}, cleared: false, hiscore: 0, gold: false, plays: 0 }, s);
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, s.settings || {});
+  },
+  writeSave() { this.save.settings = this.settings; Store.set(SAVE_KEY, this.save); },
+  applySettings() {
+    const s = this.settings;
+    Input.settings.steer = s.steer; Input.settings.sens = s.sens; Input.settings.invertY = s.invertY;
+    AudioSys.musicVol = s.music / 10; AudioSys.sfxVol = s.sfx / 10; AudioSys.applyVolumes();
+    Haptics.enabled = s.haptics;
+    this.renderer.dither = s.dither ? 1 : 0;
+    this.diff = DIFFS[s.diff];
+  },
+
+  setState(s) {
+    this.state = s; this.stateT = 0;
+    // don't let the tap that changed screens also press a button on the next one
+    Input.clicks.length = 0; Input.nav.ok = false; Input.firePressed = false;
+    HUD.focus = 0;
+    const fn = this['enter_' + s]; if (fn) fn.call(this);
+  },
+
+  // ---------------------------------------------------------------------------
+  // World setup
+  // ---------------------------------------------------------------------------
+  setupWorld(envName, railX, railY, speed) {
+    if (this.terrain) this.terrain.dispose(this.renderer);
+    this.env = ENVS[envName];
+    this.rail = new Rail(railX, railY);
+    this.terrain = new Terrain(this.env, this.rail, 7);
+    this.speed = speed;
+    this.enemies.length = 0; this.pbullets.length = 0; this.homing.length = 0; this.ebullets.length = 0;
+    this.pickups.length = 0; this.props.length = 0; this.boss = null; this.bomb = null;
+    FX.clear(); FX.setWeather(this.env.particles);
+    this.saturation = 1; this.glitch = 0; this.silence = false; AudioSys.setSilence(0, 0.05);
+  },
+  terrainHeight(wx, wz) { return this.terrain ? this.terrain.height(wx, wz) : -9999; },
+  entityWorldVel(e) { return { x: e.wvx || 0, y: e.wvy || 0, z: e.wvz !== undefined ? e.wvz : -this.speed }; },
+
+  startStage(idx, fromCheckpoint) {
+    const st = STAGES[idx];
+    this.stage = st; this.stageIdx = idx;
+    this.setupWorld(st.env, st.railX, st.railY, st.speed);
+    const P = this.player;
+    if (!fromCheckpoint) {
+      this.stats = { kills: 0, rescues: 0, rings: 0, fork: false, shots: 0, time: 0, deaths: 0 };
+      this.stageStartScore = this.score;
+      this.checkpointHit = false;
+      this.wingmen = ['oz', 'sable', 'tobi'].map((w) => { const prev = this.wingmen && this.wingmen.find((m) => m.who === w); const m = new Wingman(w); if (prev) m.hp = Math.max(prev.hp, 50); return m; });
+    }
+    this.barDur = (60 / SONGS[st.song].bpm) * 4;
+    const startBar = fromCheckpoint && this.checkpointHit ? st.checkpointBar : 0;
+    this.stageTime = startBar * this.barDur;
+    this.railD = 400 + this.stageTime * this.speed;
+    this.scriptIdx = st.script.findIndex((e) => e[0] >= startBar);
+    if (this.scriptIdx < 0) this.scriptIdx = st.script.length;
+    P.reset(false); P.d = this.railD + PLAYER_AHEAD; P.control = false; P.invuln = 3;
+    for (const w of this.wingmen) { w.setState(w.hp > 0 && startBar === 0 ? 'formation' : 'away'); w.d = P.d - 2; w.x = WING_SLOTS[w.who][0]; w.y = WING_SLOTS[w.who][1]; }
+    this.res = { level: 0, meter: 0, idle: 0 };
+    this.restore = st.restore ? (startBar ? 0.4 : 0) : 1;
+    this.dialog.queue.length = 0; this.dialog.cur = null; this.banners.length = 0;
+    this.phase = 'intro'; this.phaseT = 0; this.warnT = 0; this.bossCard = 0;
+    this.timeScale = 1; this.slowmoT = 0; this.hitstopT = 0;
+    this.terrain.prewarm(this.railD, 560, this.renderer);
+    Music.play(SONGS[st.song], { layer: 1 });
+    this.updateCamera(0, true);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Spawning API used by stage scripts & AI
+  // ---------------------------------------------------------------------------
+  spawnEnemy(type, ai, o = {}) {
+    const P = this.player;
+    const e = new Enemy(type, ai, o);
+    const off = o.off !== undefined ? o.off : 170;
+    e.off = off;
+    e.d = P.d + off; e.x = o.x || 0; e.y = o.y || 0;
+    if (ai === 'behind') e.d = P.d - 24;
+    this.rail.world(_p, e.d, e.x, e.y); e.wx = _p.x; e.wy = _p.y; e.wz = _p.z;
+    this.enemies.push(e);
+    return e;
+  },
+  groundY(d, x) {
+    const wx = this.rail.x(d) + x, wz = -d;
+    let h = this.terrainHeight(wx, wz);
+    if (this.env.water) h = Math.max(h, this.env.water.level);
+    if (h < -900) h = this.rail.y(d) - 14;
+    return h;
+  },
+  spawnGround(type, off, x) {
+    const d = this.player.d + off;
+    const gy = this.groundY(d, x);
+    const e = this.spawnEnemy(type, type === 'turret' ? 'turret' : 'ground', { off, x, y: gy - this.rail.y(d) + (type === 'pylon' ? -2 : 0) });
+    e.yaw = PI;
+    return e;
+  },
+  spawnProp(kind, off, x, y, o = {}) {
+    const d = this.player.d + off;
+    const wx = this.rail.x(d) + x;
+    let wy;
+    if (y === 'water') wy = this.env.water ? this.env.water.level : this.rail.y(d) - 14;
+    else if (y === 'ground') wy = this.groundY(d, x);
+    else if (typeof y === 'string' && y.startsWith('rail')) wy = this.rail.y(d) + (parseFloat(y.slice(4)) || 0);
+    else wy = y;
+    const p = new Prop(kind, wx, wy, -d, o);
+    this.props.push(p);
+    return p;
+  },
+  spawnPickup(kind, d, x, y) { const p = new Pickup(kind, d, x, y); this.pickups.push(p); return p; },
+  wing(who) { return this.wingmen.find((w) => w.who === who); },
+
+  // ---------------------------------------------------------------------------
+  // Messages
+  // ---------------------------------------------------------------------------
+  say(who, text, prio) {
+    const m = { who, text, t: 0, shown: 0, dur: 1.9 + text.length / 30 };
+    if (prio) { this.dialog.queue.unshift(m); if (this.dialog.cur && this.dialog.cur.t > 0.6) this.dialog.cur = null; }
+    else if (this.dialog.queue.length < 4) this.dialog.queue.push(m);
+  },
+  sayOnce(key) {
+    if (this.said.has(key)) return;
+    this.said.add(key);
+    const L = { lowShield: ['oz', 'Your shield is low, Lead! Fly through a ring to patch it up!'], laser2: ['tobi', 'Twin lasers online! Double the song!'], laser3: ['tobi', 'HYPER LASERS! Those hit twice as hard!'] };
+    if (L[key]) this.say(L[key][0], L[key][1]);
+  },
+  banner(text, col = '#ffffff', big = false) { this.banners.push({ text, col, t: 0, big }); if (this.banners.length > 3) this.banners.shift(); },
+  warning() { this.warnT = 3.2; SFX.alarm(); this.shake(0.2); },
+  updateDialog(dt) {
+    const D = this.dialog;
+    if (!D.cur && D.queue.length) { D.cur = D.queue.shift(); D.cur.t = 0; }
+    const c = D.cur;
+    if (c) {
+      const before = Math.floor(c.shown);
+      c.t += dt;
+      c.shown = Math.min(c.text.length, c.t * 38);
+      const after = Math.floor(c.shown);
+      for (let i = before; i < after; i++) {
+        const ch = c.text[i];
+        if (i % 2 === 0 && /[a-z0-9]/i.test(ch)) SFX.voice(VOICE[c.who] || 200, ch, c.who === 'hush' ? 'hush' : c.who === 'static' ? 'robot' : '');
+      }
+      if (c.t > c.dur) D.cur = null;
+    }
+    for (let i = this.banners.length - 1; i >= 0; i--) { this.banners[i].t += dt; if (this.banners[i].t > 1.8) this.banners.splice(i, 1); }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Feel
+  // ---------------------------------------------------------------------------
+  shake(a) { if (this.settings.shake) this.trauma = Math.min(1, this.trauma + a); },
+  flash(col, a) { this.flashCol = col; this.flashA = Math.max(this.flashA, this.settings.flash ? a : a * 0.3); },
+  hitstop(t) { this.hitstopT = Math.max(this.hitstopT, t); },
+
+  // ---------------------------------------------------------------------------
+  // Scoring & Resonance
+  // ---------------------------------------------------------------------------
+  mult() { return 1 + this.res.level; },
+  addScore(base, at) {
+    const pts = Math.round(base * this.mult());
+    this.score += pts;
+    return pts;
+  },
+  resonanceGain(v = 1) {
+    const R = this.res;
+    R.idle = 0;
+    if (R.level >= 4) { R.meter = 1; return; }
+    R.meter += 0.3 * v / (1 + R.level * 0.45);
+    if (R.meter >= 1) {
+      R.level++; R.meter = R.level >= 4 ? 1 : 0.05;
+      this.banner(R.level >= 4 ? 'RESONANCE MAX!' : 'RESONANCE ' + (R.level + 1), R.level >= 4 ? 'rainbow' : '#9ff6ff');
+      if (R.level >= 4) { SFX.ring(true); this.flash([1, 1, 1], 0.15); }
+    }
+    this.syncLayers();
+  },
+  resonanceHit() {
+    const R = this.res;
+    if (R.level > 0) { R.level--; this.banner('RESONANCE DOWN', '#ff7a7a'); }
+    R.meter = 0;
+    this.syncLayers();
+  },
+  syncLayers() {
+    if (this.state !== 'play') return;
+    let lv = 1 + this.res.level;
+    if (this.stage && this.stage.restore && !this.boss) lv = Math.min(lv, 1 + Math.floor(this.restore * 4.99));
+    Music.setLayer(lv);
+  },
+  onKill(e, src) {
+    const G = this;
+    this.stats.kills++;
+    const pts = this.addScore(e.score, e);
+    this.resonanceGain(e.T.res || 1);
+    if (this.stage && this.stage.restore) this.restore = Math.min(1, this.restore + 0.012 * (e.T.res || 1));
+    // musical note in key, rising with the volley chain
+    let noteK = e.T.big ? 0 : ri(0, 4);
+    if (src && src.volley) { src.volley.kills++; noteK = src.volley.kills - 1; }
+    SFX.note(noteK);
+    FX.text(e.wx, e.wy + 2, e.wz, '+' + pts, e.T.big ? '#ffe14a' : '#ffffff', e.T.big);
+    if (src && src.volley && src.volley.kills >= 2 && src.volley.kills === src.volley.n) {
+      const v = src.volley.kills, bonus = this.addScore(v * v * 40);
+      FX.text(e.wx, e.wy + 5, e.wz, 'CHAIN ×' + v + '  +' + bonus, '#ff9ad0', true);
+      if (v >= 6) this.banner('PERFECT CHAIN ×' + v, 'rainbow');
+    }
+    // occasional drops from big enemies
+    if (e.T.big && e.type !== 'bigrock') G.spawnPickup(Math.random() < 0.5 ? 'ring' : 'bomb', e.d, e.x, e.y);
+    Haptics.tap(e.T.big ? 1 : 0.35);
+  },
+  onFork() {
+    this.stats.fork = true;
+    this.addScore(2000);
+    this.banner('TUNING FORK FOUND!', '#ffe14a', true);
+    this.say('tobi', "A golden tuning fork! Those are legendary — hang on to it!");
+  },
+  onCheckpoint() {
+    this.checkpointHit = true;
+    this.player.heal(30);
+    this.banner('CHECKPOINT', '#6ff6ff', true);
+    SFX.ring(true);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Boss flow
+  // ---------------------------------------------------------------------------
+  startBoss(key) {
+    const Cls = BOSSES[key];
+    this.boss = new Cls();
+    this.phase = 'boss'; this.phaseT = 0;
+    this.bossCard = 4;
+    Music.queue(key === 'hush' ? SONGS.final : SONGS.boss, { layer: 1 + this.res.level });
+    SFX.roar();
+    const lines = { conductor: ['static', 'You call that noise MUSIC? I will conduct your silence!'], grinder: ['static', 'CRUNCH. Your little songs taste like gravel.'], serpent: ['static', 'Hush now... let the cold keep you quiet forever...'], anvil: ['static', 'I will hammer your song flat!'], hush: ['hush', '...then let there be nothing at all.'] };
+    const l = lines[key]; if (l) setTimeout(() => this.say(l[0], l[1], true), 1500);
+  },
+  onBossDefeated(b) {
+    this.slowmoT = 2.2;
+    this.shake(1); this.flash([1, 1, 1], 0.6);
+    const bonus = this.addScore(10000);
+    this.banner('BOSS DEFEATED  +' + bonus, 'rainbow', true);
+    for (const eb of this.ebullets) { this.rail.world(_p, eb.d, eb.x, eb.y); FX.spawn(_p.x, _p.y, _p.z, 0, 4, 0, 0.6, 1.5, 0.2, 1, 0.9, 0.5, 1, SPR.SPARKLE); }
+    this.ebullets.length = 0;
+    for (const e of this.enemies) if (!e.dead) e.damage(99, null);
+    SFX.bigBoom(); Haptics.tap(1);
+    if (this.silence) this.exitSilence();
+    this.phase = 'bossDeath'; this.phaseT = 0;
+  },
+  enterSilence() {
+    this.silence = true;
+    AudioSys.setSilence(1, 0.6);
+    this.say('hush', '...listen... to... nothing.', true);
+    setTimeout(() => this.say('oz', "The music's gone! Keep shooting that mask — every hit brings a note back!", true), 3500);
+  },
+  exitSilence() {
+    this.silence = false;
+    AudioSys.setSilence(0, 0.1);
+    Music.setLayer(5);
+  },
+  onPlayerDown() {
+    this.stats.deaths++;
+    this.phase = 'dead'; this.phaseT = 0;
+    this.player.lives--;
+    this.resonanceHit();
+    Music.setLayer(0);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Main tick
+  // ---------------------------------------------------------------------------
+  frame(dt, skipRender) {
+    this.realTime += dt;
+    this.overlayT = this.overlay ? (this.overlayT || 0) + dt : 0;
+    HUD.resize();
+    Input.poll(dt);
+    Music.update();
+    this.readBeats();
+    if (this.state !== 'play') {
+      if (this.overlay) { /* menus handled in HUD */ }
+    }
+    const upd = this['update_' + this.state];
+    if (upd && !this.overlay) upd.call(this, dt);
+    else if (this.overlay && this.state === 'play') { /* paused */ }
+    this.stateT += dt;
+    if (!skipRender) { this.render(dt); HUD.draw(dt); }
+    Input.endFrame();
+  },
+  readBeats() {
+    this.onBeat = this.on8th = this.onBar = this.stepCrossed = false;
+    for (const s of Music.crossed) {
+      this.stepCrossed = true; this.stepIndex = s;
+      if (s % 2 === 0) this.on8th = true;
+      if (s % 4 === 0) { this.onBeat = true; this.beatIndex = s / 4; }
+      if (s % 16 === 0) { this.onBar = true; this.barIndex = s / 16; }
+    }
+  },
+
+  // ---- boot / logo -------------------------------------------------------
+  enter_boot() { Input.mode = 'menu'; },
+  update_boot() {
+    if (Input.clicks.length || Input.nav.ok || Input.firePressed) { AudioSys.unlock(); this.setState('logo'); }
+  },
+  enter_logo() {
+    this.setupWorld('brief', () => 0, () => 0, 30);
+    Music.play(SONGS.logo, { loop: false });
+    this.logoMesh = this.logoMesh || buildLogoMesh('SYNTHWING', { colors: LOGO_COLORS });
+    this.logo64 = this.logo64 || buildLogoMesh('64', { voxel: 1, depth: 2.4, colors: LOGO64_COLORS });
+  },
+  update_logo(dt) {
+    if (this.stateT > 5.2 || (this.stateT > 0.6 && (Input.clicks.length || Input.nav.ok || Input.firePressed))) this.setState('title');
+  },
+
+  // ---- title -------------------------------------------------------------
+  enter_title() {
+    Input.mode = 'menu';
+    const st = STAGES[0];
+    this.setupWorld('title', st.railX, (d) => 10 + 3 * Math.sin(d * 0.004), 34);
+    this.railD = 600 + Math.random() * 2000;
+    const P = this.player; P.reset(true); P.d = this.railD + PLAYER_AHEAD; P.control = false; P.invuln = 0;
+    this.wingmen = ['oz', 'sable', 'tobi'].map((w) => new Wingman(w));
+    for (const w of this.wingmen) { w.d = P.d - 2; }
+    this.terrain.prewarm(this.railD, 520, this.renderer);
+    if (Music.name !== 'title') Music.play(SONGS.title, { layer: 5 });
+    this.menu = 'main'; this.menuSel = 0; this.camShot = 0; this.camShotT = 0;
+    this.logoMesh = this.logoMesh || buildLogoMesh('SYNTHWING', { colors: LOGO_COLORS });
+    this.logo64 = this.logo64 || buildLogoMesh('64', { voxel: 1, depth: 2.4, colors: LOGO64_COLORS });
+  },
+  update_title(dt) {
+    this.attract(dt);
+  },
+  // Autopilot flight used by the title & results backdrops.
+  attract(dt) {
+    const P = this.player;
+    this.time += dt;
+    this.railD += this.speed * dt;
+    P.d = this.railD + PLAYER_AHEAD;
+    P.x = Math.sin(this.time * 0.35) * 6; P.y = Math.sin(this.time * 0.5) * 2.5;
+    P.vx = Math.cos(this.time * 0.35) * 2.1;
+    P.rollAngle = -P.vx * 0.12 + Math.sin(this.time * 0.8) * 0.05; P.aimX = 0; P.aimY = 0;
+    P.visible = true;
+    for (const w of this.wingmen) { if (w.state !== 'formation') w.setState('formation'); w.update(dt); }
+    FX.update(dt, this.cam);
+    this.terrain.update(this.railD, 520, this.renderer, 2);
+    // cinematic camera shots, cut every 4 bars
+    this.camShotT += dt;
+    if (this.camShotT > 7.5) { this.camShotT = 0; this.camShot = (this.camShot + 1) % 4; }
+    this.cinematicCamera(dt);
+  },
+  cinematicCamera(dt) {
+    const P = this.player, cam = this.cam, t = this.camShotT;
+    const shots = [
+      () => [W3(P.d + 9 - t * 0.6, P.x + 7, P.y + 1.5), W3(P.d - 2, P.x, P.y)],
+      () => [W3(P.d - 14, P.x - 3 + t * 0.4, P.y + 3.5), W3(P.d + 30, P.x, P.y + 1)],
+      () => [W3(P.d + 2 + t * 0.3, P.x - 12, P.y - 2), W3(P.d, P.x, P.y + 0.5)],
+      () => [W3(P.d + 26, P.x + 2 - t * 0.5, P.y + 8), W3(P.d - 6, P.x, P.y)],
+    ];
+    const [pos, tgt] = shots[this.camShot]();
+    pos.y = Math.max(pos.y, this.groundY(-pos.z, pos.x - this.rail.x(-pos.z)) + 3);
+    cam.pos.copy(pos); cam.target.copy(tgt); cam.up.set(0, 1, 0);
+    cam.fov = 52 * DEG;
+  },
+
+  // ---- briefing ------------------------------------------------------------
+  enter_brief() {
+    Input.mode = 'menu';
+    const st = STAGES[this.stageIdx];
+    this.setupWorld('brief', () => 0, () => 0, 30);
+    this.railD = 0;
+    this.briefLine = -1; this.briefT = 0; this.briefDone = false;
+    Music.play(SONGS.brief, { layer: 5 });
+    this.briefLines = st.brief.slice();
+  },
+  update_brief(dt) {
+    this.time += dt; this.briefT += dt;
+    FX.update(dt, this.cam);
+    const L = this.briefLines;
+    if (this.briefLine < 0 && this.stateT > 1.2) { this.briefLine = 0; this.dialog.queue.length = 0; this.dialog.cur = null; this.say(L[0][0], L[0][1]); }
+    else if (this.briefLine >= 0 && !this.dialog.cur && !this.dialog.queue.length && !this.briefDone) {
+      this.briefLine++;
+      if (this.briefLine < L.length) this.say(L[this.briefLine][0], L[this.briefLine][1]); else this.briefDone = true;
+    }
+    this.updateDialog(dt);
+    const tap = Input.clicks.length || Input.nav.ok || Input.firePressed;
+    if (tap && this.stateT > 0.5) {
+      if (this.briefDone) { SFX.menuOk(); this.launchStage(); }
+      else if (this.dialog.cur && this.dialog.cur.shown < this.dialog.cur.text.length) this.dialog.cur.t = 99 / 38;
+      else if (this.dialog.cur) this.dialog.cur = null;
+    }
+    const cam = this.cam, a = this.time * 0.05;
+    cam.pos.set(Math.sin(a) * 18, 4 + Math.sin(this.time * 0.2) * 2, 60 + Math.cos(a) * 10);
+    cam.target.set(-10, 0, 0); cam.up.set(0, 1, 0); cam.fov = 50 * DEG;
+  },
+  launchStage() {
+    this.setState('play');
+  },
+
+  // ---- play ------------------------------------------------------------------
+  enter_play() {
+    Input.mode = 'play';
+    this.startStage(this.stageIdx, false);
+    this.save.plays++; this.writeSave();
+  },
+  update_play(dt) {
+    const P = this.player;
+    // pause
+    if (Input.pausePressed && this.phase !== 'clear') { this.pause(); return; }
+    // time scaling
+    let ts = 1;
+    if (this.hitstopT > 0) { this.hitstopT -= dt; ts = 0.05; }
+    if (this.slowmoT > 0) { this.slowmoT -= dt; ts = Math.min(ts, 0.3 + (1 - this.slowmoT / 2.2) * 0.4); }
+    const gdt = dt * ts;
+    this.time += gdt;
+    this.phaseT += dt;
+    // rail advance
+    this.railD += this.speed * gdt;
+    if (P.alive || this.phase === 'dead') P.d = this.railD + PLAYER_AHEAD;
+    if (this.phase !== 'dead') this.stageTime += gdt;
+    this.stats.time += gdt;
+    this.bar = this.stageTime / this.barDur;
+    // phases
+    if (this.phase === 'intro') {
+      if (this.phaseT > 3.2) { this.phase = 'main'; P.control = true; }
+    }
+    if ((this.phase === 'main' || this.phase === 'intro') && this.stage) {
+      const S = this.stage.script;
+      while (this.scriptIdx < S.length && S[this.scriptIdx][0] <= this.bar) { S[this.scriptIdx][1](this); this.scriptIdx++; }
+      if (this.stage.ambient) this.stage.ambient(this, gdt);
+    }
+    if (this.phase === 'main') this.fillerCheck(gdt);
+    if (this.phase === 'boss' && this.stage.ambient && !this.boss.entering) this.stage.ambient(this, gdt * 0.3);
+    if (this.phase === 'bossDeath') {
+      if (this.phaseT > 3.2) this.beginClear();
+    }
+    if (this.phase === 'clear') {
+      P.control = false;
+      P.x = damp(P.x, 0, 1.5, dt); P.y = damp(P.y, 2, 1.5, dt);
+      if (this.phaseT > 3.5) P.d += (this.phaseT - 3.5) * (this.phaseT - 3.5) * 60 * dt * 4;
+      if (this.phaseT > 5.5 && !this.resultsShown) { this.resultsShown = true; this.finishStage(); }
+    }
+    if (this.phase === 'dead') {
+      if (this.phaseT > 3) {
+        if (P.lives >= 0) { this.startStage(this.stageIdx, true); this.banner(this.checkpointHit ? 'RESUMING FROM CHECKPOINT' : 'TRY AGAIN!', '#ffffff'); }
+        else { this.setState('gameover'); return; }
+      }
+    }
+    // simulation
+    P.update(gdt);
+    for (const w of this.wingmen) w.update(gdt);
+    for (const e of this.enemies) e.update(gdt);
+    if (this.boss) this.boss.update(gdt);
+    for (const p of this.props) this.updateProp(p, gdt);
+    for (const p of this.pickups) p.update(gdt);
+    this.updateBullets(gdt);
+    this.updateHoming(gdt);
+    this.updateBomb(gdt);
+    this.enemies = this.enemies.filter((e) => !e.dead && !e.gone);
+    this.props = this.props.filter((p) => !p.gone);
+    this.pickups = this.pickups.filter((p) => !p.gone);
+    // resonance decay
+    const R = this.res;
+    R.idle += gdt;
+    if (R.idle > 4 && R.level < 4) { R.meter -= gdt * 0.12; if (R.meter < 0) { if (R.level > 0) { R.level--; R.meter = 0.7; this.syncLayers(); } else R.meter = 0; } }
+    if (R.level >= 4 && R.idle > 8) { R.level = 3; R.meter = 0.8; this.syncLayers(); }
+    // restoration (final stage colour & music)
+    if (this.stage.restore) {
+      this.saturation = this.silence ? 0.05 : this.boss && this.boss.dead ? damp(this.saturation, 1, 1.5, dt) : 0.08 + this.restore * 0.92;
+      this.glitch = this.silence ? 0.6 : (1 - this.restore) * 0.25;
+    }
+    FX.update(gdt, this.cam);
+    this.terrain.update(this.railD, 560, this.renderer, 2);
+    this.updateDialog(dt);
+    this.updateCamera(dt);
+    this.decayFeel(dt);
+    if (this.warnT > 0) this.warnT -= dt;
+    if (this.bossCard > 0) this.bossCard -= dt;
+  },
+  decayFeel(dt) {
+    this.trauma = Math.max(0, this.trauma - dt * 1.6);
+    this.flashA = Math.max(0, this.flashA - dt * 2.5);
+    this.aberration = Math.max(0, this.aberration - dt * 0.03);
+  },
+  // Keep the action flowing: if the sky goes quiet between scripted events,
+  // send in a small themed wave.
+  fillerCheck(dt) {
+    const busy = this.enemies.some((e) => !e.dead && !e.T.solid && e.type !== 'mine');
+    if (busy) { this.quietT = 0; return; }
+    this.quietT = (this.quietT || 0) + dt;
+    const next = this.stage.script[this.scriptIdx];
+    if (this.quietT < this.barDur * 1.1 || (next && next[0] - this.bar < 1.2)) return;
+    this.quietT = 0;
+    const body = this.stage.id === 'hush' ? 'cube' : 'drone';
+    const waves = [
+      () => wave(body, 'hover', F.V(5, 5, rr(-6, 6), rr(-2, 5)), { hold: 4 }),
+      () => wave(body, 'swoop', F.line(4, 5, rr(-4, 4), rr(-2, 5)), { side: chance(0.5) ? 1 : -1, hold: 3 }),
+      () => wave('swooper', 'behind', F.line(3, 8, 0, rr(0, 5)), { hold: 4 }),
+      () => wave(body, 'pass', F.grid(3, 2, 7, rr(-8, 8), rr(-3, 4)), { off: 230, stagger: 5 }),
+      () => wave(body, 'charge', F.line(4, 8, 0, rr(-3, 3)), { off: 260, stagger: 14 }),
+    ];
+    pick(waves)()(this);
+  },
+  updateProp(p, dt) {
+    if (p.kind === 'vent') {
+      p.t += dt;
+      if (this.onBar || (this.onBeat && this.beatIndex % 4 === 2)) { p.erupt = 1; SFX.explode(0.8); }
+      if (p.erupt > 0) {
+        p.erupt -= dt / ((Music.stepDur || 0.1) * 4);
+        for (let i = 0; i < 3; i++) FX.spawn(p.x + rr(-2, 2), p.y + 4, p.z + rr(-2, 2), rr(-3, 3), rr(40, 70), rr(-3, 3), 0.8, 3, 1, 1, rr(0.3, 0.6), 0.05, 1, SPR.GLOW, true, 0.4, -30);
+        const P = this.player; P.worldPos(_p);
+        if (Math.hypot(_p.x - p.x, _p.z - p.z) < 5 && _p.y < p.y + 55) P.hurt(14);
+      }
+      if (-p.z < this.player.d - 60) p.gone = true;
+      return;
+    }
+    p.update(dt);
+    if (p.o.bonus && !p.bonusDone && -p.z < this.player.d) {
+      p.bonusDone = true;
+      const P = this.player; P.worldPos(_p);
+      if (Math.abs(_p.x - p.x) < 13 * p.scale && _p.y < p.y + 13 * p.scale) { const pts = this.addScore(500); this.banner('NICE THREADING! +' + pts, '#9ff6ff'); SFX.ring(false); this.resonanceGain(1); }
+    }
+  },
+  updateBullets(dt) {
+    const P = this.player;
+    // player lasers
+    const pb = this.pbullets;
+    for (let i = pb.length - 1; i >= 0; i--) {
+      const b = pb[i];
+      b.pd = b.d; b.px = b.x; b.py = b.y;
+      b.d += b.vd * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+      let hit = false;
+      for (const e of this.enemies) {
+        if (e.dead) continue;
+        if (segSphere(b.pd, b.px, b.py, b.d, b.x, b.y, e.d, e.x, e.y, e.r + 0.4)) { e.damage(b.dmg, b); hit = true; break; }
+      }
+      if (!hit && this.boss && !this.boss.dead) for (const part of this.boss.parts) {
+        if (!part.alive && part.weak) continue;
+        if (segSphere(b.pd, b.px, b.py, b.d, b.x, b.y, part.d, part.x, part.y, part.r + 0.4)) { this.boss.hit(part, b.dmg, b); hit = true; break; }
+      }
+      // terrain
+      if (!hit && this.terrain && this.env.height && ((i + (this.frameN || 0)) & 3) === 0) {
+        this.rail.world(_p, b.d, b.x, b.y);
+        if (_p.y < this.terrainHeight(_p.x, _p.z)) { FX.hitSpark(_p.x, _p.y, _p.z, 0, 5, 0, [1, 0.8, 0.5]); hit = true; }
+      }
+      if (hit || b.life <= 0) { pb[i] = pb[pb.length - 1]; pb.pop(); }
+    }
+    // enemy bullets
+    const eb = this.ebullets;
+    for (let i = eb.length - 1; i >= 0; i--) {
+      const b = eb[i];
+      b.d += b.vd * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+      let dead = b.life <= 0 || b.d < P.d - 20;
+      if (!dead && P.alive) {
+        const dd = b.d - P.d, dx = b.x - P.x, dy = b.y - P.y, r = b.r + P.r * 0.75;
+        if (dd * dd + dx * dx + dy * dy < r * r) {
+          if (P.rolling) {
+            // deflect it straight back — it becomes yours
+            SFX.deflect(); this.rail.world(_p, b.d, b.x, b.y); FX.hitSpark(_p.x, _p.y, _p.z, 0, 0, -this.speed, [0.6, 0.9, 1]);
+            this.pbullets.push({ d: b.d + 1, x: b.x, y: b.y, pd: b.d, px: b.x, py: b.y, vd: this.speed + LASER_REL * 0.8, vx: -b.vx * 0.3, vy: -b.vy * 0.3, life: 1, dmg: 2, lv: 3, deflected: true });
+            dead = true;
+          } else if (P.hurt(b.dmg)) dead = true;
+        }
+      }
+      if (dead) { eb[i] = eb[eb.length - 1]; eb.pop(); }
+    }
+    this.frameN = (this.frameN || 0) + 1;
+  },
+  updateHoming(dt) {
+    const H = this.homing;
+    for (let i = H.length - 1; i >= 0; i--) {
+      const h = H[i];
+      h.t += dt; h.life -= dt;
+      if (h.t < 0) { // staggered launch, ride along with the ship
+        const P = this.player; h.d = P.d + 1; h.x = P.x; h.y = P.y;
+        continue;
+      }
+      let tg = h.target;
+      const tgAlive = tg && (tg.isPart ? tg.alive && !tg.boss.dead : !tg.dead && !tg.gone);
+      if (!tgAlive) { tg = h.target = this.findNearReticle(0.5, false, true); if (!tg) h.life = Math.min(h.life, 0.2); }
+      const sp = this.speed + 110 + h.t * 260;
+      if (tg) {
+        let dd = tg.d - h.d, dx = tg.x - h.x, dy = tg.y - h.y;
+        const l = Math.hypot(dd, dx, dy) || 1;
+        const turn = 3 + h.t * 14;
+        const k = 1 - Math.exp(-turn * dt);
+        h.vd = lerp(h.vd, this.speed + (dd / l) * (sp - this.speed), k);
+        h.vx = lerp(h.vx, (dx / l) * (sp - this.speed), k);
+        h.vy = lerp(h.vy, (dy / l) * (sp - this.speed), k);
+        if (l < (tg.r || 2) + 1.2) {
+          if (tg.isPart) tg.boss.hit(tg, 2, { homing: true, volley: h.volley });
+          else tg.damage(tg.T && tg.T.big ? 3 : 2, { homing: true, volley: h.volley });
+          if (tg.lockCount) tg.lockCount = Math.max(0, tg.lockCount - 1);
+          this.rail.world(_p, h.d, h.x, h.y);
+          FX.spawn(_p.x, _p.y, _p.z, 0, 0, -this.speed, 0.25, 4, 1, 0.6, 1, 0.9, 1, SPR.SPARKLE);
+          h.life = 0;
+        }
+      }
+      h.d += h.vd * dt; h.x += h.vx * dt; h.y += h.vy * dt;
+      this.rail.world(_p, h.d, h.x, h.y);
+      h.trail.pts.unshift(new V3(_p.x, _p.y, _p.z));
+      if (h.trail.pts.length > h.trail.maxPts) h.trail.pts.pop();
+      if (h.life <= 0) { h.trail.alive = false; H[i] = H[H.length - 1]; H.pop(); }
+    }
+  },
+  updateBomb(dt) {
+    const b = this.bomb; if (!b) return;
+    b.t += dt;
+    b.d += b.vd * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+    let boom = b.t > 0.55;
+    for (const e of this.enemies) if (!e.dead && Math.hypot(e.d - b.d, e.x - b.x, e.y - b.y) < e.r + 2) boom = true;
+    if (this.boss) for (const p of this.boss.parts) if (p.alive && Math.hypot(p.d - b.d, p.x - b.x, p.y - b.y) < p.r + 2) boom = true;
+    if (!boom) return;
+    this.bomb = null;
+    this.rail.world(_p, b.d, b.x, b.y);
+    FX.explode(_p.x, _p.y, _p.z, 5, { shell: [0.6, 0.8, 1], palette: [[0.6, 0.9, 1], [1, 1, 1], [0.8, 0.5, 1]] });
+    this.flash([0.8, 0.9, 1], 0.7); this.shake(0.8);
+    for (const e of this.enemies) if (!e.dead && Math.hypot(e.d - b.d, e.x - b.x, e.y - b.y) < 42) e.damage(e.T.big ? 12 : 99, { bomb: true });
+    if (this.boss) for (const p of this.boss.parts) if (p.alive && p.weak && Math.hypot(p.d - b.d, p.x - b.x, p.y - b.y) < 45) this.boss.hit(p, 8, { bomb: true });
+    for (const eb of this.ebullets) { this.rail.world(_p, eb.d, eb.x, eb.y); FX.spawn(_p.x, _p.y, _p.z, 0, 0, -this.speed, 0.4, 1.5, 0.2, 0.7, 0.9, 1, 1, SPR.SPARKLE); }
+    this.ebullets.length = 0;
+  },
+  // Enemy (or boss part) nearest the far reticle in screen space.
+  findNearReticle(radius, forLock, anyScreen) {
+    const cam = this.cam, P = this.player;
+    const ret = this.reticle;
+    if (!ret.ok && !anyScreen) return null;
+    const asp = cam.aspect || 1.6;
+    let best = null, bd = radius;
+    const test = (o, wx, wy, wz, locked, hp) => {
+      if (o.d < P.d + 6) return;
+      if (!cam.project(_q, wx, wy, wz)) return;
+      if (_q.x < -0.02 || _q.x > 1.02 || _q.y < -0.02 || _q.y > 1.02) return;
+      if (forLock && locked >= Math.max(1, Math.ceil(hp / 2))) return;
+      const dx = (_q.x - (anyScreen ? 0.5 : ret.nx)) * asp, dy = _q.y - (anyScreen ? 0.5 : ret.ny);
+      const d = Math.hypot(dx, dy);
+      if (d < bd) { bd = d; best = o; }
+    };
+    for (const e of this.enemies) { if (e.dead || e.d - P.d > 330) continue; test(e, e.wx, e.wy, e.wz, e.lockCount || 0, e.hp); }
+    if (this.boss && !this.boss.dead && !this.boss.entering) for (const p of this.boss.parts) {
+      if (!p.alive || p.invuln) continue;
+      this.rail.world(_t, p.d, p.x, p.y);
+      test(p, _t.x, _t.y, _t.z, p.lockCount || 0, 8);
+    }
+    return best;
+  },
+
+  beginClear() {
+    this.phase = 'clear'; this.phaseT = 0; this.resultsShown = false;
+    this.boss = null;
+    Music.play(SONGS.clear, { loop: false });
+    for (const w of this.wingmen) if (w.hp > 0) w.setState('join');
+    this.say('maren', ['Corona sings again! Outstanding work, Synthwing!', "The Halo Belt is humming! You're on a roll, squadron.", "Frostline's aurora is singing — I can hear it from here!", 'The Forge is cold and quiet. The good kind of quiet.', ''][this.stageIdx] || 'Mission complete!', true);
+  },
+  finishStage() {
+    const st = this.stage, s = this.save;
+    const stageScore = this.score - this.stageStartScore;
+    const allWings = this.wingmen.every((w) => w.hp > 0);
+    const medal = stageScore >= st.medal && allWings;
+    this.results = { stageScore, total: this.score, kills: this.stats.kills, rescues: this.stats.rescues, fork: this.stats.fork, medal, allWings, newBest: stageScore > (s.best[st.id] || 0), deaths: this.stats.deaths };
+    if (this.results.newBest) s.best[st.id] = stageScore;
+    if (medal) s.medals[st.id] = true;
+    if (this.stats.fork) s.forks[st.id] = true;
+    s.unlocked = Math.max(s.unlocked, Math.min(5, this.stageIdx + 2));
+    if (Object.keys(s.forks).length >= 5) s.gold = true;
+    if (this.score > s.hiscore) s.hiscore = this.score;
+    this.writeSave();
+    this.setState('results');
+  },
+
+  // Debug: jump the current stage to a bar (used by automated tests).
+  debugJump(bar) {
+    const st = this.stage; if (!st) return;
+    this.stageTime = bar * this.barDur; this.bar = bar;
+    this.railD = 400 + this.stageTime * this.speed;
+    this.player.d = this.railD + PLAYER_AHEAD;
+    this.scriptIdx = st.script.findIndex((e) => e[0] >= bar); if (this.scriptIdx < 0) this.scriptIdx = st.script.length;
+    this.enemies.length = 0; this.ebullets.length = 0; this.props.length = 0; this.pickups.length = 0;
+    if (this.phase === 'intro') { this.phase = 'main'; this.player.control = true; }
+    this.terrain.prewarm(this.railD, 560, this.renderer);
+  },
+  pause() {
+    this.overlay = 'pause'; this.menuSel = 0;
+    Input.mode = 'menu'; Input.releaseAll();
+    AudioSys.suspend();
+    SFX.menuBack();
+  },
+  resume() {
+    this.overlay = null; Input.mode = this.state === 'play' ? 'play' : 'menu';
+    AudioSys.resume();
+    Music.nextT = AudioSys.time() + 0.05;
+  },
+
+  // ---- results ---------------------------------------------------------------
+  enter_results() {
+    Input.mode = 'menu';
+    this.resultT = 0;
+    this.player.alive = true; this.player.visible = true;
+    const w = this.wingmen; for (const m of w) if (m.hp > 0) m.setState('formation');
+    Music.play(SONGS.brief, { layer: 5 });
+  },
+  update_results(dt) {
+    this.resultT += dt;
+    this.camShot = 0; this.camShotT = 2;
+    this.attract(dt);
+    if (this.resultT > 1.5 && (Input.clicks.length || Input.nav.ok || Input.firePressed)) {
+      SFX.menuOk();
+      if (this.stageIdx >= STAGES.length - 1) this.setState('ending');
+      else { this.stageIdx++; this.setState('brief'); }
+    }
+  },
+
+  // ---- game over ---------------------------------------------------------------
+  enter_gameover() { Input.mode = 'menu'; Music.play(SONGS.gameover, { loop: false }); this.menuSel = 0; },
+  update_gameover(dt) { this.time += dt; FX.update(dt, this.cam); },
+  continueGame() {
+    this.score = this.stageStartScore;
+    this.player.reset(true);
+    this.setState('play');
+  },
+
+  // ---- ending ------------------------------------------------------------------
+  enter_ending() {
+    Input.mode = 'menu';
+    this.save.cleared = true; this.writeSave();
+    const st = STAGES[0];
+    this.setupWorld('title', st.railX, (d) => 12 + 3 * Math.sin(d * 0.004), 40);
+    this.railD = 3000;
+    const P = this.player; P.d = this.railD + PLAYER_AHEAD; P.control = false;
+    for (const w of this.wingmen) { w.hp = Math.max(w.hp, 50); w.setState('formation'); w.d = P.d - 2; }
+    this.terrain.prewarm(this.railD, 520, this.renderer);
+    Music.play(SONGS.ending, { layer: 5 });
+    this.camShot = 1; this.camShotT = 0; this.endingT = 0;
+  },
+  update_ending(dt) {
+    this.endingT += dt;
+    this.attract(dt);
+    if (this.endingT > 12 && (Input.clicks.length || Input.nav.ok)) { this.setState('title'); }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Camera
+  // ---------------------------------------------------------------------------
+  updateCamera(dt, snap) {
+    const P = this.player, cam = this.cam;
+    let pos, tgt;
+    if (this.phase === 'intro' && this.state === 'play') {
+      const k = easeInOutCubic(Math.min(1, this.phaseT / 3.2));
+      const a = lerp(0.2, PI, k);
+      const rad = lerp(10, 12.5, k);
+      pos = W3(P.d + Math.cos(a) * rad, P.x * 0.55 + Math.sin(a) * 7, P.y * 0.5 + lerp(0.8, 3.4, k));
+      tgt = W3(lerp(P.d, P.d + 28, k), P.x * 0.75, P.y * 0.65 + 0.8 * k);
+    } else if (this.phase === 'clear') {
+      const a = this.phaseT * 0.5;
+      pos = W3(P.d - 12 * Math.cos(a), P.x + 12 * Math.sin(a), P.y + 3);
+      tgt = W3(P.d, P.x, P.y);
+    } else if (this.phase === 'dead') {
+      pos = W3(this.railD - 2, P.x * 0.5, 6); tgt = W3(P.d, P.x, P.y);
+    } else {
+      const camD = P.d - 12.5;
+      pos = W3(camD, P.x * 0.55, P.y * 0.5 + 3.4);
+      tgt = W3(P.d + 28, P.x * 0.75 + P.aimX * 8, P.y * 0.65 + 0.8 + P.aimY * 6);
+      if (this.boss && this.boss.entering && this.boss.enterT < 2.5) {
+        // glance toward the boss as it arrives
+        const b = this.boss, k = Math.sin(clamp01(b.enterT / 2.5) * PI) * 0.45;
+        const bt = W3(b.d, b.x, b.y + 8);
+        tgt.lerp(bt, k);
+      }
+    }
+    if (this.env && this.env.height) pos.y = Math.max(pos.y, this.terrainHeight(pos.x, pos.z) + 2.5);
+    if (snap || !dt) { cam.pos.copy(pos); cam.target.copy(tgt); }
+    else { cam.pos.lerp(pos, 1 - Math.exp(-12 * dt)); cam.target.lerp(tgt, 1 - Math.exp(-10 * dt)); }
+    // shake
+    const sh = this.trauma * this.trauma * 1.1;
+    if (sh > 0) { const t = this.realTime * 30; cam.pos.x += (vnoise2(t, 1) - 0.5) * sh * 2; cam.pos.y += (vnoise2(t, 7) - 0.5) * sh * 2; }
+    const roll = (P.bank || 0) * 0.18;
+    cam.up.set(Math.sin(-roll), Math.cos(roll), 0);
+    cam.fov = (54 + (this.phase === 'boss' ? 4 : 0)) * DEG;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Rendering
+  // ---------------------------------------------------------------------------
+  render(dt) {
+    const r = this.renderer, G = this;
+    if (r.lost) return;
+    // viewport + resolution
+    r.resize(Screen.cssW, Screen.cssH, Screen.dpr, this.settings.res || 0);
+    const st = this.state;
+    const env = this.env || ENVS.brief;
+    const cam = this.cam;
+    // portrait: widen vertical fov so the playfield stays visible
+    const aspect = r.sceneW / r.sceneH, baseFov = cam.fov;
+    if (aspect < 1) cam.fov = Math.min(100 * DEG, 2 * Math.atan(Math.tan(cam.fov / 2) * 1.55 / Math.max(0.5, aspect)));
+    r.begin(cam, env);
+    cam.fov = baseFov;
+    this.frustum.setFrom(cam.viewProj);
+    r.drawSky(env.sky, this.realTime);
+    // distant planets
+    for (const b of env.bg || []) {
+      const M = _M;
+      const px = cam.pos.x + b.dir[0] * b.dist, py = cam.pos.y + b.dir[1] * b.dist, pz = cam.pos.z + b.dir[2] * b.dist;
+      m4euler(M, px, py, pz, this.realTime * 0.01, b.tilt || 0, b.tilt || 0, b.scale);
+      r.draw(MODELS.planet, M, { tint: [b.tint[0], b.tint[1], b.tint[2], 1], emis: b.emis, fog: 0, tex: TEX.detail, texMix: 0.6, uvScale: [6, 3] });
+      if (b.ring) { m4euler(M, px, py, pz, 0.3, b.tilt || 0, 0.2, b.scale); r.draw(MODELS.planetRing, M, { fog: 0, tint: [0.9, 0.8, 0.7, 1] }); }
+    }
+    if (st === 'play' || st === 'title' || st === 'results' || st === 'ending' || st === 'gameover') {
+      this.terrain.draw(r, cam, this.frustum);
+      for (const p of this.props) if (this.frustum.sphere(p.x, p.y + 10, p.z, 40 * p.scale)) this.drawProp(r, p);
+      for (const p of this.pickups) p.draw(r);
+      for (const e of this.enemies) if (this.frustum.sphere(e.wx, e.wy, e.wz, e.r * 2 + 4)) e.draw(r);
+      if (this.boss) this.boss.draw(r);
+      for (const w of this.wingmen) w.draw(r);
+      if (st !== 'gameover') this.player.draw(r);
+      FX.drawMeshes(r);
+      this.terrain.drawWater(r, cam, this.realTime);
+      this.drawProjectiles(r);
+    } else if (st === 'brief') {
+      this.drawBriefScene(r);
+    } else if (st === 'logo') {
+      FX.update(dt, cam);
+    }
+    FX.draw(r, dt, this.speed);
+    r.flushTrails();
+    r.flushSprites();
+    // screen-anchored 3D (title logo etc.)
+    if (st === 'title' || st === 'logo' || (st === 'ending' && this.endingT > 1)) this.drawLogo3D(r);
+    // post
+    const post = _post;
+    post.scan = this.settings.crt ? 1 : 0;
+    post.sat = this.saturation;
+    post.vig = 0.35;
+    post.ab = this.aberration;
+    post.flashA = Math.min(this.flashA, this.settings.flash ? 1 : 0.25);
+    post.flashCol = this.flashCol;
+    post.glitch = this.glitch + (this.state === 'play' && this.player.shield < this.player.maxShield * 0.25 && this.player.alive ? 0.08 : 0);
+    post.bright = st === 'boot' ? 0.25 : 1;
+    r.end(post, this.realTime);
+  },
+  drawProp(r, p) {
+    if (p.kind === 'vent') {
+      m4euler(_M, p.x, p.y, p.z, 0, 0, 0, 1); r.draw(MODELS.vent, _M);
+      if (p.erupt > 0) { m4euler(_M, p.x, p.y + 4, p.z, this.realTime * 3, 0, 0, 1); _M[5] *= 55 * Math.min(1, p.erupt * 3); r.draw(MODELS.geyser, _M, { blend: 'add', tint: [1, 0.7, 0.4, 0.9], cull: false }); }
+      else if (this.beatIndex % 4 === 1 || this.beatIndex % 4 === 3) { this.rail; r.sprite(p.x, p.y + 5, p.z, 5, 5, 0, SPR.GLOW, 1, 0.4, 0.1, 0.6 * (1 - Music.beatPhase())); }
+      return;
+    }
+    p.draw(r);
+  },
+  drawProjectiles(r) {
+    const R = this.rail;
+    for (const b of this.pbullets) {
+      R.world(_p, b.d, b.x, b.y);
+      const c = b.lv >= 3 ? [0.4, 0.8, 1] : [0.45, 1, 0.5];
+      const k = 0.014;
+      r.streak(_p.x, _p.y, _p.z, -(R.slope(b.d)[0] * b.vd + b.vx) * k, -(b.vy) * k, b.vd * k, 0.45, SPR.BOLT, c[0], c[1], c[2], 1);
+      r.sprite(_p.x, _p.y, _p.z, 1.1, 1.1, 0, SPR.GLOW, c[0], c[1], c[2], 0.6);
+    }
+    const pulse = 0.8 + 0.2 * Math.sin(this.realTime * 20);
+    for (const b of this.ebullets) {
+      R.world(_p, b.d, b.x, b.y);
+      if (b.kind === 'beam') { r.streak(_p.x, _p.y, _p.z, -b.vx * 0.03, -b.vy * 0.03, (b.vd - this.speed) * 0.03, 0.9, SPR.BOLT, 1, 0.25, 0.3, 1); continue; }
+      if (b.kind === 'shard') { r.sprite(_p.x, _p.y, _p.z, 1.8, 1.8, this.realTime * 6, SPR.DIAMOND, 0.6, 0.95, 1, 1); r.sprite(_p.x, _p.y, _p.z, 2.6, 2.6, 0, SPR.GLOW, 0.4, 0.8, 1, 0.6); continue; }
+      r.sprite(_p.x, _p.y, _p.z, 2.4 * pulse, 2.4 * pulse, 0, SPR.ORB, 1, 0.25, 0.65, 1);
+      r.sprite(_p.x, _p.y, _p.z, 0.9, 0.9, 0, SPR.DOT, 1, 1, 1, 1);
+    }
+    for (const h of this.homing) {
+      if (h.t < 0) continue;
+      R.world(_p, h.d, h.x, h.y);
+      r.sprite(_p.x, _p.y, _p.z, 1.8, 1.8, 0, SPR.GLOW, 0.7, 1, 0.9, 1);
+    }
+    FX.drawTrails(r);
+    if (this.bomb) { const b = this.bomb; R.world(_p, b.d, b.x, b.y); r.sprite(_p.x, _p.y, _p.z, 3 + Math.sin(this.realTime * 30), 3, 0, SPR.GLOW, 0.7, 0.9, 1, 1); r.sprite(_p.x, _p.y, _p.z, 5, 5, this.realTime * 8, SPR.SPARKLE, 1, 1, 1, 0.8); }
+  },
+  drawBriefScene(r) {
+    const st = STAGES[this.stageIdx], t = this.realTime, M = _M;
+    const col = st.planet;
+    m4euler(M, -14, -2, -10, t * 0.08, 0.35, 0.1, 22);
+    r.draw(MODELS.planet, M, { tint: [col[0], col[1], col[2], 1], tex: TEX.detail, texMix: 0.9, uvScale: [8, 4], fog: 0 });
+    if (st.id === 'halo') { m4euler(M, -14, -2, -10, 0.3, 0.35, 0.2, 22); r.draw(MODELS.planetRing, M, { fog: 0, tint: [0.9, 0.8, 0.7, 1] }); }
+    // the Cadence cruising past
+    m4euler(M, 16 + Math.sin(t * 0.1) * 2, 6 + Math.sin(t * 0.3), 20, -0.9 + Math.sin(t * 0.07) * 0.05, 0.08, Math.sin(t * 0.25) * 0.05, 0.35);
+    r.draw(MODELS.cadence, M, { chrome: 0.2 });
+    // squadron escort
+    ['player', 'oz', 'sable', 'tobi'].forEach((m, i) => {
+      m4euler(M, 10 + i * 3 + Math.sin(t + i) * 0.4, 9 + (i % 2) * 2 + Math.cos(t * 1.3 + i) * 0.3, 26 - i * 2, -0.9, 0.05, Math.sin(t + i) * 0.2, 0.35);
+      r.draw(MODELS[m], M, { chrome: 0.3 });
+    });
+  },
+  drawLogo3D(r) {
+    const cam2 = _logoCam;
+    cam2.pos.set(0, 0, 60); cam2.target.set(0, 0, 0); cam2.up.set(0, 1, 0); cam2.fov = 30 * DEG;
+    r.setOverlayCamera(cam2, LOGO_ENV);
+    const st = this.state;
+    const t = st === 'logo' ? this.stateT : 99;
+    const halfH = 60 * Math.tan(15 * DEG), halfW = halfH * (r.sceneW / r.sceneH);
+    const sc = Math.min(0.8, (halfW * 1.8) / 53);
+    const portrait = r.sceneW < r.sceneH;
+    const k = easeOutBack(clamp01((t - 0.3) / 1.4));
+    const M = _M, tt = this.realTime;
+    const restY = st === 'logo' ? 3 : portrait ? halfH * 0.5 : halfH * 0.62;
+    const logoY = st === 'logo' ? lerp(40, restY, k) : restY;
+    m4euler(M, 0, logoY, 0, Math.sin(tt * 0.6) * 0.16 + (1 - k) * 3, Math.sin(tt * 0.4) * 0.08, 0, sc);
+    r.draw(this.logoMesh, M, { chrome: 0.35, fog: 0 });
+    if (st === 'ending' && this.endingT > 30) return;
+    const k2 = easeOutElastic(clamp01((t - 1.2) / 1.2));
+    const s64 = Math.min(1.1, (halfW * 0.9) / 11);
+    const spinT = (tt % 7) / 7, spin = spinT > 0.82 ? easeInOutCubic((spinT - 0.82) / 0.18) * TAU : 0;
+    m4euler(M, 0, logoY - 4.3 * sc - 4.8 * s64, 1, Math.sin(tt * 0.9) * 0.4 + spin + (1 - k2) * 6, 0.22 + Math.sin(tt * 0.7) * 0.08, 0, s64 * k2);
+    r.draw(this.logo64, M, { chrome: 0.45, fog: 0 });
+  },
+};
+
+const VOICE = { oz: 118, sable: 190, tobi: 360, maren: 82, hush: 150, static: 95 };
+const _post = { scan: 1, sat: 1, vig: 0.35, ab: 0, flashA: 0, flashCol: [1, 1, 1], glitch: 0, bright: 1 };
+const _logoCam = new Camera();
+const LOGO_ENV = { lightDir: new Float32Array([0.28, 0.5, 0.82]), lightCol: new Float32Array([1.0, 0.97, 0.9]), ambient: new Float32Array([0.5, 0.5, 0.62]), fog: new Float32Array([0, 0, 0]), fogNear: 1e4, fogFar: 2e4 };
+const LOGO_COLORS = (x, y) => mixc(mixc([0.92, 1, 1], [0.35, 0.8, 1], clamp01(y / 3.5)), [0.3, 0.35, 1], clamp01((y - 3.5) / 3)).map((c, i) => c * (1 - 0.15 * Math.sin(x * 0.15 + i)));
+const LOGO64_COLORS = (x, y) => [[1, 0.25, 0.3], [0.2, 0.85, 0.35], [0.25, 0.55, 1], [1, 0.8, 0.1]][(((Math.floor(x / 2) + Math.floor(y / 2)) % 4) + 4) % 4];
+function W3(d, x, y) { return Game.rail.world(new V3(), d, x, y); }

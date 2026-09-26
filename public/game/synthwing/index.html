@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Synthwing 64">
+<meta name="theme-color" content="#05040c">
+<meta name="description" content="SYNTHWING 64 — a 64-bit era on-rails space shooter where your lasers play the soundtrack. Built for iPhone, playable in any modern browser.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Synthwing 64</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05040c; overflow: hidden; overscroll-behavior: none; touch-action: none;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+  canvas { position: fixed; left: 0; top: 0; display: block; outline: none; }
+  #gl { width: 100%; height: 100%; }
+  #hud { image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; }
+  #safe-probe { position: fixed; left: 0; top: 0; visibility: hidden; pointer-events: none;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+  #err { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box;
+    color: #ffe14a; background: #05040c; font: 600 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="hud" aria-label="SYNTHWING 64 game screen"></canvas>
+<div id="safe-probe"></div>
+<div id="err" role="alert"></div>
+<noscript><p style="color:#fff;text-align:center;margin-top:40vh;font-family:sans-serif">SYNTHWING 64 needs JavaScript.</p></noscript>
+<!-- build:scripts -->
+<script src="js/util.js"></script>
+<script src="js/gl.js"></script>
+<script src="js/mesh.js"></script>
+<script src="js/font.js"></script>
+<script src="js/models.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/songs.js"></script>
+<script src="js/input.js"></script>
+<script src="js/world.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/bosses.js"></script>
+<script src="js/stages.js"></script>
+<script src="js/game.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/main.js"></script>
+<!-- /build:scripts -->
+<script>navigator.serviceWorker && location.protocol.startsWith('http') && navigator.serviceWorker.register('sw.js').catch(function () {});</script>
+</body>
+</html>

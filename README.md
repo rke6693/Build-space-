@@ -67,3 +67,58 @@ prisma/schema.prisma
 middleware.ts                   # CSP nonce, auth gate
 tests/unit/                     # runtoken, validation, security
 ```
+
+---
+
+# SYNTHWING 64
+
+A 64-bit era on-rails space shooter where your lasers play the soundtrack. It lives in
+`public/game/synthwing/` and is built for iPhone (tuned on an iPhone 17 Pro Max in
+landscape), but it runs in any modern browser with WebGL2.
+
+**Play locally:** `npx http-server public/game/synthwing` and open the printed URL. With
+the Next.js app running, it's also served at `/game/synthwing/index.html`. On iPhone,
+use Share → Add to Home Screen for fullscreen, offline play.
+
+### What's in it
+- **Five worlds and five bosses.** Corona Shores (tropical sea), Halo Belt (asteroid field),
+  Frostline (aurora ice canyon), The Forge (lava factory) and The Hush (a colorless void).
+  The bosses are the Conductor, the Grinder, the Glass Serpent, the Anvil and the Hush.
+- **Music-driven combat.** Every song is layered. Kills build *Resonance*, which adds layers
+  to the music and raises the score multiplier up to ×5; getting hit strips layers away.
+  Lock-on hits, rings and kills are quantized to the beat and pitched to the current chord,
+  and enemies fire on the beat.
+- **Rez-style lock-on.** Hold FIRE to paint up to 8 targets, then release for a homing volley.
+  A barrel roll deflects shots back at enemies.
+- **A squadron with a story.** Oz, Sable and Tobi (with Admiral Maren on comms) talk through
+  animated pixel portraits in synthesized gibberish voices. Save wingmates when they're
+  chased; losing them costs you the stage medal.
+- **Authentic 64-bit look.** A hand-written WebGL2 renderer with low-res rendering, bilinear
+  "VI" upscaling, RGBA5551 dithering, N64 3-point texture filtering, per-pixel fog, sphere-map
+  chrome and optional CRT scanlines.
+- **No libraries and no asset files.** Every model, texture, font, portrait, song and sound
+  effect is generated in code at startup.
+- **Mobile first.** Floating analog stick or touchpad steering, left-handed layout,
+  safe-area aware HUD, haptics (iOS 18+ switch trick), gamepad and keyboard support, and a
+  PWA manifest with an offline service worker.
+
+### Controls
+| | Touch | Keyboard | Gamepad |
+|---|---|---|---|
+| Steer | drag left half | WASD / arrows | left stick |
+| Fire / lock-on | tap / hold right half | Space (hold) | A / RT |
+| Barrel roll | ROLL, double-tap, flick | Shift, Q/E | LB / RB |
+| Nova bomb | BOMB | K / X | B |
+| Pause | ‖ button | Esc / P | Start |
+
+### Single-file build
+`node scripts/build-synthwing.mjs` writes `dist/synthwing64.html`, the whole game in one
+file (about 370 KB). Pass `--artifact` to get a body-only variant for hosts that supply
+their own `<head>`.
+
+### Code map (`public/game/synthwing/js`)
+`util` math/noise · `gl` renderer · `mesh` builder, textures, sprite atlas · `font` pixel font
+and portraits · `models` all 3D models · `audio` synth, sequencer, SFX · `songs` the score ·
+`input` touch/keys/pad · `world` rail, environments, terrain streaming · `fx` particles and
+trails · `entities` player, enemies, pickups, wingmen · `bosses` · `stages` scripted
+timelines · `game` scene flow and simulation · `hud` HUD and menus · `main` boot loop.
