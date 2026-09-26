@@ -104,11 +104,12 @@ const Input = {
     this.pointers.delete(e.pointerId);
     if (e.cancelable) e.preventDefault();
     AudioSys.unlock();
+    if (!cancel && e.pointerType !== 'mouse') Haptics.release(p.role, p.x, p.y);
     if (p.role === 'stick') {
       this.stick.active = false; this.move.x = 0; this.move.y = 0;
       // a quick horizontal flick = barrel roll in that direction
       const dt = performance.now() - p.t, dx = p.x - p.sx;
-      if (dt < 180 && Math.abs(dx) > 26) { this.rollPressed = true; this.rollDir = Math.sign(dx); }
+      if (dt < 180 && Math.abs(dx) > 26) { this.rollPressed = true; this.rollDir = Math.sign(dx); Haptics.release('flick'); }
     } else if (p.role === 'fire') {
       let still = false;
       for (const q of this.pointers.values()) if (q.role === 'fire') still = true;
@@ -214,9 +215,11 @@ const Input = {
 // produces a system haptic tick on iOS 18+. Android uses navigator.vibrate.
 // Tactile feedback. iPhone Safari has no vibration API, but since iOS 18
 // toggling an <input type=checkbox switch> plays the system's light "tick", so
-// on iOS every pattern is a sequence of ticks. Android gets real vibration
-// patterns and gamepads rumble. iOS may only honour ticks that come straight
-// from a touch, so FIRE / BOMB / ROLL presses tick inside the touch handler.
+// on iOS every pattern is a sequence of ticks. WebKit only plays that tick
+// while handling a real user gesture, and for touch that is a finger lifting
+// (pointerup), not touching down or the game loop, so Input.onUp calls
+// Haptics.release() with what the finger was doing. Android gets real
+// vibration patterns from anywhere and gamepads rumble.
 //            Android pattern (ms)     iOS ticks (ms offsets)     pad [ms, strong, weak]
 const HAPTIC = {
   ui: [[8], [0], [40, 0, 0.3]],
@@ -237,23 +240,32 @@ const HAPTIC_PRIO = { ui: 0, fire: 0, lock: 0, kill: 1, scrape: 1, pickup: 1, ro
 
 const Haptics = {
   level: 2, // 0 off · 1 light (single ticks, no autofire buzz) · 2 full
-  el: null, busyUntil: 0, busyPrio: 0, lastFire: 0, lastTick: 0,
-  init() {
-    if (navigator.vibrate) return;
-    try {
-      const label = document.createElement('label');
+  switchTick: false, busyUntil: 0, busyPrio: 0, lastFire: 0, lastTick: 0, lastGestureTick: 0,
+  init() { this.switchTick = !navigator.vibrate; },
+  // gesture ticks keep their own rate limit so a best-effort tick that iOS
+  // ignored (touch-down, game loop) never swallows one it would have played
+  tick(gesture) {
+    const now = performance.now();
+    if (now - (gesture ? this.lastGestureTick : this.lastTick) < 30) return;
+    this.lastTick = now; if (gesture) this.lastGestureTick = now;
+    try { // a fresh hidden switch each time, as in the known-working ios-haptics approach
+      const label = document.createElement('label'), inp = document.createElement('input');
       label.setAttribute('aria-hidden', 'true'); label.style.display = 'none';
-      const inp = document.createElement('input');
       inp.type = 'checkbox'; inp.setAttribute('switch', ''); inp.tabIndex = -1;
       label.appendChild(inp); document.head.appendChild(label);
-      this.el = label;
-    } catch (e) { this.el = null; }
+      label.click(); label.remove();
+    } catch (e) { /* ignore */ }
   },
-  tick() {
-    const now = performance.now();
-    if (now - this.lastTick < 30) return;
-    this.lastTick = now;
-    try { this.el.click(); } catch (e) { /* ignore */ }
+  ticks(offsets, gesture) { for (const at of offsets) { if (at) setTimeout(() => this.tick(gesture), at); else this.tick(gesture); } }, // WebKit forwards the gesture to timers < 1s
+  // iOS: called from pointerup (inside the gesture) with the lifted finger's role.
+  release(role, x, y) {
+    if (!this.level || !this.switchTick) return;
+    const full = this.level > 1, P = Game.player;
+    if (role === 'fire') { const n = P.locks.length; this.ticks(n && full ? Array.from({ length: Math.min(n, 6) }, (_, i) => i * 55) : [0], true); } // lock-on volley
+    else if (role === 'bomb') this.ticks(Game.bomb && full ? HAPTIC.bomb[1] : [0], true);
+    else if (role === 'roll') this.ticks(P.rolling && full ? HAPTIC.roll[1] : [0], true);
+    else if (role === 'flick') this.ticks(full ? HAPTIC.roll[1] : [0], true);
+    else if (role === 'ui' && HUD.btns.some((b) => x >= b.x && y >= b.y && x <= b.x + b.w && y <= b.y + b.h)) this.tick(true);
   },
   play(kind) {
     const H = HAPTIC[kind];
@@ -264,8 +276,7 @@ const Haptics = {
     this.busyUntil = now + pat.reduce((a, b) => a + b, 0); this.busyPrio = prio;
     if (Input.lastDevice === 'gamepad') this.rumble(pad, light ? 0.5 : 1);
     if (navigator.vibrate) { try { navigator.vibrate(light ? Math.ceil(pat[0] * 0.6) : pat); } catch (e) { /* ignore */ } return; }
-    if (!this.el) return;
-    for (const at of light ? [0] : ticks) { if (at) setTimeout(() => this.tick(), at); else this.tick(); }
+    if (this.switchTick) this.ticks(light ? [0] : ticks); // best effort outside a gesture
   },
   rumble(pad, k) {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];

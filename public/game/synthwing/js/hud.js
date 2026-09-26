@@ -452,7 +452,7 @@ const HUD = {
       g.globalAlpha = 1;
     }
     // --- top-left: shield, lives, bombs
-    const x0 = s.l + 6, y0 = s.t + 5;
+    const x0 = s.l + (G.settings.lefty ? 28 : 6), y0 = s.t + 5; // the pause button sits top-left in the left-handed layout
     this.text('SHIELD', x0, y0, { color: '#bfe0ff', outline: '#0a0a20' });
     const bw = Math.round(60 * P.maxShield / 100), frac = P.shield / P.maxShield;
     this.ghost = Math.max(frac, (this.ghost === undefined ? frac : this.ghost) - dt * 0.35);
@@ -655,21 +655,30 @@ const HUD = {
     this.text(DIALOG_NAME[c.who] || c.who.toUpperCase(), tx, py, { color: col, outline: '#000' });
     this.typed(c, Font.wrap(c.text, w - 56), tx, py + 11, 9, 3);
   },
-  // In-flight comms: a compact, see-through strip tucked under the shield
-  // cluster (full width under the score in portrait). It stays out of the
-  // centre of the screen and fades back when the reticle or ship passes under it.
+  // In-flight comms: a compact, see-through strip in the bottom-left corner
+  // (bottom-right with the left-handed layout; just above the thumb controls
+  // in portrait), anchored to its bottom edge so it grows upward. It stays out
+  // of the centre of the screen and fades back when the reticle or ship passes over it.
   drawComm(dt) {
-    const G = Game, D = G.dialog, P = G.player, W = this.W, H = this.H, s = this.safe, g = this.g;
+    const G = Game, D = G.dialog, P = G.player, W = this.W, H = this.H, s = this.safe, g = this.g, L = this.L;
     let c = D.cur, out = 0;
     if (!c) {
       c = D.last; out = clamp01((D.clock - D.lastEnd) / 0.22);
       if (!c || out >= 1) return;
     }
-    const land = W > H, S = 26;
-    const w = Math.round(land ? Math.min(216, W * 0.4) : W - s.l - s.r - 8);
+    const land = W > H, S = 26, lefty = G.settings.lefty;
+    let w, x0, bottom;
+    if (land) { // keep clear of the resonance meter at bottom centre
+      w = Math.round(Math.min(216, W / 2 - 52 - (lefty ? s.r : s.l) - 4));
+      x0 = lefty ? W - s.r - 4 - w : s.l + 4;
+      bottom = H - s.b - 4;
+    } else {
+      w = W - s.l - s.r - 8; x0 = s.l + 4;
+      bottom = Input.lastDevice === 'touch' || Input.touchSeen ? Math.min(L.bomb.y - L.bomb.r, H - s.b - 46 - L.stickR) - 6 : H - s.b - 30;
+    }
     const lines = c.lines || (c.lines = Font.wrap(c.text, w - S - 12));
     const n = Math.max(1, Math.min(3, this.linesShown(c, lines))), h = Math.max(S + 4, 12 + n * 8 + 3);
-    const x0 = s.l + 4, y = s.t + 46;
+    const y = bottom - h;
     // get out of the way of the reticle and the ship
     let clear = true;
     const r = G.reticle;
@@ -681,7 +690,7 @@ const HUD = {
     }
     this.commFade = damp(this.commFade === undefined ? 1 : this.commFade, clear ? 1 : 0.22, 12, dt);
     const kin = easeOutCubic(clamp01((D.clock - c.t0) / 0.18));
-    const x = Math.round(x0 - (1 - kin) * 36 - out * 24);
+    const x = Math.round(x0 + ((1 - kin) * 36 + out * 24) * (land && lefty ? 1 : -1));
     g.globalAlpha = clamp01(kin * (1 - out)) * this.commFade;
     const col = DIALOG_COL[c.who] || '#9fd0ff';
     // backdrop: dark glass that fades out to the right, with a speaker-coloured spine

@@ -110,8 +110,9 @@ use Share → Add to Home Screen for fullscreen, offline play.
   them costs you the stage medal.
 - **Comms that stay out of your way.** In flight, lines arrive over a thin radio channel,
   with a squelch at each end, sparser chatter and only a slight dip in the music. They
-  appear in a compact see-through strip under the shield gauge (under the score in
-  portrait). The strip fades back whenever your ship or reticle passes beneath it, and
+  appear in a compact see-through strip in the bottom-left corner (bottom-right with the
+  left-handed layout, just above the thumb controls in portrait). The strip fades back
+  whenever your ship or reticle passes over it, and
   chatter that has gone stale is dropped. Briefings and title cards get the full treatment:
   a big panel, full voice with the music ducked, and an announcer who calls out stage
   names, MISSION ACCOMPLISHED and GAME OVER.
@@ -125,9 +126,11 @@ use Share → Add to Home Screen for fullscreen, offline play.
 - **Haptics.** Every shot ticks, and kills, lock-ons, rolls, pickups, hits, bombs, alarms,
   your ship going down and boss kills each have their own pattern (set OFF, LIGHT or FULL).
   Android plays vibration patterns and gamepads get dual-rumble. On iPhone, Safari has no
-  vibration API, so the game uses the iOS 18+ switch-control tick. That means light,
-  single-strength taps, only with System Haptics on, and iOS may skip ticks that don't
-  come straight from a touch.
+  vibration API, so the game uses the iOS 18+ switch-control tick (System Haptics must be
+  on). WebKit only plays it while handling a finger lifting, so on iPhone you feel a tick
+  on each FIRE tap and each menu button, a burst when you release a lock-on volley, and
+  patterns on BOMB, ROLL and flick-rolls. Continuous autofire and taking damage can't
+  vibrate an iPhone from a web page.
 - **Mobile first.** Floating analog stick or touchpad steering, left-handed layout,
   safe-area aware HUD, gamepad and keyboard support, and a PWA manifest with an offline
   service worker.
