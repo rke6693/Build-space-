@@ -90,6 +90,17 @@ use Share → Add to Home Screen for fullscreen, offline play.
   and enemies fire on the beat.
 - **Rez-style lock-on.** Hold FIRE to paint up to 8 targets, then release for a homing volley.
   A barrel roll deflects shots back at enemies.
+- **Enemies that react.** Hits knock enemies back, spin them and squash them on springs. Damaged
+  units smoke, and a wounded enemy returns fire. Enemies barrel-roll out of your reticle if you
+  linger on them. Destroyed fliers spin out trailing fire and explode on impact, splashing water
+  or spattering lava. Rocks crumble into chunks. Bosses reel when a part breaks and enrage
+  below 30% health.
+- **Flight patterns.** Enemies snake in weaving chains, loop in from behind, strafe across the
+  screen and dive-bomb from above. Wings flap, fin rings spin and turret barrels aim and recoil.
+  Each shot is telegraphed by a glowing core that swells on the beat before it fires.
+- **Screen feel.** Big explosions send a refracting shockwave across the screen and punch the
+  camera's field of view. Weapons have muzzle flashes, the ship jolts when hit, the score rolls
+  up and the shield bar shows a trailing damage ghost.
 - **A squadron with a story.** Oz, Sable and Tobi (with Admiral Maren on comms) talk through
   animated pixel portraits in synthesized gibberish voices. Save wingmates when they're
   chased; losing them costs you the stage medal.

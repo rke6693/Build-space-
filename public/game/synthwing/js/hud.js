@@ -437,14 +437,17 @@ const HUD = {
       if (!cam.project(_q, t.x, t.y, t.z)) continue;
       const a = 1 - t.t / t.max;
       g.globalAlpha = clamp01(a * 2);
-      this.text(t.str, _q.x * W, _q.y * H, { align: 'center', color: t.col, outline: '#000', scale: t.big ? 2 : 1 });
+      const popped = t.t < 0.1; // pop in one size bigger, then settle
+      this.text(t.str, _q.x * W, _q.y * H - (popped ? 4 : 0), { align: 'center', color: t.col, outline: '#000', scale: (t.big ? 2 : 1) + (popped ? 1 : 0) });
       g.globalAlpha = 1;
     }
     // --- top-left: shield, lives, bombs
     const x0 = s.l + 6, y0 = s.t + 5;
     this.text('SHIELD', x0, y0, { color: '#bfe0ff', outline: '#0a0a20' });
     const bw = Math.round(60 * P.maxShield / 100), frac = P.shield / P.maxShield;
+    this.ghost = Math.max(frac, (this.ghost === undefined ? frac : this.ghost) - dt * 0.35);
     this.rect(x0 - 1, y0 + 9, bw + 2, 7, '#0a0a20');
+    if (this.ghost > frac) this.rect(x0 + Math.round(bw * frac), y0 + 10, Math.round(bw * (this.ghost - frac)), 5, Math.floor(this.t * 12) % 2 ? '#ffd0e0' : '#ff6a8a');
     const low = frac < 0.3;
     const fill = low ? (Math.floor(this.t * 6) % 2 ? '#ff3a4a' : '#ff9a4a') : null;
     const gr = g.createLinearGradient(0, y0 + 10, 0, y0 + 15); gr.addColorStop(0, '#9ff6ff'); gr.addColorStop(1, '#2a7aff');
@@ -457,7 +460,12 @@ const HUD = {
     // --- top-right: score
     const rx = W - s.r - (Game.settings.lefty ? 6 : 28);
     this.text('SCORE', rx, y0, { align: 'right', color: '#bfe0ff', outline: '#0a0a20' });
-    this.text(String(G.score).padStart(7, '0'), rx, y0 + 9, { align: 'right', scale: 2, color: ['#ffffff', '#ffe14a'], outline: '#1a0a00' });
+    if (this.dispScore === undefined || G.score < this.dispScore) this.dispScore = G.score;
+    const before = this.dispScore;
+    this.dispScore = Math.min(G.score, this.dispScore + Math.max(1, Math.ceil((G.score - this.dispScore) * Math.min(1, dt * 10))));
+    if (this.dispScore > before) this.scoreBump = 1;
+    this.scoreBump = Math.max(0, (this.scoreBump || 0) - dt * 6);
+    this.text(String(this.dispScore).padStart(7, '0'), rx, y0 + 9 - Math.round(this.scoreBump * 2), { align: 'right', scale: 2, color: this.scoreBump > 0.5 ? ['#ffffff', '#ffffff'] : ['#ffffff', '#ffe14a'], outline: '#1a0a00' });
     const m = G.mult();
     if (m > 1) this.text('×' + m, rx, y0 + 26, { align: 'right', scale: m >= 5 ? 2 : 1, color: m >= 5 ? this.rainbow() : '#9ff6ff', outline: '#000' });
     // pause button

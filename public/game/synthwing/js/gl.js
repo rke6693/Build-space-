@@ -281,12 +281,23 @@ precision highp float;
 in vec2 vUV;
 uniform sampler2D uScene;
 uniform vec2 uSceneSize;
-uniform float uScan, uSat, uVig, uAb, uFlashA, uTime, uGlitch, uBright;
+uniform float uScan, uSat, uVig, uAb, uFlashA, uTime, uGlitch, uBright, uAspect;
 uniform vec3 uFlashCol;
+uniform vec4 uShock[3];
 out vec4 frag;
 float hh(float n) { return fract(sin(n) * 43758.5453); }
 void main() {
   vec2 uv = vUV;
+  // explosion shockwaves: a refracting ring that races outward
+  for (int i = 0; i < 3; i++) {
+    vec4 s = uShock[i];
+    if (s.w <= 0.0) continue;
+    vec2 d = uv - s.xy; d.x *= uAspect;
+    float dist = length(d);
+    float ring = smoothstep(0.07, 0.0, abs(dist - s.z));
+    vec2 dir = dist > 1e-4 ? d / dist : vec2(0.0);
+    uv -= vec2(dir.x / uAspect, dir.y) * ring * s.w * 0.035;
+  }
   if (uGlitch > 0.0) {
     float row = floor(uv.y * uSceneSize.y / 3.0);
     float r = hh(row * 1.7 + floor(uTime * 24.0) * 13.1);
@@ -776,6 +787,8 @@ class Renderer {
     gl.uniform1f(u.uScan, post.scan); gl.uniform1f(u.uSat, post.sat); gl.uniform1f(u.uVig, post.vig);
     gl.uniform1f(u.uAb, post.ab); gl.uniform1f(u.uFlashA, post.flashA); gl.uniform3fv(u.uFlashCol, post.flashCol);
     gl.uniform1f(u.uTime, time); gl.uniform1f(u.uGlitch, post.glitch); gl.uniform1f(u.uBright, post.bright);
+    gl.uniform1f(u.uAspect, this.sceneW / this.sceneH);
+    gl.uniform4fv(u.uShock, post.shocks || NO_SHOCKS);
     gl.uniformMatrix4fv(u.uInvVP, false, IDENT4);
     gl.bindVertexArray(this.fsVao);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -794,4 +807,5 @@ const ZERO3 = new Float32Array([0, 0, 0]);
 const ONE2 = [1, 1];
 const ZERO2 = [0, 0];
 const IDENT4 = m4();
+const NO_SHOCKS = new Float32Array(12);
 const DEFAULT_MAT = {};

@@ -85,6 +85,20 @@ function buildModels() {
     b.push(); b.translate(0, 0.12, -0.95); b.diamond(0.35, 0.22, 0.35, 0.1, G.magenta); b.pop();
     b.push(); b.translate(0, 0, 0.95); b.diamond(0.3, 0.2, 0.05, 0.3, G.red); b.pop();
     MODELS.drone = b.build('drone');
+    // animated variant: body and a spinning fin ring are separate meshes
+    const bb = new MB();
+    bb.diamond(1.1, 0.55, 1.5, 0.9, (i) => (i < 4 ? C.stHi : C.stBody));
+    bb.push(); bb.translate(0, 0.12, -0.95); bb.diamond(0.35, 0.22, 0.35, 0.1, G.magenta); bb.pop();
+    bb.push(); bb.translate(0, 0, 0.95); bb.diamond(0.3, 0.2, 0.05, 0.3, G.red); bb.pop();
+    MODELS.droneBody = bb.build('droneBody');
+    const fb = new MB();
+    for (let i = 0; i < 3; i++) {
+      fb.push(); fb.rotateZ((i / 3) * TAU); fb.translate(0, 0.62, 0.3);
+      fb.push(); fb.rotateZ(PI / 2); fb.extrude([[0, -0.35], [0.95, 0.35], [0.85, 0.65], [0, 0.45]], 0.08, C.stMetal, C.stDark); fb.pop();
+      fb.box(0, 0.95, 0.5, 0.1, 0.1, 0.18, G.magenta);
+      fb.pop();
+    }
+    MODELS.droneFins = fb.build('droneFins');
   }
   { // Swooper: bat/crescent wing, twin red eyes
     const b = new MB();
@@ -94,6 +108,18 @@ function buildModels() {
     b.push(); b.translate(0, 0.15, -0.1); b.scale(0.8, 0.6, 1.4); b.sphere(0.6, 6, 4, C.stHi); b.pop();
     for (const s of [1, -1]) { b.push(); b.translate(0.22 * s, 0.35, -0.72); b.box(0, 0, 0, 0.22, 0.12, 0.12, G.red); b.pop(); }
     MODELS.swooper = b.build('swooper');
+    // animated variant: body + two hinged wings that flap
+    const body = new MB();
+    body.push(); body.translate(0, 0.15, -0.1); body.scale(0.8, 0.6, 1.4); body.sphere(0.6, 6, 4, C.stHi); body.pop();
+    for (const s of [1, -1]) { body.push(); body.translate(0.22 * s, 0.35, -0.72); body.box(0, 0, 0, 0.22, 0.12, 0.12, G.red); body.pop(); }
+    body.push(); body.translate(0, -0.1, 0.55); body.lathe([[0.3, 0], [0, 1.2]], 5, C.stBody, {}); body.pop();
+    MODELS.swooperBody = body.build('swooperBody');
+    for (const [name, sg] of [['swooperWingR', 1], ['swooperWingL', -1]]) {
+      const w = new MB();
+      w.extrude(wing.map(([x, z]) => [x * sg, z]), 0.22, C.stBody, C.stDark, 0.12);
+      w.push(); w.translate(2.3 * sg, 0.2, -0.3); w.box(0, 0, 0, 0.5, 0.08, 0.1, G.magenta); w.pop();
+      MODELS[name] = w.build(name);
+    }
   }
   { // Turret: ground cannon
     const b = new MB();
@@ -103,6 +129,17 @@ function buildModels() {
     for (const s of [1, -1]) { b.push(); b.translate(0.4 * s, 1.6, -0.9); b.box(0, 0, 0, 0.25, 0.25, 1.9, C.stDark); b.box(0, 0, -1.0, 0.32, 0.32, 0.2, G.red); b.pop(); }
     b.push(); b.translate(0, 1.85, -0.75); b.box(0, 0, 0, 0.6, 0.18, 0.2, G.magenta); b.pop();
     MODELS.turret = b.build('turret');
+    // animated variant: fixed base + gun head that aims and recoils (pivot at origin)
+    const tb = new MB();
+    tb.cylinder(1.8, 1.4, 0, 0.8, 8, C.stMetal);
+    tb.cylinder(1.4, 1.3, 0.8, 1.1, 8, C.stDark);
+    for (let i = 0; i < 6; i++) { tb.push(); tb.rotateY((i / 6) * TAU); tb.box(0, 0.45, 1.6, 0.5, 0.25, 0.25, i % 2 ? G.magenta : C.stDark); tb.pop(); }
+    MODELS.turretBase = tb.build('turretBase');
+    const tg = new MB();
+    tg.sphere(1.1, 8, 4, C.stBody);
+    for (const s of [1, -1]) { tg.push(); tg.translate(0.4 * s, 0.5, -0.9); tg.box(0, 0, 0, 0.25, 0.25, 1.9, C.stDark); tg.box(0, 0, -1.0, 0.32, 0.32, 0.2, G.red); tg.pop(); }
+    tg.push(); tg.translate(0, 0.75, -0.75); tg.box(0, 0, 0, 0.6, 0.18, 0.2, G.magenta); tg.pop();
+    MODELS.turretGun = tg.build('turretGun');
   }
   { // Carrier: large hexagonal hull with glowing vents
     const b = new MB();

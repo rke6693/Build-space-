@@ -7,9 +7,9 @@
 // =============================================================================
 
 const DIFFS = [
-  { name: 'CADET', dmg: 0.55, fire: 0.6, bullet: 0.8, hp: 0.8 },
-  { name: 'PILOT', dmg: 1, fire: 1, bullet: 1, hp: 1 },
-  { name: 'ACE', dmg: 1.45, fire: 1.45, bullet: 1.2, hp: 1.3 },
+  { name: 'CADET', dmg: 0.55, fire: 0.6, bullet: 0.8, hp: 0.8, dodge: 0.15 },
+  { name: 'PILOT', dmg: 1, fire: 1, bullet: 1, hp: 1, dodge: 0.3 },
+  { name: 'ACE', dmg: 1.45, fire: 1.45, bullet: 1.2, hp: 1.3, dodge: 0.55 },
 ];
 const DEFAULT_SETTINGS = { steer: 'stick', sens: 3, invertY: false, lefty: false, diff: 1, res: 240, crt: true, dither: true, shake: true, flash: true, music: 8, sfx: 9, haptics: true, fps: false };
 const SAVE_KEY = 'synthwing64.save.v1';
@@ -27,6 +27,7 @@ const Game = {
   diff: DIFFS[1], volleyId: 0,
   // feel
   trauma: 0, flashA: 0, flashCol: [1, 1, 1], aberration: 0, timeScale: 1, hitstopT: 0, slowmoT: 0, saturation: 1, glitch: 0,
+  fovKick: 0, shocks: [], hotTarget: null,
   // beat flags (set each frame from the sequencer)
   onBeat: false, on8th: false, onBar: false, stepCrossed: false, beatIndex: 0, barIndex: 0, stepIndex: 0,
   // dialogue
@@ -77,10 +78,21 @@ const Game = {
     this.speed = speed;
     this.enemies.length = 0; this.pbullets.length = 0; this.homing.length = 0; this.ebullets.length = 0;
     this.pickups.length = 0; this.props.length = 0; this.boss = null; this.bomb = null;
-    FX.clear(); FX.setWeather(this.env.particles);
+    FX.clear(); FX.setWeather(this.env.particles); this.shocks.length = 0; this.fovKick = 0;
     this.saturation = 1; this.glitch = 0; this.silence = false; AudioSys.setSilence(0, 0.05);
   },
   terrainHeight(wx, wz) { return this.terrain ? this.terrain.height(wx, wz) : -9999; },
+  // Highest surface at a world point and what it is made of (for debris & wrecks).
+  groundInfo(wx, wz) {
+    const t = this.terrainHeight(wx, wz), w = this.env && this.env.water;
+    if (w && w.level >= t) return { h: w.level, kind: w.emissive ? 'lava' : w.tex === 'ice' ? 'ice' : 'water' };
+    return { h: t, kind: this.env && this.env.name === 'frost' ? 'ice' : 'ground' };
+  },
+  // Screen-space refraction ring from a world position (post-process).
+  shockwave(wx, wy, wz, str = 1) {
+    if (this.shocks.length >= 3) this.shocks.shift();
+    this.shocks.push({ x: wx, y: wy, z: wz, t: 0, max: 0.6, str: this.settings.flash ? str : str * 0.4 });
+  },
   entityWorldVel(e) { return { x: e.wvx || 0, y: e.wvy || 0, z: e.wvz !== undefined ? e.wvz : -this.speed }; },
 
   startStage(idx, fromCheckpoint) {
@@ -277,6 +289,7 @@ const Game = {
   },
   onBossDefeated(b) {
     this.slowmoT = 2.2;
+    this.rail.world(_p, b.d, b.x, b.y); this.shockwave(_p.x, _p.y, _p.z, 2); this.fovKick = 8;
     this.shake(1); this.flash([1, 1, 1], 0.6);
     const bonus = this.addScore(10000);
     this.banner('BOSS DEFEATED  +' + bonus, 'rainbow', true);
@@ -487,8 +500,9 @@ const Game = {
     // simulation
     P.update(gdt);
     for (const w of this.wingmen) w.update(gdt);
+    this.hotTarget = P.alive && P.control ? this.findNearReticle(0.09) : null;
     for (const e of this.enemies) e.update(gdt);
-    if (this.boss) this.boss.update(gdt);
+    if (this.boss) { this.boss.update(gdt); this.boss.postUpdate(gdt); }
     for (const p of this.props) this.updateProp(p, gdt);
     for (const p of this.pickups) p.update(gdt);
     this.updateBullets(gdt);
@@ -516,6 +530,8 @@ const Game = {
     if (this.bossCard > 0) this.bossCard -= dt;
   },
   decayFeel(dt) {
+    this.fovKick = Math.max(0, this.fovKick - dt * 9);
+    for (let i = this.shocks.length - 1; i >= 0; i--) { this.shocks[i].t += dt; if (this.shocks[i].t > this.shocks[i].max) this.shocks.splice(i, 1); }
     this.trauma = Math.max(0, this.trauma - dt * 1.6);
     this.flashA = Math.max(0, this.flashA - dt * 2.5);
     this.aberration = Math.max(0, this.aberration - dt * 0.03);
@@ -536,6 +552,10 @@ const Game = {
       () => wave('swooper', 'behind', F.line(3, 8, 0, rr(0, 5)), { hold: 4 }),
       () => wave(body, 'pass', F.grid(3, 2, 7, rr(-8, 8), rr(-3, 4)), { off: 230, stagger: 5 }),
       () => wave(body, 'charge', F.line(4, 8, 0, rr(-3, 3)), { off: 260, stagger: 14 }),
+      () => chain(body, 7, { ax: rr(10, 16), ay: rr(3, 7), cy: rr(-2, 4) }),
+      () => strafe(body, 5, { side: chance(0.5) ? 1 : -1, dist: rr(48, 62), y: rr(-2, 4) }),
+      () => dive(body, [-8, 0, 8], { y: rr(-2, 3) }),
+      () => loops('swooper', F.line(2, 12, 0, rr(1, 5))),
     ];
     pick(waves)()(this);
   },
@@ -611,6 +631,11 @@ const Game = {
       h.t += dt; h.life -= dt;
       if (h.t < 0) { // staggered launch, ride along with the ship
         const P = this.player; h.d = P.d + 1; h.x = P.x; h.y = P.y;
+        if (h.t + dt >= 0) { // launching this frame: puff + kick
+          this.rail.world(_p, h.d, h.x, h.y);
+          FX.spawn(_p.x, _p.y, _p.z, h.vx * 0.2, h.vy * 0.2, -this.speed, 0.18, 2.2, 0.4, 0.7, 1, 0.9, 1, SPR.SPARKLE);
+          this.fovKick = Math.max(this.fovKick, 1.2);
+        }
         continue;
       }
       let tg = h.target;
@@ -653,6 +678,7 @@ const Game = {
     this.rail.world(_p, b.d, b.x, b.y);
     FX.explode(_p.x, _p.y, _p.z, 5, { shell: [0.6, 0.8, 1], palette: [[0.6, 0.9, 1], [1, 1, 1], [0.8, 0.5, 1]] });
     this.flash([0.8, 0.9, 1], 0.7); this.shake(0.8);
+    this.shockwave(_p.x, _p.y, _p.z, 1.6); this.fovKick = 9;
     for (const e of this.enemies) if (!e.dead && Math.hypot(e.d - b.d, e.x - b.x, e.y - b.y) < 42) e.damage(e.T.big ? 12 : 99, { bomb: true });
     if (this.boss) for (const p of this.boss.parts) if (p.alive && p.weak && Math.hypot(p.d - b.d, p.x - b.x, p.y - b.y) < 45) this.boss.hit(p, 8, { bomb: true });
     for (const eb of this.ebullets) { this.rail.world(_p, eb.d, eb.x, eb.y); FX.spawn(_p.x, _p.y, _p.z, 0, 0, -this.speed, 0.4, 1.5, 0.2, 0.7, 0.9, 1, 1, SPR.SPARKLE); }
@@ -813,7 +839,7 @@ const Game = {
     if (sh > 0) { const t = this.realTime * 30; cam.pos.x += (vnoise2(t, 1) - 0.5) * sh * 2; cam.pos.y += (vnoise2(t, 7) - 0.5) * sh * 2; }
     const roll = (P.bank || 0) * 0.18;
     cam.up.set(Math.sin(-roll), Math.cos(roll), 0);
-    cam.fov = (54 + (this.phase === 'boss' ? 4 : 0)) * DEG;
+    cam.fov = (54 + (this.phase === 'boss' ? 4 : 0) + this.fovKick) * DEG;
   },
 
   // ---------------------------------------------------------------------------
@@ -873,6 +899,12 @@ const Game = {
     post.flashCol = this.flashCol;
     post.glitch = this.glitch + (this.state === 'play' && this.player.shield < this.player.maxShield * 0.25 && this.player.alive ? 0.08 : 0);
     post.bright = st === 'boot' ? 0.25 : 1;
+    const sh = post.shocks; sh.fill(0);
+    this.shocks.forEach((w, i) => {
+      if (!cam.project(_q, w.x, w.y, w.z)) return;
+      const k = w.t / w.max;
+      sh[i * 4] = _q.x; sh[i * 4 + 1] = 1 - _q.y; sh[i * 4 + 2] = easeOutCubic(k) * 0.55; sh[i * 4 + 3] = w.str * (1 - k) * (1 - k);
+    });
     r.end(post, this.realTime);
   },
   drawProp(r, p) {
@@ -949,7 +981,7 @@ const Game = {
 };
 
 const VOICE = { oz: 118, sable: 190, tobi: 360, maren: 82, hush: 150, static: 95 };
-const _post = { scan: 1, sat: 1, vig: 0.35, ab: 0, flashA: 0, flashCol: [1, 1, 1], glitch: 0, bright: 1 };
+const _post = { scan: 1, sat: 1, vig: 0.35, ab: 0, flashA: 0, flashCol: [1, 1, 1], glitch: 0, bright: 1, shocks: new Float32Array(12) };
 const _logoCam = new Camera();
 const LOGO_ENV = { lightDir: new Float32Array([0.28, 0.5, 0.82]), lightCol: new Float32Array([1.0, 0.97, 0.9]), ambient: new Float32Array([0.5, 0.5, 0.62]), fog: new Float32Array([0, 0, 0]), fogNear: 1e4, fogFar: 2e4 };
 const LOGO_COLORS = (x, y) => mixc(mixc([0.92, 1, 1], [0.35, 0.8, 1], clamp01(y / 3.5)), [0.3, 0.35, 1], clamp01((y - 3.5) / 3)).map((c, i) => c * (1 - 0.15 * Math.sin(x * 0.15 + i)));

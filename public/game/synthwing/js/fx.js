@@ -10,14 +10,14 @@ class Particle {
 }
 
 const FX = {
-  parts: [], pool: null, debris: [], shells: [], trails: [], texts: [], weather: [],
+  parts: [], pool: null, debris: [], shells: [], trails: [], texts: [], weather: [], wrecks: [],
   weatherKind: null, reducedFlash: false,
   init() {
     this.pool = new Pool(() => new Particle(), 1800);
   },
   clear() {
     for (const p of this.parts) this.pool.release(p);
-    this.parts.length = 0; this.debris.length = 0; this.shells.length = 0; this.trails.length = 0; this.texts.length = 0; this.weather.length = 0;
+    this.parts.length = 0; this.debris.length = 0; this.shells.length = 0; this.trails.length = 0; this.texts.length = 0; this.weather.length = 0; this.wrecks.length = 0;
   },
   spawn(x, y, z, vx, vy, vz, life, s0, s1, r, g, b, a, frame, add = true, drag = 0, grav = 0) {
     if (this.parts.length > 1700) return null;
@@ -72,6 +72,38 @@ const FX = {
       if (p) p.stretch = 0.04;
     }
   },
+  // A destroyed flier: tumbles out of control trailing fire, then explodes on impact or timeout.
+  wreck(mesh, x, y, z, vx, vy, vz, yaw, pitch, roll, scale, size) {
+    this.wrecks.push({ mesh, x, y, z, vx, vy, vz, yaw, pitch, roll, vyaw: rr(-3, 3), vpitch: rr(0.5, 3) * (Math.random() < 0.5 ? -1 : 1), vroll: rr(8, 16) * (Math.random() < 0.5 ? -1 : 1), scale, size, t: 0, life: rr(0.8, 1.4) });
+  },
+  // Rocks break into tumbling chunks and a dust cloud.
+  crumble(x, y, z, r, wv) {
+    const n = Math.min(7, 3 + Math.floor(r));
+    for (let i = 0; i < n; i++) {
+      const [dx, dy, dz] = randDir(), sp = rr(6, 16);
+      this.debris.push({ x: x + dx * r * 0.5, y: y + dy * r * 0.5, z: z + dz * r * 0.5, vx: wv.x * 0.8 + dx * sp, vy: wv.y * 0.8 + dy * sp + 3, vz: wv.z * 0.8 + dz * sp, rx: rand() * TAU, ry: rand() * TAU, vr: rr(-6, 6), life: rr(1, 1.8), s: r * rr(0.18, 0.32), col: [0.55, 0.5, 0.45], mesh: pick(MODELS.asteroids), tex: TEX.rock });
+    }
+    for (let i = 0; i < 5; i++) { const [dx, dy, dz] = randDir(); this.spawn(x + dx * r * 0.6, y + dy * r * 0.6, z + dz * r * 0.6, wv.x * 0.6 + dx * 4, wv.y * 0.6 + dy * 4, wv.z * 0.6 + dz * 4, rr(0.9, 1.5), r * 0.6, r * 1.6, 0.45, 0.4, 0.36, 0.55, SPR.SMOKE, false, 1.5); }
+  },
+  // Water splash: droplets, foam and a ring.
+  splash(x, y, z, s = 1) {
+    for (let i = 0; i < 10 + s * 8; i++) {
+      const a = rand() * TAU, sp = rr(3, 9) * s;
+      this.spawn(x, y + 0.3, z, Math.cos(a) * sp, rr(10, 22) * Math.sqrt(s), Math.sin(a) * sp, rr(0.5, 0.9), rr(0.4, 0.8) * s, 0.2, 0.85, 0.95, 1, 0.9, SPR.DOT, false, 0.5, -38);
+    }
+    this.spawn(x, y + 0.5, z, 0, 3, 0, 0.8, 1.5 * s, 4.5 * s, 1, 1, 1, 0.7, SPR.SMOKE, false, 1);
+    this.spawn(x, y + 0.2, z, 0, 0, 0, 0.5, 1 * s, 6 * s, 0.8, 0.95, 1, 0.8, SPR.SHOCK);
+  },
+  // Something hit the ground: sparks + dust (or lava spatter).
+  impact(x, y, z, s, kind) {
+    if (kind === 'water') { this.splash(x, y, z, s); return; }
+    const lava = kind === 'lava';
+    for (let i = 0; i < 6 + s * 6; i++) {
+      const a = rand() * TAU, sp = rr(4, 12) * s;
+      this.spawn(x, y + 0.3, z, Math.cos(a) * sp, rr(6, 16), Math.sin(a) * sp, rr(0.4, 0.8), lava ? 0.9 : 0.4, 0.1, 1, lava ? 0.5 : 0.8, lava ? 0.1 : 0.5, 1, lava ? SPR.GLOW : SPR.STREAK, true, 1, -30);
+    }
+    this.spawn(x, y + 1, z, 0, 2, 0, 1, 2 * s, 5 * s, lava ? 0.3 : kind === 'ice' ? 0.85 : 0.5, lava ? 0.15 : kind === 'ice' ? 0.9 : 0.45, lava ? 0.1 : kind === 'ice' ? 1 : 0.4, 0.6, SPR.SMOKE, false, 1);
+  },
   burst(x, y, z, n, col, speed, life, size, frame = SPR.GLOW, vx = 0, vy = 0, vz = 0) {
     for (let i = 0; i < n; i++) { const [dx, dy, dz] = randDir(), sp = speed * rr(0.5, 1); this.spawn(x, y, z, vx + dx * sp, vy + dy * sp, vz + dz * sp, life * rr(0.7, 1.2), size, 0.1, col[0], col[1], col[2], 1, frame, true, 2); }
   },
@@ -103,6 +135,33 @@ const FX = {
       d.life -= dt; if (d.life <= 0) { this.debris.splice(i, 1); continue; }
       d.vy -= 30 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.z += d.vz * dt; d.rx += d.vr * dt; d.ry += d.vr * 0.7 * dt;
       if (Math.random() < dt * 20) this.spawn(d.x, d.y, d.z, 0, 1, 0, 0.5, 0.8 * d.s, 1.8 * d.s, 0.3, 0.28, 0.3, 0.4, SPR.SMOKE, false, 1);
+      const g = Game.groundInfo(d.x, d.z);
+      if (d.y < g.h) {
+        if (g.kind === 'water' || g.kind === 'lava') { this.impact(d.x, g.h, d.z, 0.4, g.kind); this.debris.splice(i, 1); continue; }
+        d.y = g.h; d.vy = Math.abs(d.vy) * 0.38; d.vx *= 0.6; d.vz *= 0.6; d.vr *= 0.7;
+        if (d.vy > 4) this.impact(d.x, g.h, d.z, 0.25, g.kind);
+      }
+    }
+    for (let i = this.wrecks.length - 1; i >= 0; i--) {
+      const w = this.wrecks[i];
+      w.t += dt;
+      w.vy -= 26 * dt; w.x += w.vx * dt; w.y += w.vy * dt; w.z += w.vz * dt;
+      w.yaw += w.vyaw * dt; w.pitch += w.vpitch * dt; w.roll += w.vroll * dt;
+      // fire + smoke trail
+      this.spawn(w.x + rr(-0.5, 0.5), w.y, w.z, w.vx * 0.3, w.vy * 0.3 + 2, w.vz * 0.3, rr(0.2, 0.35), w.size * 1.4, 0.4, 1, rr(0.35, 0.6), 0.1, 1, SPR.GLOW);
+      if (Math.random() < 0.7) this.spawn(w.x, w.y, w.z, w.vx * 0.2, w.vy * 0.2 + 3, w.vz * 0.2, rr(0.8, 1.3), w.size * 1.2, w.size * 3, 0.16, 0.14, 0.16, 0.6, SPR.SMOKE, false, 1);
+      if (Math.random() < 0.25) this.spawn(w.x, w.y, w.z, w.vx + rr(-8, 8), w.vy + rr(0, 8), w.vz + rr(-8, 8), 0.4, 0.4, 0.1, 1, 0.8, 0.4, 1, SPR.STREAK, true, 1, -20);
+      const g = Game.groundInfo(w.x, w.z);
+      const hitGround = w.y < g.h + 0.5;
+      if (hitGround || w.t > w.life) {
+        const y = hitGround ? g.h + 0.5 : w.y;
+        this.explode(w.x, y, w.z, w.size * w.scale, { vx: w.vx * 0.3, vy: 0, vz: w.vz * 0.3, notes: false });
+        if (hitGround) this.impact(w.x, g.h, w.z, w.size, g.kind);
+        SFX.explode(w.size);
+        Game.shake(0.2 * w.size);
+        if (w.size >= 2) Game.shockwave(w.x, y, w.z, 0.7);
+        this.wrecks.splice(i, 1);
+      }
     }
     for (let i = this.shells.length - 1; i >= 0; i--) { const s = this.shells[i]; s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt; if (s.t > s.max) this.shells.splice(i, 1); }
     for (let i = this.texts.length - 1; i >= 0; i--) { const t = this.texts[i]; t.t += dt; t.y += dt * 4; if (t.t > t.max) this.texts.splice(i, 1); }
@@ -155,7 +214,12 @@ const FX = {
     const M = _fxM;
     for (const d of this.debris) {
       m4euler(M, d.x, d.y, d.z, d.ry, d.rx, 0, d.s * Math.min(1, d.life * 2));
-      r.draw(MODELS.shard, M, { tint: [d.col[0], d.col[1], d.col[2], 1], emis: d.glow ? [0.8, 0.1, 0.4] : null });
+      r.draw(d.mesh || MODELS.shard, M, { tint: [d.col[0], d.col[1], d.col[2], 1], emis: d.glow ? [0.8, 0.1, 0.4] : null, tex: d.tex || null, texMix: 0.8, uvScale: [1, 1] });
+    }
+    for (const w of this.wrecks) {
+      m4euler(M, w.x, w.y, w.z, w.yaw, w.pitch, w.roll, w.scale);
+      const hot = Math.sin(w.t * 45) > 0.2;
+      r.draw(w.mesh, M, { tint: [0.55, 0.45, 0.45, 1], emis: hot ? [0.5, 0.18, 0.05] : [0.15, 0.03, 0], flash: hot ? 0.25 : 0 });
     }
     for (const s of this.shells) {
       const t = s.t / s.max, rad = lerp(s.r0, s.r1, easeOutCubic(t));

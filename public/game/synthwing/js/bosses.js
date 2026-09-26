@@ -99,6 +99,36 @@ class Boss {
     this.name = name; this.sub = sub; this.t = 0; this.phase = 0;
     this.parts = []; this.dead = false; this.dying = 0; this.d = 0; this.x = 0; this.y = 0;
     this.entering = true; this.enterT = 0; this.off = 70;
+    // flinch springs (whole body) + low-health state
+    this.fd = 0; this.fx = 0; this.fy = 0; this.fvd = 0; this.fvx = 0; this.fvy = 0; this.froll = 0; this.frollV = 0;
+    this.enraged = false; this.smokeT = 0;
+  }
+  // Called after update(): layer the flinch on top of the scripted motion, shake hit parts.
+  postUpdate(dt) {
+    spring(this, 'fd', 'fvd', 22, 6, dt); spring(this, 'fx', 'fvx', 22, 6, dt); spring(this, 'fy', 'fvy', 22, 6, dt);
+    spring(this, 'froll', 'frollV', 18, 4, dt);
+    this.d += this.fd; this.x += this.fx; this.y += this.fy;
+    for (const p of this.parts) {
+      const j = p.flash * 0.35;
+      p.d += this.fd + (j ? rr(-j, j) : 0); p.x += this.fx + (j ? rr(-j, j) : 0); p.y += this.fy + (j ? rr(-j, j) : 0);
+    }
+    if (this.dead || this.entering) return;
+    const h = this.health;
+    if (!this.enraged && h < 0.3) {
+      this.enraged = true;
+      SFX.roar(); Game.shake(0.5); Game.banner(this.name + ' IS ENRAGED!', '#ff5a5a', true);
+      Game.say('tobi', "It's falling apart and getting desperate — finish it!", true);
+    }
+    if (h < 0.45) {
+      this.smokeT -= dt;
+      if (this.smokeT <= 0) {
+        this.smokeT = h < 0.3 ? 0.03 : 0.07;
+        const p = pick(this.parts.filter((q) => q.alive)) || this.parts[0];
+        const w = this.wp(p), v = -Game.speed;
+        FX.spawn(w[0] + rr(-p.r, p.r), w[1] + rr(-p.r, p.r), w[2], rr(-2, 2), rr(3, 7), v * 0.95, rr(0.8, 1.4), p.r * 0.5, p.r * 1.5, 0.18, 0.16, 0.2, 0.65, SPR.SMOKE, false, 1);
+        if (Math.random() < 0.5) FX.hitSpark(w[0] + rr(-p.r, p.r), w[1] + rr(-p.r, p.r), w[2], 0, 0, v, [1, 0.7, 0.3]);
+      }
+    }
   }
   part(o) {
     const p = Object.assign({ d: 0, x: 0, y: 0, r: 3, hp: 10, alive: true, weak: true, flash: 0, lockCount: 0, lockPulse: 0, invuln: false, boss: this, isPart: true }, o);
@@ -110,6 +140,7 @@ class Boss {
     if (!p.alive || this.dead || this.entering) return false;
     if (p.invuln) { FX.hitSpark(...this.wp(p), 0, 0, 0, [0.7, 0.7, 1]); SFX.deflect(); return false; }
     p.hp -= dmg; p.flash = 1; SFX.hit();
+    this.fvd += 0.9 * dmg; this.frollV += rr(-0.25, 0.25) * dmg;
     const w = this.wp(p); FX.hitSpark(w[0], w[1], w[2] + p.r * 0.5);
     Game.addScore(10, p);
     if (p.hp <= 0) { p.alive = false; this.partDestroyed(p); }
@@ -119,6 +150,9 @@ class Boss {
   partDestroyed(p) {
     const w = this.wp(p);
     FX.explode(w[0], w[1], w[2], 2.5, { shell: [1, 0.5, 0.8] }); SFX.explode(2.5); Game.shake(0.7); Game.hitstop(0.08);
+    // the whole body reels from the blow
+    this.fvd += 16; this.fvy += rr(-3, 7); this.fvx += (p.x - this.x) * -0.8; this.frollV += (p.x >= this.x ? -1 : 1) * 3;
+    Game.shockwave(w[0], w[1], w[2], 1.2); Game.fovKick = Math.max(Game.fovKick, 5);
     Game.addScore(1000, p); Game.resonanceGain(3);
     if (this.parts.filter((q) => q.weak && q.alive).length === 0) this.defeat();
     else this.onPart(p);
@@ -165,8 +199,10 @@ class Boss {
     SFX.enemyShot();
   }
   drawPart(r, mesh, p, yaw, pitch, roll, scale, extra = {}) {
-    const mat = Object.assign({ flash: p ? p.flash : 0, emis: p && p.lockPulse ? [p.lockPulse * 0.6, 0.1, p.lockPulse * 0.4] : null }, extra);
-    drawAt(r, mesh, p ? p.d : this.d, p ? p.x : this.x, p ? p.y : this.y, yaw, pitch, roll, scale, mat);
+    const rage = this.enraged && !this.dead && Math.sin(this.t * 14) > 0.4 ? 0.35 : 0;
+    const lp = p && p.lockPulse ? p.lockPulse : 0;
+    const mat = Object.assign({ flash: p ? p.flash : 0, emis: lp || rage ? [lp * 0.6 + rage, 0.1 * lp, lp * 0.4 + rage * 0.2] : null }, extra);
+    drawAt(r, mesh, p ? p.d : this.d, p ? p.x : this.x, p ? p.y : this.y, yaw + this.froll * 0.3, pitch, roll + this.froll, scale, mat);
   }
 }
 
