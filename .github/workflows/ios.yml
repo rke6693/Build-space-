@@ -1,0 +1,90 @@
+name: ios-app
+
+# Builds the SYNTHWING 64 iOS app (apps/synthwing-ios), boots it in the iOS
+# Simulator and fails if the app crashes or the game logs any error.
+on:
+  push:
+    paths:
+      - 'apps/synthwing-ios/**'
+      - 'public/game/synthwing/**'
+      - 'scripts/build-synthwing.mjs'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: apps/synthwing-ios
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/synthwing-ios/package-lock.json
+      - run: npm ci
+      - name: Build web bundle and sync Capacitor
+        run: npm run sync
+      - run: xcodebuild -version
+      - name: Build (Debug, iOS Simulator)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tail -n 40
+          test "${PIPESTATUS[0]}" -eq 0
+      - name: Launch in the Simulator and watch the console
+        run: |
+          set -euo pipefail
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          devs = [d for rt, ds in json.load(sys.stdin)['devices'].items() if 'iOS' in rt for d in ds]
+          pro = [d for d in devs if 'Pro Max' in d['name']] or [d for d in devs if d['name'].startswith('iPhone')]
+          print(pro[-1]['udid'])")
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE" -b
+          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -n 1)
+          BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          xcrun simctl install "$DEVICE" "$APP"
+          xcrun simctl launch --console-pty "$DEVICE" "$BUNDLE" > app-console.log 2>&1 &
+          sleep 40
+          xcrun simctl io "$DEVICE" screenshot sim-title.png
+          if ! xcrun simctl spawn "$DEVICE" launchctl list | grep -q "$BUNDLE"; then echo "::error::app is not running (crashed?)"; cat app-console.log; exit 1; fi
+          echo "---- app console ----"; cat app-console.log
+          if grep -E "\[error\]|synthwing:|Uncaught|TypeError|ReferenceError" app-console.log; then echo "::error::the game logged errors"; exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulator-run
+          path: |
+            apps/synthwing-ios/sim-title.png
+            apps/synthwing-ios/app-console.log
+          if-no-files-found: ignore
+
+  device-release:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: apps/synthwing-ios
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/synthwing-ios/package-lock.json
+      - run: npm ci
+      - run: npm run sync
+      - name: Build (Release, device, unsigned)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tail -n 40
+          test "${PIPESTATUS[0]}" -eq 0

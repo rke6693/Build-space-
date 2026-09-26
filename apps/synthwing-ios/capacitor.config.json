@@ -1,0 +1,15 @@
+{
+  "appId": "com.rke6693.synthwing64",
+  "appName": "Synthwing 64",
+  "webDir": "www",
+  "backgroundColor": "#05040c",
+  "loggingBehavior": "debug",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "allowsLinkPreview": false,
+    "backgroundColor": "#05040c",
+    "preferredContentMode": "mobile",
+    "webContentsDebuggingEnabled": false
+  }
+}

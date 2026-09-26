@@ -26,7 +26,13 @@ const Native = {
       const C = window.Capacitor;
       this.ok = !!(C && typeof C.isNativePlatform === 'function' && C.isNativePlatform());
       if (!this.ok) return;
-      const reg = (n) => (typeof C.registerPlugin === 'function' ? C.registerPlugin(n) : C.Plugins && C.Plugins[n]) || null;
+      // @capacitor/core's registerPlugin isn't bundled here; the injected native
+      // bridge's nativePromise(plugin, method, options) is enough on its own.
+      const reg = (n) => {
+        if (typeof C.registerPlugin === 'function') return C.registerPlugin(n);
+        if (typeof C.nativePromise === 'function') return new Proxy({}, { get: (_, m) => (typeof m === 'string' && m !== 'then' ? (o) => C.nativePromise(n, m, o || {}) : undefined) });
+        return (C.Plugins && C.Plugins[n]) || null;
+      };
       this.hap = reg('Haptics');
       this.gc = reg('GameCenter');
       this.call(this.gc, 'authenticate').then((r) => { this.gcReady = !!(r && r.authenticated); });

@@ -1,0 +1,20 @@
+{
+  "name": "synthwing64-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SYNTHWING 64 packaged as a native iOS app with Capacitor.",
+  "type": "module",
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "sync": "npm run build:web && cap sync ios",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.2",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  }
+}
