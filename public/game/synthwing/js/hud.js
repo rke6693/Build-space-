@@ -83,7 +83,7 @@ const HUD = {
     if (s > 1 && Font.width(label, s) > w - 20) s = 1;
     this.text(label, x + w / 2, y + Math.round((h - 7 * s) / 2), { scale: s, align: 'center', color: dis ? '#6a6a80' : o.color || ['#ffffff', '#bfe0ff'], outline: '#0a0a20' });
     if (focused) { this.text('▶', x - 8, y + Math.round((h - 7) / 2), { color: '#ffe14a' }); }
-    if (hit && !dis) { SFX.menuOk(); Haptics.tap(0.4); return true; }
+    if (hit && !dis) { SFX.menuOk(); Haptics.ui(); return true; }
     if (hit && dis) SFX.menuBack();
     return false;
   },
@@ -243,14 +243,17 @@ const HUD = {
       ['FLASHES', S.flash ? 'FULL' : 'REDUCED', () => { S.flash = !S.flash; }],
       ['MUSIC', String(S.music), (d) => { S.music = clamp(S.music + d, 0, 10); }],
       ['SOUND FX', String(S.sfx), (d) => { S.sfx = clamp(S.sfx + d, 0, 10); }],
-      ['HAPTICS', S.haptics ? 'ON' : 'OFF', () => { S.haptics = !S.haptics; }],
+      ['VOICES', String(S.voice), (d) => { S.voice = clamp(S.voice + d, 0, 10); }],
+      ['HAPTICS', ['OFF', 'LIGHT', 'FULL'][S.haptics], (d) => { S.haptics = (S.haptics + d + 3) % 3; }],
       ['SHOW FPS', S.fps ? 'ON' : 'OFF', () => { S.fps = !S.fps; }],
     ];
     const cols = land ? 2 : 1;
-    const rowH = 21, gapY = 3;
     const colW = land ? Math.min(210, (W - s.l - s.r - 24) / 2) : Math.min(230, W - 24);
     const rows = Math.ceil(opts.length / cols);
     const x0 = W / 2 - (colW * cols + (cols - 1) * 8) / 2, y0 = s.t + 34;
+    // squeeze the rows (down to 17px) rather than lose any on short screens
+    const room = H - s.b - (G.state === 'title' ? 28 : 4) - y0;
+    const pitch = clamp(Math.floor(room / rows), 20, 24), rowH = pitch - 3, gapY = 3;
     opts.forEach(([label, val, fn], i) => {
       const c = land ? Math.floor(i / rows) : 0, rI = land ? i % rows : i;
       const x = x0 + c * (colW + 8), y = y0 + rI * (rowH + gapY);
@@ -259,13 +262,14 @@ const HUD = {
       const focused = idx === this.focus && Input.lastDevice !== 'touch';
       this.btns.push({ x, y, w: colW, h: rowH });
       this.panel(x, y, colW, rowH, { edge: focused ? '#ffe14a' : 'rgba(120,170,255,0.8)', top: 'rgba(30,38,96,0.9)', bot: 'rgba(12,14,44,0.9)' });
-      this.text(label, x + 6, y + 7, { color: '#bfe0ff' });
-      this.text('◀ ' + val + ' ▶', x + colW - 6, y + 7, { align: 'right', color: '#ffffff' });
+      const ty = y + Math.round((rowH - 7) / 2);
+      this.text(label, x + 6, ty, { color: '#bfe0ff' });
+      this.text('◀ ' + val + ' ▶', x + colW - 6, ty, { align: 'right', color: '#ffffff' });
       let d = 0;
       for (const cl of Input.clicks) if (cl.x >= x && cl.y >= y && cl.x <= x + colW && cl.y <= y + rowH) { this.focus = idx; d = cl.x < x + colW * 0.62 ? -1 : 1; }
       if (focused && (Input.nav.left)) d = -1;
       if (focused && (Input.nav.right || Input.nav.ok)) d = 1;
-      if (d) { fn(d); G.applySettings(); G.writeSave(); SFX.menuMove(); Haptics.tap(0.3); }
+      if (d) { fn(d); G.applySettings(); G.writeSave(); SFX.menuMove(); Haptics.ui(); }
     });
     if (G.state === 'title') {
       const by = H - s.b - 24;
@@ -385,7 +389,7 @@ const HUD = {
     const best = G.save.best[st.id];
     if (best) this.text('BEST ' + best + (G.save.medals[st.id] ? '  ★' : ''), x, s.t + 64, { color: '#ffe14a', outline: '#000' });
     this.text('★ MEDAL  ' + st.medal + ' PTS · NO WINGMAN LOST', x, s.t + 76, { color: 'rgba(200,220,255,0.7)', outline: '#000' });
-    this.drawDialog(true);
+    this.drawDialog();
     if (G.briefDone && Math.floor(this.t * 2.5) % 2 === 0) this.text(Input.lastDevice === 'touch' ? 'TAP TO LAUNCH' : 'PRESS ENTER TO LAUNCH', W / 2, H - s.b - 20, { scale: 2, align: 'center', color: ['#ffffff', '#ffe14a'], outline: '#1a0a00', thick: true });
   },
 
@@ -491,8 +495,7 @@ const HUD = {
       const grb = g.createLinearGradient(bx, 0, bx + bwid, 0); grb.addColorStop(0, '#ff2fa0'); grb.addColorStop(1, '#ff9a4a');
       g.fillStyle = grb; g.fillRect(bx, by, Math.round(bwid * hp), 4);
     }
-    // comm window
-    this.drawDialog(false);
+    this.drawComm(dt);
     // banners
     G.banners.forEach((b, i) => {
       const a = b.t < 0.2 ? b.t / 0.2 : b.t > 1.4 ? 1 - (b.t - 1.4) / 0.4 : 1;
@@ -626,33 +629,98 @@ const HUD = {
     g.fillStyle = gr; g.fillRect(sx - 40, sy - 40, 80, 80);
     g.globalCompositeOperation = 'source-over';
   },
-  drawDialog(brief) {
-    const G = Game, c = G.dialog.cur;
-    if (!c) return;
+  // Briefing comms: the speaker owns the scene, so a big panel with a full
+  // 40px portrait, pinned above the bottom edge.
+  drawDialog() {
+    const G = Game, D = G.dialog;
+    let c = D.cur;
+    if (!c) { if (D.last && D.clock - D.lastEnd < 0.2) c = D.last; else return; } // no flicker between lines
     const W = this.W, s = this.safe, g = this.g;
     const land = W > this.H;
     const w = Math.min(land ? 300 : W - 16, W - s.l - s.r - (land ? 150 : 16)), h = 50;
-    const x = Math.round(W / 2 - w / 2), y = brief ? this.H - s.b - h - 30 : s.t + (land ? 4 : 44);
-    const k = clamp01(c.t * 6);
+    const x = Math.round(W / 2 - w / 2), y = this.H - s.b - h - 30;
+    const k = c.cont ? 1 : clamp01(c.t * 6);
     const hh = Math.round(h * k);
-    const yy = y + Math.round((h - hh) / 2);
-    this.panel(x, yy, w, hh, { top: 'rgba(12,30,60,0.9)', bot: 'rgba(4,10,24,0.9)', edge: DIALOG_COL[c.who] || '#9fd0ff' });
+    const col = DIALOG_COL[c.who] || '#9fd0ff';
+    this.panel(x, y + Math.round((h - hh) / 2), w, hh, { top: 'rgba(12,30,60,0.9)', bot: 'rgba(4,10,24,0.9)', edge: col });
     if (k < 1) return;
-    // portrait with comm static
     const px = x + 5, py = y + 5;
     this.rect(px - 1, py - 1, 42, 42, '#000');
     const bg = g.createLinearGradient(0, py, 0, py + 40); bg.addColorStop(0, '#1a3a6a'); bg.addColorStop(1, '#0a1428');
     g.fillStyle = bg; g.fillRect(px, py, 40, 40);
-    const talking = c.shown < c.text.length && Math.floor(c.t * 12) % 2 === 0;
-    const blink = Math.floor((this.t + c.who.length) * 10) % 37 === 0;
-    g.drawImage(Portraits.get(c.who, talking, blink), px, py);
+    g.drawImage(Portraits.get(c.who, this.mouthOpen(c), this.blinking(c)), px, py);
     for (let i = 0; i < 40; i += 2) this.rect(px, py + i, 40, 1, 'rgba(0,0,0,0.18)');
-    if (c.t < 0.35) for (let i = 0; i < 120; i++) this.rect(px + Math.random() * 40, py + Math.random() * 40, 1, 1, `rgba(255,255,255,${Math.random()})`);
+    if (c.t < 0.3) this.staticNoise(px, py, 40, 40, 120);
     const tx = px + 46;
-    this.text(DIALOG_NAME[c.who] || c.who.toUpperCase(), tx, py, { color: DIALOG_COL[c.who] || '#9fd0ff', outline: '#000' });
-    const lines = Font.wrap(c.text.slice(0, Math.floor(c.shown)), w - 56);
-    lines.slice(0, 3).forEach((ln, i) => this.text(ln, tx, py + 11 + i * 9, { color: '#ffffff', outline: '#001' }));
+    this.text(DIALOG_NAME[c.who] || c.who.toUpperCase(), tx, py, { color: col, outline: '#000' });
+    this.typed(c, Font.wrap(c.text, w - 56), tx, py + 11, 9, 3);
   },
+  // In-flight comms: a compact, see-through strip tucked under the shield
+  // cluster (full width under the score in portrait). It stays out of the
+  // centre of the screen and fades back when the reticle or ship passes under it.
+  drawComm(dt) {
+    const G = Game, D = G.dialog, P = G.player, W = this.W, H = this.H, s = this.safe, g = this.g;
+    let c = D.cur, out = 0;
+    if (!c) {
+      c = D.last; out = clamp01((D.clock - D.lastEnd) / 0.22);
+      if (!c || out >= 1) return;
+    }
+    const land = W > H, S = 26;
+    const w = Math.round(land ? Math.min(216, W * 0.4) : W - s.l - s.r - 8);
+    const lines = c.lines || (c.lines = Font.wrap(c.text, w - S - 12));
+    const n = Math.max(1, Math.min(3, this.linesShown(c, lines))), h = Math.max(S + 4, 12 + n * 8 + 3);
+    const x0 = s.l + 4, y = s.t + 46;
+    // get out of the way of the reticle and the ship
+    let clear = true;
+    const r = G.reticle;
+    if (P.alive && r.ok && G.phase !== 'intro' && G.phase !== 'clear') {
+      const rx = r.nx * W, ry = r.ny * H;
+      if (rx > x0 - 16 && rx < x0 + w + 16 && ry > y - 16 && ry < y + h + 16) clear = false;
+      const sp = W3(P.d, P.x, P.y);
+      if (G.cam.project(_q, sp.x, sp.y, sp.z)) { const sx = _q.x * W, sy = _q.y * H; if (sx > x0 - 20 && sx < x0 + w + 20 && sy > y - 20 && sy < y + h + 20) clear = false; }
+    }
+    this.commFade = damp(this.commFade === undefined ? 1 : this.commFade, clear ? 1 : 0.22, 12, dt);
+    const kin = easeOutCubic(clamp01((D.clock - c.t0) / 0.18));
+    const x = Math.round(x0 - (1 - kin) * 36 - out * 24);
+    g.globalAlpha = clamp01(kin * (1 - out)) * this.commFade;
+    const col = DIALOG_COL[c.who] || '#9fd0ff';
+    // backdrop: dark glass that fades out to the right, with a speaker-coloured spine
+    const bg = g.createLinearGradient(x, 0, x + w, 0);
+    bg.addColorStop(0, 'rgba(4,10,28,0.72)'); bg.addColorStop(0.7, 'rgba(4,10,28,0.5)'); bg.addColorStop(1, 'rgba(4,10,28,0)');
+    g.fillStyle = bg; g.fillRect(x, y, w, h);
+    this.rect(x, y, 1, h, col);
+    const tl = g.createLinearGradient(x, 0, x + w * 0.8, 0); tl.addColorStop(0, col); tl.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = tl; g.globalAlpha *= 0.6; g.fillRect(x + 1, y, w * 0.8, 1); g.globalAlpha /= 0.6;
+    // face close-up (cropped from the full portrait so it stays crisp)
+    const px = x + 3, py = y + 2;
+    this.rect(px - 1, py - 1, S + 2, S + 2, col);
+    this.rect(px, py, S, S, '#0a1428');
+    g.drawImage(Portraits.get(c.who, this.mouthOpen(c), this.blinking(c)), 7, 3, S, S, px, py, S, S);
+    for (let i = 0; i < S; i += 2) this.rect(px, py + i, S, 1, 'rgba(0,0,0,0.2)');
+    if (D.clock - c.t0 < 0.22) this.staticNoise(px, py, S, S, 50);
+    // name + signal bars, then the typed line(s)
+    const tx = px + S + 5, name = DIALOG_NAME[c.who] || c.who.toUpperCase();
+    this.text(name, tx, y + 3, { color: col, outline: '#000' });
+    const talking = c.shown < c.text.length;
+    for (let i = 0; i < 3; i++) {
+      const on = !talking || (Math.sin(this.t * 23 + i * 1.7) > -0.2 - i * 0.3);
+      this.rect(tx + Font.width(name) + 4 + i * 3, y + 8 - i * 2, 2, 2 + i * 2, on ? col : 'rgba(255,255,255,0.18)');
+    }
+    this.typed(c, lines, tx, y + 13, 8, 3);
+    g.globalAlpha = 1;
+  },
+  // Type out pre-wrapped lines up to c.shown; keeps the newest max lines visible.
+  typed(c, lines, x, y, lh, max) {
+    let left = Math.floor(c.shown), last = 0;
+    const vis = [];
+    for (let i = 0; i < lines.length && left > 0; i++) { vis.push(lines[i].slice(0, left)); left -= lines[i].length + 1; last = i; }
+    const from = Math.max(0, last - max + 1);
+    for (let i = from; i < vis.length; i++) this.text(vis[i], x, y + (i - from) * lh, { color: '#ffffff', outline: '#001' });
+  },
+  linesShown(c, lines) { let left = Math.floor(c.shown), i = 0; while (i < lines.length && left > 0) { left -= lines[i].length + 1; i++; } return i; },
+  mouthOpen(c) { return c.shown < c.text.length && c.t - c.sylT < 0.075; },
+  blinking(c) { return Math.floor((this.t + c.who.length) * 10) % 37 === 0; },
+  staticNoise(x, y, w, h, n) { for (let i = 0; i < n; i++) this.rect(x + Math.random() * w, y + Math.random() * h, 1, 1, `rgba(255,255,255,${Math.random()})`); },
 
   // ---- pause -------------------------------------------------------------------------
   drawPause() {

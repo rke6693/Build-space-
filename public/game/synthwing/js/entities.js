@@ -123,7 +123,7 @@ class Player {
   }
   startRoll(dir) {
     this.rollT = 0.55; this.rollDir = dir || 1; this.rollCD = 0.75;
-    SFX.roll(); Haptics.tap(0.5);
+    SFX.roll(); Haptics.impact('roll');
   }
   get rolling() { return this.rollT > 0.05; }
   worldPos(out) { return Game.rail.world(out, this.d, this.x, this.y); }
@@ -144,6 +144,7 @@ class Player {
       G.pbullets.push({ d: this.d + 1.8, x: this.x + o, y: this.y - 0.1, pd: this.d, px: this.x, py: this.y, vd: G.speed + LASER_REL, vx: ax * LASER_REL, vy: ay * LASER_REL, life: 1.1, dmg: lv >= 3 ? 2 : 1, lv });
     }
     SFX.laser(lv);
+    Haptics.fire(false);
   }
   paintLocks(dt) {
     const G = Game;
@@ -152,7 +153,7 @@ class Player {
     const t = G.findNearReticle(0.14, true);
     if (t) {
       this.locks.push(t); t.lockCount = (t.lockCount || 0) + 1; t.lockPulse = 1;
-      SFX.lock(this.locks.length - 1); Haptics.tap(0.3);
+      SFX.lock(this.locks.length - 1); Haptics.impact('lock');
       this.lockT = 0.07;
     }
   }
@@ -176,15 +177,15 @@ class Player {
     if (this.bombs <= 0 || G.bomb) return;
     this.bombs--;
     G.bomb = { d: this.d + 2, x: this.x, y: this.y, vd: G.speed + 140, vx: this.aimX * 140, vy: this.aimY * 140, t: 0 };
-    SFX.bomb(); Haptics.tap(1);
+    SFX.bomb(); Haptics.impact('bomb');
   }
   hurt(amount, scrape) {
     const G = Game;
     if (!this.alive || this.invuln > 0) return false;
     this.shield -= amount * G.diff.dmg;
     this.hitFlash = 1; this.jolt = scrape ? 0.4 : 1;
-    if (!scrape) { this.invuln = 0.9; SFX.playerHit(); G.shake(0.6); G.flash([1, 0.2, 0.2], 0.35); G.resonanceHit(); Haptics.tap(1); G.aberration = 0.012; }
-    else { G.shake(0.25); Haptics.tap(0.4); }
+    if (!scrape) { this.invuln = 0.9; SFX.playerHit(); G.shake(0.6); G.flash([1, 0.2, 0.2], 0.35); G.resonanceHit(); Haptics.impact('hit'); G.aberration = 0.012; }
+    else { G.shake(0.25); Haptics.impact('scrape'); }
     if (this.shield <= 0) { this.shield = 0; this.die(); }
     return true;
   }
@@ -193,6 +194,7 @@ class Player {
     const G = Game;
     this.alive = false; this.dying = 0; this.control = false;
     this.locks.forEach((t) => { t.lockCount = 0; }); this.locks.length = 0;
+    Haptics.impact('down');
     G.onPlayerDown();
   }
   updateDeath(dt) {
@@ -814,7 +816,7 @@ class Pickup {
       case 'laser': P.laserLv = Math.min(3, P.laserLv + 1); SFX.pickup(); G.banner(P.laserLv >= 3 ? 'HYPER LASER!' : 'TWIN LASER!', '#6dff8a'); G.sayOnce('laser' + P.laserLv); break;
       case 'fork': G.onFork(); SFX.ring(true); FX.ringBurst(_p.x, _p.y, _p.z, [1, 0.9, 0.3], wv.x, wv.y, wv.z); break;
     }
-    Haptics.tap(0.6);
+    Haptics.impact('pickup');
   }
   draw(r) {
     const s = this.kind === 'fork' ? 1.3 : 1;

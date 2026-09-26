@@ -34,10 +34,10 @@ function parseChord(sym) {
 
 const AudioSys = {
   ctx: null, ok: false, unlocked: false,
-  master: null, musicBus: null, sfxBus: null, voiceBus: null, comp: null,
+  master: null, musicBus: null, sfxBus: null, voiceBus: null, radioBus: null, comp: null,
   revIn: null, dlyIn: null, delay: null, analyser: null, freq: null,
   noise: null, pulse25: null, pulse12: null,
-  musicVol: 0.8, sfxVol: 0.9, fallbackT0: performance.now(),
+  musicVol: 0.8, sfxVol: 0.9, voiceVol: 0.8, duck: 0, fallbackT0: performance.now(),
   silenceAmt: 0,
 
   create() {
@@ -57,8 +57,16 @@ const AudioSys = {
     this.comp.connect(this.master); this.master.connect(ctx.destination);
     this.musicBus = ctx.createGain(); this.musicBus.gain.value = this.musicVol * 0.55;
     this.sfxBus = ctx.createGain(); this.sfxBus.gain.value = this.sfxVol * 0.7;
-    this.voiceBus = ctx.createGain(); this.voiceBus.gain.value = this.sfxVol * 0.5;
+    this.voiceBus = ctx.createGain(); this.voiceBus.gain.value = this.voiceVol * 0.85;
     this.musicBus.connect(this.comp); this.sfxBus.connect(this.comp); this.voiceBus.connect(this.comp);
+    // In-flight comms: a thin, lightly overdriven radio channel that sits under the music.
+    this.radioBus = ctx.createGain(); this.radioBus.gain.value = this.voiceVol * 0.36;
+    const rHp = ctx.createBiquadFilter(); rHp.type = 'highpass'; rHp.frequency.value = 420; rHp.Q.value = 0.8;
+    const rLp = ctx.createBiquadFilter(); rLp.type = 'lowpass'; rLp.frequency.value = 3100; rLp.Q.value = 1.2;
+    const rDrive = ctx.createWaveShaper(), curve = new Float32Array(1024);
+    for (let i = 0; i < curve.length; i++) { const x = (i / (curve.length - 1)) * 2 - 1; curve[i] = Math.tanh(x * 2.2) * 0.85; }
+    rDrive.curve = curve;
+    this.radioBus.connect(rHp); rHp.connect(rLp); rLp.connect(rDrive); rDrive.connect(this.comp);
     this.analyser = ctx.createAnalyser(); this.analyser.fftSize = 256; this.analyser.smoothingTimeConstant = 0.7;
     this.musicBus.connect(this.analyser);
     this.freq = new Uint8Array(this.analyser.frequencyBinCount);
@@ -110,13 +118,21 @@ const AudioSys = {
   applyVolumes() {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    this.musicBus.gain.setTargetAtTime(this.musicVol * 0.55 * (1 - this.silenceAmt), t, 0.05);
+    this.musicBus.gain.setTargetAtTime(this.musicLevel(), t, 0.05);
     this.sfxBus.gain.setTargetAtTime(this.sfxVol * 0.7, t, 0.05);
-    this.voiceBus.gain.setTargetAtTime(this.sfxVol * 0.55, t, 0.05);
+    this.voiceBus.gain.setTargetAtTime(this.voiceVol * 0.85, t, 0.05);
+    this.radioBus.gain.setTargetAtTime(this.voiceVol * 0.36, t, 0.05);
   },
+  musicLevel() { return this.musicVol * 0.55 * (1 - this.silenceAmt) * (1 - this.duck); },
   setSilence(a, tc = 0.4) {
     this.silenceAmt = a;
-    if (this.ctx) this.musicBus.gain.setTargetAtTime(this.musicVol * 0.55 * (1 - a), this.ctx.currentTime, tc);
+    if (this.ctx) this.musicBus.gain.setTargetAtTime(this.musicLevel(), this.ctx.currentTime, tc);
+  },
+  // Lower the music under narration (used by the dominant, menu-style narration).
+  setDuck(a) {
+    if (Math.abs(a - this.duck) < 0.01) return;
+    this.duck = a;
+    if (this.ctx) this.musicBus.gain.setTargetAtTime(this.musicLevel(), this.ctx.currentTime, a > 0 ? 0.08 : 0.35);
   },
   suspend() { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {}); },
   resume() { if (this.ctx && this.ctx.state !== 'running') this.ctx.resume().catch(() => {}); },
@@ -309,6 +325,20 @@ const INST = {
     A.osc('square', f, t, g._stop, A.filter('lowpass', 3200, 1, g));
   },
 };
+
+// Character voices (gibberish "chatter" in the tradition of 64-bit era games).
+// f0 pitch · var random pitch spread · fmt formant scale (smaller head = higher)
+// dur syllable length · slide pitch glide · vib [rate, depth] · rasp breath noise
+const VOICES = {
+  oz: { gain: 1.35, f0: 112, var: 0.1, wave: 'sawtooth', fmt: 0.88, dur: 0.088, slide: -0.07, vib: [6.5, 0.035], rasp: 0.2, rev: 0.12 }, // weathered veteran
+  sable: { gain: 1.45, f0: 168, var: 0.06, wave: 'sawtooth', fmt: 1.0, dur: 0.062, slide: -0.05, purr: 0.25, rev: 0.1 }, // cool, clipped ace
+  tobi: { gain: 1.2, f0: 330, var: 0.2, wave: 'square', fmt: 1.3, dur: 0.05, slide: 0.1, bounce: true, rev: 0.1 }, // eager rookie
+  maren: { gain: 0.95, f0: 76, var: 0.07, wave: 'sawtooth', fmt: 0.76, dur: 0.1, slide: -0.04, vib: [5, 0.02], rasp: 0.1, sub: true, rev: 0.22 }, // booming admiral
+  hush: { gain: 1.8, noise: true, fmt: 0.95, dur: 0.14, attack: 0.05, rev: 0.6 }, // a whisper from the void
+  static: { gain: 1.1, f0: 92, var: 0.1, wave: 'square', fmt: 1.0, dur: 0.07, slide: -0.02, ring: 42, rev: 0.25 }, // Static commanders
+  announcer: { f0: 66, var: 0.02, wave: 'sawtooth', fmt: 0.84, dur: 0.13, slide: -0.03, chord: [0, 7, 12], rev: 0.45 }, // title cards
+};
+const VOWEL_FMT = { a: [800, 1250], e: [520, 1900], i: [330, 2350], o: [520, 920], u: [360, 820], y: [330, 2150] };
 
 // -----------------------------------------------------------------------------
 // Sequencer
@@ -643,17 +673,62 @@ const SFX = {
     A.osc('sawtooth', 90, t, g._stop, A.filter('lowpass', 1200, 3, g));
     A.noiseSrc(t, g._stop, A.filter('bandpass', 3000, 1, g));
   },
-  // Gibberish voice syllable, pitched per character.
-  voice(pitch, ch, kind) {
+  // ---- comms ----------------------------------------------------------------
+  commOpen() { // radio squelch + two-tone chirp when a transmission starts
     if (!this.ok()) return;
     const A = AudioSys, t = A.ctx.currentTime;
-    const vowels = [[730, 1090], [530, 1840], [270, 2290], [570, 840], [300, 870], [660, 1720]];
-    const [f1, f2] = vowels[(ch.charCodeAt(0) * 7) % vowels.length];
-    const f0 = pitch * (0.88 + Math.random() * 0.26);
-    const g = A.gainEnv(t, 0.008, 0.05, 0.6, 0.03, 0.055, 0.5, AudioSys.voiceBus);
-    const b1 = A.filter('bandpass', f1 * (kind === 'hush' ? 0.8 : 1), 5, g), b2 = A.filter('bandpass', f2, 7, g);
-    const mix = A.ctx.createGain(); mix.connect(b1); mix.connect(b2);
-    if (kind === 'hush') A.noiseSrc(t, g._stop, mix, 0.5);
-    else { A.osc('sawtooth', f0, t, g._stop, mix); A.osc(kind === 'robot' ? 'square' : 'triangle', f0 * 2, t, g._stop, mix); }
+    const n = A.gainEnv(t, 0.002, 0.05, 0.2, 0.03, 0.06, 0.22, A.radioBus);
+    A.noiseSrc(t, n._stop, A.filter('bandpass', 2400, 0.9, n));
+    for (const [dt, f] of [[0.05, 1560], [0.1, 2080]]) { const g = A.gainEnv(t + dt, 0.002, 0.03, 0.4, 0.01, 0.035, 0.12, A.radioBus); A.osc('square', f, t + dt, g._stop, g); }
+  },
+  commClose() {
+    if (!this.ok()) return;
+    const A = AudioSys, t = A.ctx.currentTime;
+    const n = A.gainEnv(t, 0.001, 0.09, 0, 0.03, 0.02, 0.16, A.radioBus);
+    A.noiseSrc(t, n._stop, A.filter('bandpass', 1800, 0.7, n));
+    const g = A.gainEnv(t, 0.001, 0.02, 0, 0.01, 0.01, 0.1, A.radioBus); A.osc('square', 1040, t, g._stop, g);
+  },
+  commChime() { // softer cue when a new speaker takes over in briefings
+    if (!this.ok()) return;
+    const d = AudioSys.route(AudioSys.voiceBus, 0.35, 0.1), t = AudioSys.ctx.currentTime;
+    INST.bell(t, 91, 0.1, 0.35, d); INST.bell(t + 0.06, 96, 0.1, 0.3, d);
+  },
+  // One spoken syllable. vowel/cons are the letters that produced it; pitchK and
+  // loud shape intonation; radio = in-flight comm channel (thin, quiet).
+  syllable(who, vowel, cons, pitchK, loud, radio) {
+    if (!this.ok()) return;
+    const V = VOICES[who] || VOICES.oz;
+    const A = AudioSys, ctx = A.ctx, t = ctx.currentTime;
+    const dest = radio ? A.radioBus : A.route(A.voiceBus, V.rev || 0.12, 0);
+    const dur = V.dur * (0.85 + Math.random() * 0.3);
+    const F = VOWEL_FMT[vowel] || VOWEL_FMT.a;
+    const k = V.fmt;
+    const g = A.gainEnv(t, V.attack || 0.006, dur * 0.6, 0.7, 0.03, dur, 0.55 * loud * (V.gain || 1), dest);
+    const b1 = A.filter('bandpass', F[0] * k, 5, g), b2 = A.filter('bandpass', F[1] * k, 7, g), b3 = A.filter('lowpass', 900 * k, 0.7, g);
+    const src = ctx.createGain(); src.gain.value = 1; src.connect(b1); src.connect(b2);
+    const body = ctx.createGain(); body.gain.value = 0.35; src.connect(body); body.connect(b3);
+    if (V.noise) {
+      A.noiseSrc(t, g._stop, src, 0.6);
+    } else {
+      const bounce = V.bounce ? (Math.random() < 0.5 ? 1.12 : 0.92) : 1;
+      const f0 = V.f0 * pitchK * bounce * (1 + (Math.random() * 2 - 1) * V.var);
+      const oscs = [];
+      for (const semis of V.chord || [0]) oscs.push(A.osc(V.wave, f0 * Math.pow(2, semis / 12), t, g._stop, src));
+      if (V.sub) oscs.push(A.osc('triangle', f0 / 2, t, g._stop, src));
+      for (const o of oscs) o.frequency.linearRampToValueAtTime(o.frequency.value * (1 + V.slide), t + dur);
+      if (V.vib && V.vib[1]) {
+        const vg = ctx.createGain(); vg.gain.value = f0 * V.vib[1];
+        A.osc('sine', V.vib[0], t, g._stop, vg); for (const o of oscs) vg.connect(o.frequency);
+      }
+      if (V.ring) { // ring modulation: robotic buzz
+        const rm = ctx.createGain(); rm.gain.value = 0; src.disconnect(); src.connect(rm); rm.connect(b1); rm.connect(b2); rm.connect(body);
+        A.osc('square', V.ring, t, g._stop, rm.gain);
+      }
+      if (V.rasp) { const rg = ctx.createGain(); rg.gain.value = V.rasp; rg.connect(b1); rg.connect(b2); A.noiseSrc(t, g._stop, rg, 0.7); }
+      if (V.purr) { const pg = ctx.createGain(); pg.gain.value = V.purr * 0.55 * loud * (V.gain || 1); A.osc('sine', 24, t, g._stop, pg); pg.connect(g.gain); }
+    }
+    // consonant onset: hiss for fricatives, click for plosives
+    if (cons && 'sfhzxcj'.includes(cons)) { const c = A.gainEnv(t, 0.002, 0.03, 0, 0.01, 0.025, 0.16 * loud, dest); A.noiseSrc(t, c._stop, A.filter('highpass', 3600 * Math.min(1.3, k), 0.8, c)); }
+    else if (cons && 'tkpbdgq'.includes(cons)) { const c = A.gainEnv(t, 0.001, 0.012, 0, 0.005, 0.008, 0.2 * loud, dest); A.noiseSrc(t, c._stop, A.filter('bandpass', 1600 * k, 1.2, c)); }
   },
 };

@@ -13,7 +13,7 @@ const DIFFS = [
 ];
 // res: internal vertical resolution (0 = native display resolution).
 const SETTINGS_VERSION = 2;
-const DEFAULT_SETTINGS = { v: SETTINGS_VERSION, steer: 'stick', sens: 3, invertY: false, lefty: false, diff: 1, res: 0, crt: false, dither: true, shake: true, flash: true, music: 8, sfx: 9, haptics: true, fps: false };
+const DEFAULT_SETTINGS = { v: SETTINGS_VERSION, steer: 'stick', sens: 3, invertY: false, lefty: false, diff: 1, res: 0, crt: false, dither: true, shake: true, flash: true, music: 8, sfx: 9, voice: 8, haptics: 2, fps: false };
 const SAVE_KEY = 'synthwing64.save.v1';
 
 const Game = {
@@ -35,7 +35,7 @@ const Game = {
   // beat flags (set each frame from the sequencer)
   onBeat: false, on8th: false, onBar: false, stepCrossed: false, beatIndex: 0, barIndex: 0, stepIndex: 0,
   // dialogue
-  dialog: { queue: [], cur: null }, said: new Set(), banners: [], warnT: 0, bossCard: 0,
+  dialog: { queue: [], cur: null, last: null, clock: 0, lastEnd: -9, gap: 0, lastWho: '' }, ann: null, announced: false, said: new Set(), banners: [], warnT: 0, bossCard: 0,
   reticle: { nx: 0.5, ny: 0.5, ok: false },
   restore: 0, silence: false,
 
@@ -61,13 +61,15 @@ const Game = {
       saved.res = 0; saved.crt = false;
     }
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved, { v: SETTINGS_VERSION });
+    if (typeof this.settings.haptics === 'boolean') this.settings.haptics = this.settings.haptics ? 2 : 0; // was ON/OFF
   },
   writeSave() { this.save.settings = this.settings; Store.set(SAVE_KEY, this.save); },
   applySettings() {
     const s = this.settings;
     Input.settings.steer = s.steer; Input.settings.sens = s.sens; Input.settings.invertY = s.invertY;
-    AudioSys.musicVol = s.music / 10; AudioSys.sfxVol = s.sfx / 10; AudioSys.applyVolumes();
-    Haptics.enabled = s.haptics;
+    AudioSys.musicVol = s.music / 10; AudioSys.sfxVol = s.sfx / 10;
+    AudioSys.voiceVol = s.voice / 10; AudioSys.applyVolumes();
+    Haptics.level = s.haptics;
     this.renderer.dither = s.dither ? 1 : 0;
     this.diff = DIFFS[s.diff];
   },
@@ -77,6 +79,8 @@ const Game = {
     // don't let the tap that changed screens also press a button on the next one
     Input.clicks.length = 0; Input.nav.ok = false; Input.firePressed = false;
     HUD.focus = 0;
+    this.dialog.queue.length = 0; this.dialog.cur = null; this.dialog.last = null; this.dialog.lastWho = '';
+    this.ann = null; AudioSys.setDuck(0);
     const fn = this['enter_' + s]; if (fn) fn.call(this);
   },
 
@@ -192,10 +196,15 @@ const Game = {
   // ---------------------------------------------------------------------------
   // Messages
   // ---------------------------------------------------------------------------
+  // In flight, lines arrive over a thin comm channel: quicker, sparser chatter,
+  // a squelch at each end, and stale chatter is dropped once its moment passes.
+  // Everywhere else (briefings) the speaker owns the scene: full voice, music ducks.
   say(who, text, prio) {
-    const m = { who, text, t: 0, shown: 0, dur: 1.9 + text.length / 30 };
-    if (prio) { this.dialog.queue.unshift(m); if (this.dialog.cur && this.dialog.cur.t > 0.6) this.dialog.cur = null; }
-    else if (this.dialog.queue.length < 4) this.dialog.queue.push(m);
+    const D = this.dialog, radio = this.state === 'play', cps = radio ? 46 : 36;
+    const m = { who, text, prio: !!prio, radio, cps, q: D.clock, t0: 0, t: 0, shown: 0, hold: 0, sylN: 0, sylT: -1,
+      dur: text.length / cps + (radio ? 1.25 + text.length / 55 : 1.6 + text.length / 50) };
+    if (prio) { D.queue.unshift(m); if (D.cur && D.cur.t > 0.6) this.endMessage(true); }
+    else if (D.queue.length < (radio ? 3 : 6)) D.queue.push(m);
   },
   sayOnce(key) {
     if (this.said.has(key)) return;
@@ -204,23 +213,97 @@ const Game = {
     if (L[key]) this.say(L[key][0], L[key][1]);
   },
   banner(text, col = '#ffffff', big = false) { this.banners.push({ text, col, t: 0, big }); if (this.banners.length > 3) this.banners.shift(); },
-  warning() { this.warnT = 3.2; SFX.alarm(); this.shake(0.2); },
+  warning() { this.warnT = 3.2; SFX.alarm(); this.shake(0.2); Haptics.impact('warn'); },
   updateDialog(dt) {
     const D = this.dialog;
-    if (!D.cur && D.queue.length) { D.cur = D.queue.shift(); D.cur.t = 0; }
+    D.clock += dt;
+    if (D.gap > 0) D.gap -= dt;
+    while (!D.cur && D.gap <= 0 && D.queue.length) {
+      const m = D.queue.shift();
+      if (m.radio && !m.prio && D.clock - m.q > 4.5) continue;
+      m.t0 = D.clock;
+      if (m.radio) { SFX.commOpen(); m.hold = 0.14; } // let the chirp land before the words
+      else if (D.lastWho !== m.who) SFX.commChime();
+      m.cont = D.clock - D.lastEnd < 0.5; // follows straight on from the previous line
+      D.lastWho = m.who; D.cur = m;
+    }
     const c = D.cur;
     if (c) {
-      const before = Math.floor(c.shown);
       c.t += dt;
-      c.shown = Math.min(c.text.length, c.t * 38);
-      const after = Math.floor(c.shown);
-      for (let i = before; i < after; i++) {
-        const ch = c.text[i];
-        if (i % 2 === 0 && /[a-z0-9]/i.test(ch)) SFX.voice(VOICE[c.who] || 200, ch, c.who === 'hush' ? 'hush' : c.who === 'static' ? 'robot' : '');
+      if (c.hold > 0) c.hold -= dt;
+      else if (c.shown < c.text.length) {
+        const before = Math.floor(c.shown);
+        c.shown = Math.min(c.text.length, c.shown + dt * c.cps);
+        const after = Math.floor(c.shown);
+        let voiced = 0; // on a long frame, voice at most two syllables rather than a burst
+        for (let i = before; i < after; i++) {
+          if (voiced < 2 && this.speak(c, i)) voiced++;
+          const p = PAUSES[c.text[i]];
+          if (p && i < c.text.length - 1 && c.text[i + 1] !== c.text[i] && !/[0-9]/.test(c.text[i + 1])) { c.shown = i + 1; c.hold = p * (c.radio ? 0.6 : 1); c.dur += c.hold; break; }
+        }
       }
-      if (c.t > c.dur) D.cur = null;
+      if (c.t > c.dur) this.endMessage(false);
     }
     for (let i = this.banners.length - 1; i >= 0; i--) { this.banners[i].t += dt; if (this.banners[i].t > 1.8) this.banners.splice(i, 1); }
+  },
+  endMessage(cut) {
+    const D = this.dialog, c = D.cur;
+    if (!c) return;
+    if (c.radio && !cut) SFX.commClose();
+    D.last = c; D.lastEnd = D.clock; D.cur = null;
+    D.gap = c.radio ? 0.35 : 0.12;
+  },
+  skipTyping() { const c = this.dialog.cur; if (c) { c.shown = c.text.length; c.hold = 0; } },
+  // One revealed character of a line: voice it if it starts a syllable.
+  speak(c, i) {
+    const s = c.text, v = syllableAt(s, i);
+    if (!v) return false;
+    c.sylT = c.t; // mouth sync
+    c.sylN++;
+    if (c.radio && c.sylN % 2 === 0) return false; // radio chatter is sparser
+    // intonation: fall across each sentence, rise into a question, lift on '!', stress ALL-CAPS words
+    let a = i, b = i;
+    while (a > 0 && !'.!?'.includes(s[a - 1])) a--;
+    while (b < s.length - 1 && !'.!?'.includes(s[b])) b++;
+    let pk = 1.07 - 0.14 * ((i - a) / Math.max(1, b - a)), loud = 1;
+    if (s[b] === '?' && b - i < 8) pk *= 1.12 + (8 - (b - i)) * 0.03;
+    if (s[b] === '!') { loud *= 1.15; pk *= 1.05; }
+    let w0 = i, w1 = i;
+    while (w0 > 0 && /[a-z']/i.test(s[w0 - 1])) w0--;
+    while (w1 < s.length && /[a-z']/i.test(s[w1])) w1++;
+    const word = s.slice(w0, w1);
+    if (word.length > 1 && word === word.toUpperCase() && /[A-Z]/.test(word)) { loud *= 1.25; pk *= 1.08; }
+    const prev = (s[i - 1] || '').toLowerCase();
+    SFX.syllable(c.who, v, /[a-z]/.test(prev) ? prev : '', pk, loud * (c.radio ? 0.85 : 1), c.radio);
+    return true;
+  },
+  // The announcer: a big, slow, reverberant voice for title cards.
+  announce(text, delay = 0) {
+    const s = text.toLowerCase(), syl = [];
+    let at = delay;
+    for (let i = 0; i < s.length; i++) {
+      if ('.,!?'.includes(s[i])) { at += 0.16; continue; }
+      if (s[i] === ' ') { at += 0.03; continue; }
+      const v = syllableAt(s, i);
+      if (!v) continue;
+      const prev = s[i - 1] || '';
+      syl.push({ at, v, c: /[a-z]/.test(prev) ? prev : '' });
+      at += 0.15;
+    }
+    syl.forEach((q, k) => { q.pk = 1.1 - 0.2 * (k / Math.max(1, syl.length - 1)); q.loud = k === 0 ? 1.25 : 1.05; });
+    this.ann = { syl, t: 0, k: 0 };
+  },
+  updateAnnounce(dt) {
+    const A = this.ann;
+    if (!A) return;
+    A.t += dt;
+    while (A.k < A.syl.length && A.syl[A.k].at <= A.t) { const q = A.syl[A.k++]; SFX.syllable('announcer', q.v, q.c, q.pk, q.loud, false); }
+    if (A.k >= A.syl.length) this.ann = null;
+  },
+  // Music steps back for whoever holds the scene; the radio barely nudges it.
+  updateDuck() {
+    const c = this.dialog.cur;
+    AudioSys.setDuck(this.ann ? 0.4 : c ? (c.radio ? 0.08 : 0.3) : 0);
   },
 
   // ---------------------------------------------------------------------------
@@ -280,7 +363,7 @@ const Game = {
     }
     // occasional drops from big enemies
     if (e.T.big && e.type !== 'bigrock') G.spawnPickup(Math.random() < 0.5 ? 'ring' : 'bomb', e.d, e.x, e.y);
-    Haptics.tap(e.T.big ? 1 : 0.35);
+    Haptics.impact(e.T.big ? 'bigkill' : 'kill');
   },
   onFork() {
     this.stats.fork = true;
@@ -316,7 +399,7 @@ const Game = {
     for (const eb of this.ebullets) { this.rail.world(_p, eb.d, eb.x, eb.y); FX.spawn(_p.x, _p.y, _p.z, 0, 4, 0, 0.6, 1.5, 0.2, 1, 0.9, 0.5, 1, SPR.SPARKLE); }
     this.ebullets.length = 0;
     for (const e of this.enemies) if (!e.dead) e.damage(99, null);
-    SFX.bigBoom(); Haptics.tap(1);
+    SFX.bigBoom(); Haptics.impact('boss');
     if (this.silence) this.exitSilence();
     this.phase = 'bossDeath'; this.phaseT = 0;
   },
@@ -350,7 +433,7 @@ const Game = {
     Music.update();
     this.readBeats();
     const upd = this['update_' + this.state];
-    if (upd && !this.overlay) upd.call(this, dt);
+    if (upd && !this.overlay) { upd.call(this, dt); this.updateAnnounce(dt); this.updateDuck(); }
     this.stateT += dt;
     this.adaptQuality(dt);
     this.render(dt);
@@ -406,6 +489,7 @@ const Game = {
     for (const w of this.wingmen) { w.d = P.d - 2; }
     this.terrain.prewarm(this.railD, 520, this.renderer);
     if (Music.name !== 'title') Music.play(SONGS.title, { layer: 5 });
+    if (!this.announced) { this.announced = true; this.announce('Synthwing sixty-four!', 0.9); }
     this.camShot = 0; this.camShotT = 0;
     this.logoMesh = this.logoMesh || buildLogoMesh('SYNTHWING', { colors: LOGO_COLORS });
     this.logo64 = this.logo64 || buildLogoMesh('64', { voxel: 1, depth: 2.4, colors: LOGO64_COLORS });
@@ -454,12 +538,13 @@ const Game = {
     this.briefLine = -1; this.briefT = 0; this.briefDone = false;
     Music.play(SONGS.brief, { layer: 5 });
     this.briefLines = st.brief.slice();
+    this.announce('Stage ' + st.num + '. ' + st.name, 0.3);
   },
   update_brief(dt) {
     this.time += dt; this.briefT += dt;
     FX.update(dt, this.cam);
     const L = this.briefLines;
-    if (this.briefLine < 0 && this.stateT > 1.2) { this.briefLine = 0; this.dialog.queue.length = 0; this.dialog.cur = null; this.say(L[0][0], L[0][1]); }
+    if (this.briefLine < 0 && this.stateT > 1.2 && !this.ann) { this.briefLine = 0; this.dialog.queue.length = 0; this.dialog.cur = null; this.say(L[0][0], L[0][1]); }
     else if (this.briefLine >= 0 && !this.dialog.cur && !this.dialog.queue.length && !this.briefDone) {
       this.briefLine++;
       if (this.briefLine < L.length) this.say(L[this.briefLine][0], L[this.briefLine][1]); else this.briefDone = true;
@@ -468,8 +553,9 @@ const Game = {
     const tap = Input.clicks.length || Input.nav.ok || Input.firePressed;
     if (tap && this.stateT > 0.5) {
       if (this.briefDone) { SFX.menuOk(); this.launchStage(); }
-      else if (this.dialog.cur && this.dialog.cur.shown < this.dialog.cur.text.length) this.dialog.cur.t = 99 / 38;
-      else if (this.dialog.cur) this.dialog.cur = null;
+      else if (this.dialog.cur && this.dialog.cur.shown < this.dialog.cur.text.length) this.skipTyping();
+      else if (this.dialog.cur) this.endMessage(false);
+      else if (this.ann) this.ann.syl.length = 0;
     }
     const cam = this.cam, a = this.time * 0.05;
     cam.pos.set(Math.sin(a) * 18, 4 + Math.sin(this.time * 0.2) * 2, 60 + Math.cos(a) * 10);
@@ -746,7 +832,10 @@ const Game = {
     this.boss = null;
     Music.play(SONGS.clear, { loop: false });
     for (const w of this.wingmen) if (w.hp > 0) w.setState('join');
-    this.say('maren', ['Corona sings again! Outstanding work, Synthwing!', "The Halo Belt is humming! You're on a roll, squadron.", "Frostline's aurora is singing — I can hear it from here!", 'The Forge is cold and quiet. The good kind of quiet.', 'The Octave Cluster is singing again. Synthwing... thank you.'][this.stageIdx] || 'Mission complete!', true);
+    this.announce('Mission accomplished!', 0.85);
+    const line = ['Corona sings again! Outstanding work, Synthwing!', "The Halo Belt is humming! You're on a roll, squadron.", "Frostline's aurora is singing — I can hear it from here!", 'The Forge is cold and quiet. The good kind of quiet.', 'The Octave Cluster is singing again. Synthwing... thank you.'][this.stageIdx] || 'Mission complete!';
+    this.dialog.queue.length = 0; this.endMessage(true);
+    this.later(1.6, () => this.say('maren', line, true));
   },
   finishStage() {
     const st = this.stage, s = this.save;
@@ -796,7 +885,7 @@ const Game = {
   },
 
   // ---- game over ---------------------------------------------------------------
-  enter_gameover() { Input.mode = 'menu'; Music.play(SONGS.gameover, { loop: false }); },
+  enter_gameover() { Input.mode = 'menu'; Music.play(SONGS.gameover, { loop: false }); this.announce('Game over.', 0.5); },
   update_gameover(dt) { this.time += dt; FX.update(dt, this.cam); },
   continueGame() {
     this.score = this.stageStartScore;
@@ -1001,7 +1090,22 @@ const Game = {
   },
 };
 
-const VOICE = { oz: 118, sable: 190, tobi: 360, maren: 82, hush: 150, static: 95 };
+const PAUSES = { ',': 0.1, '.': 0.2, '!': 0.2, '?': 0.2, '—': 0.14, ':': 0.12 };
+const VOWELS = 'aeiou';
+const isVowel = (c, prev) => VOWELS.includes(c) || (c === 'y' && /[a-z]/.test(prev) && !VOWELS.includes(prev));
+// The vowel that opens a syllable at s[i] ('' if none). Digits count as one
+// syllable each; a silent final 'e' after a consonant is skipped.
+function syllableAt(s, i) {
+  const ch = s[i].toLowerCase(), prev = (s[i - 1] || ' ').toLowerCase();
+  if (ch >= '0' && ch <= '9') return prev >= '0' && prev <= '9' ? '' : 'e';
+  if (!isVowel(ch, prev) || isVowel(prev, (s[i - 2] || ' ').toLowerCase())) return '';
+  if (ch === 'e' && !/[a-z]/i.test(s[i + 1] || ' ') && /[a-z]/.test(prev)) {
+    let w = i - 1;
+    while (w > 0 && /[a-z]/i.test(s[w - 1])) w--;
+    for (let j = w; j < i - 1; j++) if (VOWELS.includes(s[j].toLowerCase())) return '';
+  }
+  return ch;
+}
 const _post = { scan: 1, sat: 1, vig: 0.35, ab: 0, flashA: 0, flashCol: [1, 1, 1], glitch: 0, bright: 1, shocks: new Float32Array(12) };
 const _logoCam = new Camera();
 const LOGO_ENV = { lightDir: new Float32Array([0.28, 0.5, 0.82]), lightCol: new Float32Array([1.0, 0.97, 0.9]), ambient: new Float32Array([0.5, 0.5, 0.62]), fog: new Float32Array([0, 0, 0]), fogNear: 1e4, fogFar: 2e4 };

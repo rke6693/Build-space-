@@ -101,9 +101,20 @@ use Share → Add to Home Screen for fullscreen, offline play.
 - **Screen feel.** Big explosions send a refracting shockwave across the screen and punch the
   camera's field of view. Weapons have muzzle flashes, the ship jolts when hit, the score rolls
   up and the shield bar shows a trailing damage ghost.
-- **A squadron with a story.** Oz, Sable and Tobi (with Admiral Maren on comms) talk through
-  animated pixel portraits in synthesized gibberish voices. Save wingmates when they're
-  chased; losing them costs you the stage medal.
+- **A squadron with a story.** Oz, Sable and Tobi (with Admiral Maren on comms) talk in
+  synthesized "bit-voice" chatter. Each character has a voice that fits their role: Oz's
+  gravelly veteran growl, Sable's clipped purr, Tobi's chirpy squeaks, Maren's deep
+  commanding bass. The Hush whispers in noise and the drones buzz like ring-modulated robots.
+  Syllables follow the text: sentences fall in pitch, questions rise, and ALL-CAPS words are
+  stressed. Portraits lip-sync to the syllables. Save wingmates when they're chased; losing
+  them costs you the stage medal.
+- **Comms that stay out of your way.** In flight, lines arrive over a thin radio channel,
+  with a squelch at each end, sparser chatter and only a slight dip in the music. They
+  appear in a compact see-through strip under the shield gauge (under the score in
+  portrait). The strip fades back whenever your ship or reticle passes beneath it, and
+  chatter that has gone stale is dropped. Briefings and title cards get the full treatment:
+  a big panel, full voice with the music ducked, and an announcer who calls out stage
+  names, MISSION ACCOMPLISHED and GAME OVER.
 - **64-bit look at HD resolution.** A hand-written WebGL2 renderer that renders at native display
   resolution by default. If the frame rate drops, a dynamic-resolution governor lowers the
   internal resolution until it recovers. It uses N64 3-point texture filtering, 16-bit ordered
@@ -111,9 +122,15 @@ use Share → Add to Home Screen for fullscreen, offline play.
   modes with a soft "VI" upscale, plus optional CRT scanlines.
 - **No libraries and no asset files.** Every model, texture, font, portrait, song and sound
   effect is generated in code at startup.
+- **Haptics.** Every shot ticks, and kills, lock-ons, rolls, pickups, hits, bombs, alarms,
+  your ship going down and boss kills each have their own pattern (set OFF, LIGHT or FULL).
+  Android plays vibration patterns and gamepads get dual-rumble. On iPhone, Safari has no
+  vibration API, so the game uses the iOS 18+ switch-control tick. That means light,
+  single-strength taps, only with System Haptics on, and iOS may skip ticks that don't
+  come straight from a touch.
 - **Mobile first.** Floating analog stick or touchpad steering, left-handed layout,
-  safe-area aware HUD, haptics (iOS 18+ switch trick), gamepad and keyboard support, and a
-  PWA manifest with an offline service worker.
+  safe-area aware HUD, gamepad and keyboard support, and a PWA manifest with an offline
+  service worker.
 
 ### Controls
 | | Touch | Keyboard | Gamepad |

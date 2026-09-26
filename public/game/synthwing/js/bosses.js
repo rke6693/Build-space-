@@ -480,7 +480,7 @@ class BossAnvil extends Boss {
     G.rail.world(_p, f.d, f.x, -14);
     FX.explode(_p.x, _p.y + 4, _p.z, 2.2, { notes: false, palette: [[1, 0.6, 0.2], [1, 0.3, 0.05]] });
     for (let i = 0; i < 20; i++) FX.spawn(_p.x + rr(-6, 6), _p.y, _p.z + rr(-6, 6), rr(-10, 10), rr(20, 45), rr(-10, 10), 1.2, 2, 0.5, 1, 0.5, 0.1, 1, SPR.GLOW, true, 0.5, -40);
-    SFX.explode(2.5); G.shake(0.9); Haptics.tap(1);
+    SFX.explode(2.5); G.shake(0.9); Haptics.impact('bigkill');
     // shockwave of embers along the ground
     this.ring(f.d, f.x, -10, 10, 9, 0, 20);
   }

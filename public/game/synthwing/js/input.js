@@ -64,12 +64,12 @@ const Input = {
     this.pointers.set(e.pointerId, p);
     const L = this.layout;
     if (this.mode === 'play' && L) {
-      if (this.hitRect(L.pause, x, y)) { p.role = 'pause'; this.pausePressed = true; Haptics.tap(); return; }
-      if (this.hitCircle(L.bomb, x, y)) { p.role = 'bomb'; this.bombPressed = true; Haptics.tap(); return; }
-      if (this.hitCircle(L.roll, x, y)) { p.role = 'roll'; this.rollPressed = true; this.rollDir = 0; Haptics.tap(); return; }
+      if (this.hitRect(L.pause, x, y)) { p.role = 'pause'; this.pausePressed = true; Haptics.ui(); return; }
+      if (this.hitCircle(L.bomb, x, y)) { p.role = 'bomb'; this.bombPressed = true; Haptics.ui(); return; }
+      if (this.hitCircle(L.roll, x, y)) { p.role = 'roll'; this.rollPressed = true; this.rollDir = 0; Haptics.ui(); return; }
       const onFire = this.hitCircle(L.fire, x, y, 1.35);
       const stickSide = L.leftHanded ? x > L.W * 0.5 : x < L.W * 0.5;
-      if (onFire || !stickSide) { p.role = 'fire'; if (!this.fire) this.firePressed = true; this.fire = true; return; }
+      if (onFire || !stickSide) { p.role = 'fire'; if (!this.fire) { this.firePressed = true; Haptics.fire(true); } this.fire = true; return; }
       // stick
       p.role = 'stick';
       const now = performance.now();
@@ -212,26 +212,79 @@ const Input = {
 
 // iOS Safari has no Vibration API, but toggling a native <input switch>
 // produces a system haptic tick on iOS 18+. Android uses navigator.vibrate.
+// Tactile feedback. iPhone Safari has no vibration API, but since iOS 18
+// toggling an <input type=checkbox switch> plays the system's light "tick", so
+// on iOS every pattern is a sequence of ticks. Android gets real vibration
+// patterns and gamepads rumble. iOS may only honour ticks that come straight
+// from a touch, so FIRE / BOMB / ROLL presses tick inside the touch handler.
+//            Android pattern (ms)     iOS ticks (ms offsets)     pad [ms, strong, weak]
+const HAPTIC = {
+  ui: [[8], [0], [40, 0, 0.3]],
+  fire: [[7], [0], [45, 0, 0.22]],
+  lock: [[6], [0], [30, 0, 0.35]],
+  kill: [[14], [0], [80, 0.25, 0.45]],
+  scrape: [[18], [0], [90, 0.2, 0.5]],
+  pickup: [[10, 50, 14], [0, 90], [120, 0.1, 0.4]],
+  roll: [[10, 40, 10], [0, 110], [160, 0.2, 0.3]],
+  bigkill: [[25, 30, 40], [0, 70], [220, 0.7, 0.6]],
+  warn: [[30, 90, 30], [0, 120], [260, 0.3, 0.5]],
+  hit: [[45, 35, 70], [0, 60, 130], [320, 1, 0.8]],
+  bomb: [[70, 40, 110], [0, 60, 120, 220], [500, 1, 1]],
+  down: [[120, 60, 60, 60, 220], [0, 80, 160, 260, 400, 560], [900, 1, 1]],
+  boss: [[90, 50, 140, 60, 200], [0, 70, 140, 240, 360], [900, 1, 1]],
+};
+const HAPTIC_PRIO = { ui: 0, fire: 0, lock: 0, kill: 1, scrape: 1, pickup: 1, roll: 1, bigkill: 2, warn: 2, hit: 3, bomb: 3, down: 4, boss: 4 };
+
 const Haptics = {
-  enabled: true, el: null, last: 0,
+  level: 2, // 0 off · 1 light (single ticks, no autofire buzz) · 2 full
+  el: null, busyUntil: 0, busyPrio: 0, lastFire: 0, lastTick: 0,
   init() {
+    if (navigator.vibrate) return;
     try {
       const label = document.createElement('label');
-      label.style.cssText = 'position:fixed;left:-100px;top:-100px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+      label.setAttribute('aria-hidden', 'true'); label.style.display = 'none';
       const inp = document.createElement('input');
-      inp.type = 'checkbox'; inp.setAttribute('switch', ''); inp.tabIndex = -1; inp.setAttribute('aria-hidden', 'true');
-      label.appendChild(inp); document.body.appendChild(label);
+      inp.type = 'checkbox'; inp.setAttribute('switch', ''); inp.tabIndex = -1;
+      label.appendChild(inp); document.head.appendChild(label);
       this.el = label;
     } catch (e) { this.el = null; }
   },
-  tap(strength = 1) {
-    if (!this.enabled) return;
+  tick() {
     const now = performance.now();
-    if (now - this.last < 45) return;
-    this.last = now;
-    try {
-      if (navigator.vibrate) navigator.vibrate(Math.round(8 + strength * 12));
-      else if (this.el) this.el.click();
-    } catch (e) { /* ignore */ }
+    if (now - this.lastTick < 30) return;
+    this.lastTick = now;
+    try { this.el.click(); } catch (e) { /* ignore */ }
   },
+  play(kind) {
+    const H = HAPTIC[kind];
+    if (!this.level || !H) return;
+    const now = performance.now(), prio = HAPTIC_PRIO[kind], light = this.level === 1;
+    if (now < this.busyUntil && prio < this.busyPrio) return; // small ticks never cut off a big pattern
+    const [pat, ticks, pad] = H;
+    this.busyUntil = now + pat.reduce((a, b) => a + b, 0); this.busyPrio = prio;
+    if (Input.lastDevice === 'gamepad') this.rumble(pad, light ? 0.5 : 1);
+    if (navigator.vibrate) { try { navigator.vibrate(light ? Math.ceil(pat[0] * 0.6) : pat); } catch (e) { /* ignore */ } return; }
+    if (!this.el) return;
+    for (const at of light ? [0] : ticks) { if (at) setTimeout(() => this.tick(), at); else this.tick(); }
+  },
+  rumble(pad, k) {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const gp of pads) {
+      if (!gp || !gp.vibrationActuator) continue;
+      try {
+        const r = gp.vibrationActuator.playEffect('dual-rumble', { duration: pad[0], strongMagnitude: pad[1] * k, weakMagnitude: pad[2] * k });
+        if (r && r.catch) r.catch(() => {});
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  },
+  ui() { this.play('ui'); },
+  // Every shot on FULL; only the trigger press on LIGHT.
+  fire(press) {
+    const now = performance.now();
+    if (!press && (this.level < 2 || now - this.lastFire < 95)) return;
+    this.lastFire = now;
+    this.play('fire');
+  },
+  impact(kind) { this.play(kind); },
 };
