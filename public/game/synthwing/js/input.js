@@ -247,7 +247,7 @@ const HAPTIC_PRIO = { ui: 0, fire: 0, lock: 0, kill: 1, scrape: 1, pickup: 1, ro
 const Haptics = {
   level: 2, // 0 off · 1 light (single ticks, no autofire buzz) · 2 full
   switchTick: false, busyUntil: 0, busyPrio: 0, lastFire: 0, lastTick: 0, lastGestureTick: 0,
-  init() { this.switchTick = !navigator.vibrate; },
+  init() { this.switchTick = !navigator.vibrate && !Native.ok; }, // the iOS app has the real Taptic Engine
   // gesture ticks keep their own rate limit so a best-effort tick that iOS
   // ignored (touch-down, game loop) never swallows one it would have played
   tick(gesture) {
@@ -281,6 +281,7 @@ const Haptics = {
     const [pat, ticks, pad] = H;
     this.busyUntil = now + pat.reduce((a, b) => a + b, 0); this.busyPrio = prio;
     if (Input.lastDevice === 'gamepad') this.rumble(pad, light ? 0.5 : 1);
+    if (Native.ok) { Native.haptic(kind, light); return; }
     if (navigator.vibrate) { try { navigator.vibrate(light ? Math.ceil(pat[0] * 0.6) : pat); } catch (e) { /* ignore */ } return; }
     if (this.switchTick) this.ticks(light ? [0] : ticks); // best effort outside a gesture
   },

@@ -232,14 +232,14 @@ class Player {
     if (!this.alive || this.invuln > 0 || this.pow.fortissimo > 0) return false;
     this.shield -= amount * G.diff.dmg * this.V.armor;
     this.hitFlash = 1; this.jolt = scrape ? 0.4 : 1;
-    if (!scrape) { this.invuln = 0.9; SFX.playerHit(); G.shake(0.6); G.flash([1, 0.2, 0.2], 0.35); G.resonanceHit(); Haptics.impact('hit'); G.aberration = 0.012; }
+    if (!scrape) { this.invuln = 0.9; G.stats.hits = (G.stats.hits || 0) + 1; SFX.playerHit(); G.shake(0.6); G.flash([1, 0.2, 0.2], 0.35); G.resonanceHit(); Haptics.impact('hit'); G.aberration = 0.012; }
     else { G.shake(0.25); Haptics.impact('scrape'); }
     if (this.shield <= 0) { this.shield = 0; this.die(); }
     return true;
   }
   heal(a) { this.shield = Math.min(this.maxShield, this.shield + a); }
   // ---- power-ups ----
-  clearPowers() { this.pow = { chord: 0, echo: 0, tempo: 0, harmony: 0, fortissimo: 0 }; this.notes = 0; this.noteA = 0; }
+  clearPowers() { this.pow = { chord: 0, echo: 0, tempo: 0, harmony: 0, fortissimo: 0 }; this.notes = 0; this.noteA = 0; this.fortRams = 0; }
   powerUp(kind) {
     const G = Game, def = POWERS[kind];
     if (kind === 'encore') this.lives = Math.min(9, this.lives + 1);
@@ -247,8 +247,10 @@ class Player {
       this.pow[kind] = def.dur;
       if (kind === 'harmony') this.notes = 3;
       if (kind === 'echo') for (const e of this.echoes) { e.d = this.d; e.x = this.x; e.y = this.y; }
-      if (kind === 'fortissimo') { G.syncLayers(); G.flash([1, 1, 1], 0.3); G.fovKick = Math.max(G.fovKick, 4); }
+      if (kind === 'fortissimo') { this.fortRams = 0; G.syncLayers(); G.flash([1, 1, 1], 0.3); G.fovKick = Math.max(G.fovKick, 4); }
     }
+    G.save.tally['pw_' + kind] = 1;
+    if (Object.keys(POWERS).every((k) => G.save.tally['pw_' + k])) G.award('full_kit');
     G.banner(def.name, def.col, kind === 'fortissimo' || kind === 'encore');
     SFX.powerUp(kind);
     G.sayOnce('pu_' + kind);
@@ -482,7 +484,10 @@ class Enemy {
       if (dd * dd + dx * dx + dy * dy < rr2 * rr2) {
         if (this.type === 'prism') this.damage(99, null); // flying into a pod just cracks it open
         else if (P.pow.fortissimo > 0) { // ram!
-          if ((this.ramCD || 0) <= G.time) { this.ramCD = G.time + 0.25; this.damage(this.T.big ? 5 : 99, { ram: true, vd: G.speed + 60, vx: -dx * 6, vy: -dy * 6 }); G.shake(0.3); Haptics.impact('kill'); }
+          if ((this.ramCD || 0) <= G.time) {
+            this.ramCD = G.time + 0.25; G.shake(0.3); Haptics.impact('kill');
+            if (this.damage(this.T.big ? 5 : 99, { ram: true, vd: G.speed + 60, vx: -dx * 6, vy: -dy * 6 }) && ++P.fortRams >= 10) G.award('fortissimo');
+          }
         } else {
           if (P.hurt(this.T.big ? 25 : 15)) { G.shake(0.8); }
           if (!this.T.big && this.type !== 'pylon') this.damage(99, null);
@@ -1048,6 +1053,7 @@ class Wingman {
     G.say(this.who, WING_LINES[this.who].thanks);
     G.spawnPickup(this.who === 'tobi' ? 'bomb' : this.who === 'oz' ? 'gold' : 'ring', G.player.d + 60, this.x, this.y);
     G.stats.rescues++;
+    G.award('rescue');
   }
   failed() {
     const G = Game;

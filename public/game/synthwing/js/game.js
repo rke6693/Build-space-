@@ -15,6 +15,29 @@ const DIFFS = [
 const SETTINGS_VERSION = 2;
 const DEFAULT_SETTINGS = { v: SETTINGS_VERSION, steer: 'stick', sens: 3, invertY: false, lefty: false, diff: 1, res: 0, crt: false, dither: true, shake: true, flash: true, music: 8, sfx: 9, voice: 8, haptics: 2, fps: false };
 const SAVE_KEY = 'synthwing64.save.v1';
+// Awards. Game Center achievement IDs are GC_PREFIX + id (see native.js).
+const AWARDS = [
+  { id: 'first_flight', name: 'FIRST FLIGHT', desc: 'Clear Corona Shores.' },
+  { id: 'finale', name: 'STANDING OVATION', desc: 'Finish the campaign.' },
+  { id: 'virtuoso', name: 'VIRTUOSO', desc: 'Clear a stage on ACE difficulty.' },
+  { id: 'flawless', name: 'FLAWLESS', desc: 'Clear a stage without taking a hit.' },
+  { id: 'medal', name: 'GOLD STANDARD', desc: 'Earn a stage medal.' },
+  { id: 'all_medals', name: 'HALL OF FAME', desc: 'Earn all five stage medals.' },
+  { id: 'fork', name: 'PERFECT PITCH', desc: 'Find a golden tuning fork.' },
+  { id: 'all_forks', name: 'IN TUNE', desc: 'Find all five tuning forks.' },
+  { id: 'rescue', name: 'WINGMATE', desc: 'Rescue a wingman in trouble.' },
+  { id: 'squad', name: 'NO ONE LEFT BEHIND', desc: 'Clear a stage with all wingmen.' },
+  { id: 'chain', name: 'PERFECT CHORD', desc: 'Destroy 8 targets in one volley.' },
+  { id: 'resonance', name: 'FULL ORCHESTRA', desc: 'Reach Resonance MAX.' },
+  { id: 'nova', name: 'SUPERNOVA', desc: 'Take out 10 foes with one Nova Bomb.' },
+  { id: 'deflect', name: 'RETURN TO SENDER', desc: 'Deflect 25 shots with barrel rolls.' },
+  { id: 'fortissimo', name: 'WRECKING BALL', desc: 'Ram 10 enemies in one Fortissimo.' },
+  { id: 'full_kit', name: 'FULL KIT', desc: 'Collect every kind of power-up.' },
+  { id: 'test_pilot', name: 'TEST PILOT', desc: 'Clear stages in 3 different ships.' },
+  { id: 'kills', name: 'SOLD-OUT SHOW', desc: 'Destroy 2,000 enemies.' },
+  { id: 'score', name: 'CHART TOPPER', desc: 'Score 500,000 points in one run.' },
+  { id: 'maestro', name: 'MAESTRO', desc: 'Take the Maestro into battle.' },
+];
 
 const Game = {
   renderer: null, cam: new Camera(), frustum: new Frustum(),
@@ -87,6 +110,17 @@ const Game = {
     this.setState('title');
   },
   writeSave() { this.save.settings = this.settings; Store.set(SAVE_KEY, this.save); },
+  award(id) {
+    const s = this.save, a = AWARDS.find((x) => x.id === id);
+    if (!a || s.awards[id]) return;
+    s.awards[id] = true;
+    this.writeSave();
+    HUD.toast(a);
+    SFX.ring(true);
+    Native.achieve(id);
+  },
+  // Lifetime counters (saved with the next writeSave).
+  tally(key, n = 1) { const t = this.save.tally; t[key] = (t[key] || 0) + n; return t[key]; },
   applySettings() {
     const s = this.settings;
     Input.settings.steer = s.steer; Input.settings.sens = s.sens; Input.settings.invertY = s.invertY;
@@ -362,7 +396,7 @@ const Game = {
     R.meter += 0.3 * v / (1 + R.level * 0.45);
     if (R.meter >= 1) {
       R.level++; R.meter = R.level >= 4 ? 1 : 0.05;
-      if (R.level >= 4) { this.banner('RESONANCE MAX!', 'rainbow'); SFX.ring(true); this.flash([1, 1, 1], 0.15); }
+      if (R.level >= 4) { this.banner('RESONANCE MAX!', 'rainbow'); SFX.ring(true); this.flash([1, 1, 1], 0.15); this.award('resonance'); }
     }
     this.syncLayers();
   },
@@ -390,8 +424,10 @@ const Game = {
     if (src && src.volley) { src.volley.kills++; noteK = src.volley.kills - 1; }
     SFX.note(noteK);
     FX.text(e.wx, e.wy + 2, e.wz, '+' + pts, e.T.big ? '#ffe14a' : '#ffffff', e.T.big);
+    if (this.tally('kills') >= 2000) this.award('kills');
     if (src && src.volley && src.volley.kills >= 2 && src.volley.kills === src.volley.n) {
       const v = src.volley.kills, bonus = this.addScore(v * v * 40);
+      if (v >= 8) this.award('chain');
       FX.text(e.wx, e.wy + 5, e.wz, 'CHAIN ×' + v + '  +' + bonus, '#ff9ad0', true);
       if (v >= 6) this.banner('PERFECT CHAIN ×' + v, 'rainbow');
     }
@@ -404,6 +440,7 @@ const Game = {
     this.stats.fork = true;
     this.addScore(2000);
     this.banner('TUNING FORK FOUND!', '#ffe14a', true);
+    this.award('fork');
     this.say('tobi', "A golden tuning fork! Those are legendary — hang on to it!");
   },
   onCheckpoint(through) {
@@ -593,6 +630,7 @@ const Game = {
     const v = VEHICLES[this.hangar.sel];
     if (!vehicleUnlocked(v)) { SFX.menuBack(); return; }
     this.save.vehicle = v.id; this.writeSave();
+    if (v.id === 'maestro') this.award('maestro');
     this.score = 0; this.player.reset(true); this.said.clear();
     this.setState('brief');
   },
@@ -835,7 +873,8 @@ const Game = {
           if (P.pow.fortissimo > 0) { this.rail.world(_p, b.d, b.x, b.y); FX.hitSpark(_p.x, _p.y, _p.z, 0, 0, -this.speed, [1, 0.9, 1]); dead = true; }
           else if (P.rolling) {
             // deflect it straight back — it becomes yours
-            SFX.deflect(); this.rail.world(_p, b.d, b.x, b.y); FX.hitSpark(_p.x, _p.y, _p.z, 0, 0, -this.speed, [0.6, 0.9, 1]);
+            SFX.deflect(); if (this.tally('deflects') >= 25) this.award('deflect');
+            this.rail.world(_p, b.d, b.x, b.y); FX.hitSpark(_p.x, _p.y, _p.z, 0, 0, -this.speed, [0.6, 0.9, 1]);
             this.pbullets.push({ d: b.d + 1, x: b.x, y: b.y, pd: b.d, px: b.x, py: b.y, vd: this.speed + LASER_REL * 0.8, vx: -b.vx * 0.3, vy: -b.vy * 0.3, life: 1, dmg: 2, lv: 3 });
             dead = true;
           } else if (P.hurt(b.dmg)) dead = true;
@@ -901,7 +940,9 @@ const Game = {
     FX.explode(_p.x, _p.y, _p.z, 5, { shell: [0.6, 0.8, 1], palette: [[0.6, 0.9, 1], [1, 1, 1], [0.8, 0.5, 1]] });
     this.flash([0.8, 0.9, 1], 0.7); this.shake(0.8);
     this.shockwave(_p.x, _p.y, _p.z, 1.6); this.fovKick = 9;
-    for (const e of this.enemies) if (!e.dead && Math.hypot(e.d - b.d, e.x - b.x, e.y - b.y) < 42) e.damage(e.T.big ? 12 : 99, { bomb: true });
+    let kills = 0;
+    for (const e of this.enemies) if (!e.dead && Math.hypot(e.d - b.d, e.x - b.x, e.y - b.y) < 42 && e.damage(e.T.big ? 12 : 99, { bomb: true })) kills++;
+    if (kills >= 10) this.award('nova');
     if (this.boss) for (const p of this.boss.parts) if (p.alive && p.weak && Math.hypot(p.d - b.d, p.x - b.x, p.y - b.y) < 45) this.boss.hit(p, 8, { bomb: true });
     for (const eb of this.ebullets) { this.rail.world(_p, eb.d, eb.x, eb.y); FX.spawn(_p.x, _p.y, _p.z, 0, 0, -this.speed, 0.4, 1.5, 0.2, 0.7, 0.9, 1, 1, SPR.SPARKLE); }
     this.ebullets.length = 0;
@@ -954,11 +995,25 @@ const Game = {
     if (Object.keys(s.forks).length >= 5) s.gold = true;
     if (this.score > s.hiscore) s.hiscore = this.score;
     this.writeSave();
+    // awards & Game Center
+    if (st.id === 'corona') this.award('first_flight');
+    if (medal) this.award('medal');
+    if (Object.keys(s.medals).length >= 5) this.award('all_medals');
+    if (Object.keys(s.forks).length >= 5) this.award('all_forks');
+    if (allWings) this.award('squad');
+    if (!this.stats.hits) this.award('flawless');
+    if (this.settings.diff === DIFFS.length - 1) this.award('virtuoso');
+    this.tally('clr_' + this.player.V.id);
+    if (['synthwing', 'bassline', 'arpeggio'].every((v) => s.tally['clr_' + v])) this.award('test_pilot');
+    if (this.score >= 500000) this.award('score');
+    Native.submitScore('stage.' + st.id, stageScore);
+    Native.submitScore('highscore', this.score);
     this.setState('results');
   },
 
   pause() {
     this.overlay = 'pause';
+    this.writeSave(); // keep lifetime tallies if the app is closed from here
     Input.mode = 'menu'; Input.releaseAll();
     AudioSys.suspend();
     SFX.menuBack();
@@ -989,7 +1044,12 @@ const Game = {
   },
 
   // ---- game over ---------------------------------------------------------------
-  enter_gameover() { Input.mode = 'menu'; Music.play(SONGS.gameover, { loop: false }); this.announce('Game over.', 0.5); },
+  enter_gameover() {
+    Input.mode = 'menu'; Music.play(SONGS.gameover, { loop: false }); this.announce('Game over.', 0.5);
+    if (this.score > this.save.hiscore) this.save.hiscore = this.score;
+    this.writeSave();
+    Native.submitScore('highscore', this.score);
+  },
   update_gameover(dt) { this.time += dt; FX.update(dt, this.cam); },
   continueGame() {
     this.score = this.stageStartScore;
@@ -1001,6 +1061,8 @@ const Game = {
   enter_ending() {
     Input.mode = 'menu';
     this.save.cleared = true; this.writeSave();
+    this.award('finale');
+    Native.submitScore('highscore', this.score);
     const st = STAGES[0];
     this.setupWorld('title', st.railX, (d) => 12 + 3 * Math.sin(d * 0.004), 40);
     this.railD = 3000;

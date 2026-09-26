@@ -15,7 +15,7 @@ const HUD = {
   btns: [], focus: 0, sub: null, gridNav: false,
   bands: new Float32Array(6), bandsS: new Float32Array(6),
   fps: 60, fpsAcc: 0, fpsN: 0, t: 0,
-  confirmReset: false, dispScore: undefined, scoreBump: 0, ghost: undefined,
+  confirmReset: false, dispScore: undefined, scoreBump: 0, ghost: undefined, toasts: [],
 
   init(canvas) {
     this.canvas = canvas;
@@ -118,6 +118,7 @@ const HUD = {
     else if (st === 'gameover') this.drawGameOver();
     else if (st === 'ending') this.drawEnding();
     this.endMenu();
+    this.drawToasts(dt);
     if (G.settings.fps) this.text(Math.round(this.fps) + ' FPS  ' + G.renderer.stats.draws + ' DC  ' + G.renderer.sceneW + 'x' + G.renderer.sceneH, this.safe.l + 2, this.H - 9 - this.safe.b, { color: '#9f9', outline: '#000' });
   },
 
@@ -156,6 +157,7 @@ const HUD = {
   },
   // iOS Safari, top-level page, not already installed: fullscreen is one step away.
   canInstall() {
+    if (Native.ok) return false; // already an app
     if (this._canInstall !== undefined) return this._canInstall;
     let top = false;
     try { top = window.top === window.self; } catch (e) { top = false; }
@@ -178,23 +180,28 @@ const HUD = {
   drawTitle() {
     const G = Game, W = this.W, H = this.H, s = this.safe, land = W > H;
     this.lensFlare();
+    const sub = (k) => () => { this.sub = k; this.focus = 0; };
     const items = [
       ['START GAME', () => this.newGame()],
-      ['STAGE SELECT', () => { this.sub = 'stages'; this.focus = 0; }],
-      ['SETTINGS', () => { this.sub = 'settings'; this.focus = 0; }],
-      ['HOW TO PLAY', () => { this.sub = 'howto'; this.focus = 0; }],
-      ['CREDITS', () => { this.sub = 'credits'; this.focus = 0; }],
+      ['STAGE SELECT', sub('stages')],
+      ['AWARDS', sub('awards')],
+      ['SETTINGS', sub('settings')],
+      ['HOW TO PLAY', sub('howto')],
+      ['CREDITS', sub('credits')],
     ];
+    if (Native.ok) items.push(['GAME CENTER', () => Native.showGameCenter()]);
     if (land) {
-      // compact grid under the logo: one hero button, then two rows of two
-      const bw = 154, gap = 6, y0 = H - s.b - 80;
+      // compact grid under the logo: one hero button, then rows of three
+      const bw = 118, gap = 6, y0 = H - s.b - 80;
       if (this.button(items[0][0], W / 2 - 88, y0, 176, 24, { top: 'rgba(60,70,170,0.95)', edge: '#ffe14a' })) items[0][1]();
-      for (let i = 1; i < 5; i++) {
-        const c = (i - 1) % 2, r = Math.floor((i - 1) / 2);
-        if (this.button(items[i][0], W / 2 + (c ? gap / 2 : -bw - gap / 2), y0 + 30 + r * 25, bw, 20)) items[i][1]();
-      }
+      const rest = items.slice(1);
+      rest.forEach(([label, fn], i) => {
+        const r = Math.floor(i / 3), inRow = Math.min(3, rest.length - r * 3), c = i % 3;
+        const x = W / 2 - (inRow * bw + (inRow - 1) * gap) / 2 + c * (bw + gap);
+        if (this.button(label, x, y0 + 30 + r * 25, bw, 20, { scale: 1 })) fn();
+      });
     } else {
-      const bw = Math.min(180, W - 40), bh = 24, gap = 6, y0 = H * 0.6;
+      const bw = Math.min(180, W - 40), bh = 24, gap = 6, y0 = Math.min(H * 0.6, H - s.b - 12 - items.length * (bh + gap));
       items.forEach(([label, fn], i) => { if (this.button(label, W / 2 - bw / 2, y0 + i * (bh + gap), bw, bh, i ? {} : { top: 'rgba(60,70,170,0.95)', edge: '#ffe14a' })) fn(); });
     }
     if (G.save.hiscore) this.text('HI-SCORE ' + String(G.save.hiscore).padStart(7, '0'), W - s.r - 6, s.t + 6, { align: 'right', color: ['#fff6c0', '#ffc040'], outline: '#201000' });
@@ -258,6 +265,7 @@ const HUD = {
     else if (this.sub === 'stages') this.drawStages();
     else if (this.sub === 'howto') this.drawHowTo();
     else if (this.sub === 'credits') this.drawCredits(false);
+    else if (this.sub === 'awards') this.drawAwards();
     if (Input.nav.back) { this.sub = null; this.focus = 0; SFX.menuBack(); }
   },
   backButton() {
@@ -399,6 +407,42 @@ const HUD = {
       for (const ln of wrapped) { this.text(ln, x + colW, y, { color: '#ffffff', outline: '#000' }); y += 9; }
       y += wrapped.length ? 3 : 2;
     }
+  },
+  drawAwards() {
+    const G = Game, W = this.W, H = this.H, s = this.safe, land = W > H, got = G.save.awards;
+    this.header('AWARDS');
+    this.backButton();
+    const n = AWARDS.filter((a) => got[a.id]).length;
+    this.text(n + ' / ' + AWARDS.length, W - s.r - 8, s.t + 12, { align: 'right', color: '#ffe14a', outline: '#000' });
+    const cols = land ? 2 : 1, perCol = Math.ceil(AWARDS.length / cols);
+    const colW = land ? Math.min(250, (W - s.l - s.r - 24) / 2) : W - s.l - s.r - 20;
+    const x0 = W / 2 - (colW * cols + (cols - 1) * 10) / 2, y0 = s.t + 34;
+    const pitch = Math.min(20, Math.floor((H - s.b - 6 - y0) / perCol));
+    AWARDS.forEach((a, i) => {
+      const c = Math.floor(i / perCol), r = i % perCol, x = x0 + c * (colW + 10), y = y0 + r * pitch, on = !!got[a.id];
+      this.text(on ? '★' : '·', x, y + 1, { color: on ? '#ffe14a' : '#4a5270', outline: '#000' });
+      this.text(this.fit(a.name, colW - 12), x + 10, y, { color: on ? '#ffffff' : '#7f88a8', outline: '#000' });
+      if (pitch >= 17) this.text(this.fit(a.desc, colW - 12), x + 10, y + 8, { color: on ? '#9fd0ff' : '#5a6282', outline: '#000' });
+    });
+  },
+  // Trim a line to a pixel width (never spill off-screen on narrow phones).
+  fit(str, w) { if (Font.width(str) <= w) return str; while (str.length > 1 && Font.width(str + '…') > w) str = str.slice(0, -1); return str + '…'; },
+  // Award unlocked: a small banner that drops in at the top, one at a time.
+  toast(a) { this.toasts.push({ a, t: 0 }); },
+  drawToasts(dt) {
+    const T = this.toasts[0];
+    if (!T) return;
+    T.t += dt;
+    if (T.t > 3.2) { this.toasts.shift(); return; }
+    const W = this.W, s = this.safe, g = this.g, land = W > this.H;
+    const k = T.t < 0.3 ? easeOutCubic(T.t / 0.3) : T.t > 2.8 ? 1 - easeInCubic((T.t - 2.8) / 0.4) : 1;
+    const w = Math.max(Font.width(T.a.name) + 40, 150), h = 22;
+    const x = Math.round(W / 2 - w / 2), y = Math.round((land ? s.t + 4 : s.t + 58) - (1 - k) * 30);
+    g.globalAlpha = clamp01(k);
+    this.panel(x, y, w, h, { top: 'rgba(60,40,10,0.92)', bot: 'rgba(30,16,4,0.92)', edge: '#ffe14a' });
+    this.text('★ AWARD UNLOCKED', W / 2, y + 3, { align: 'center', color: '#ffe14a', outline: '#000' });
+    this.text(T.a.name, W / 2, y + 12, { align: 'center', color: '#ffffff', outline: '#000' });
+    g.globalAlpha = 1;
   },
   drawCredits(ending) {
     const W = this.W, H = this.H, s = this.safe;

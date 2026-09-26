@@ -24,6 +24,7 @@
   }
   HUD.init(hudCanvas);
   Input.init(hudCanvas);
+  Native.init();
   Haptics.init();
   HUD.resize();
 
