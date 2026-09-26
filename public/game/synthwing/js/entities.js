@@ -8,7 +8,6 @@
 
 const PLAYER_AHEAD = 13;
 const BOUND_X = 17, BOUND_YMIN = -9, BOUND_YMAX = 11;
-const MAX_LOCKS = 8;
 const LASER_REL = 290;
 const _p = new V3(), _q = new V3(), _t = new V3(), _R = new V3(), _U = new V3(), _M = m4();
 
@@ -29,19 +28,63 @@ function drawAt(r, mesh, d, x, y, yaw, pitch, roll, scale, mat, rail, sy, sz) {
 }
 
 // ---------------------------------------------------------------------------
+// Vehicles (picked in the hangar). stats = SPEED, SHIELD, FIREPOWER, LOCK-ON pips.
+// ---------------------------------------------------------------------------
+const VEHICLES = [
+  { id: 'synthwing', name: 'SYNTHWING', role: 'ALL-ROUNDER', model: 'player', col: '#5aa8ff', stats: [3, 3, 3, 3],
+    trait: 'IN TUNE: builds Resonance 30% faster.',
+    speed: 1, agility: 1, shield: 100, bombs: 3, laser: 1, fireCD: 0.11, dmg: 1, pierce: 0, locks: 8, lockRate: 0.07, homing: 1, rollCD: 0.75, r: 1.2, armor: 1, res: 1.3,
+    bolt: [0.45, 1, 0.5], hyper: [0.4, 0.8, 1], boltW: 0.45, glow: [0.4, 0.9, 1], pitch: 1 },
+  { id: 'bassline', name: 'BASSLINE', role: 'HEAVY GUNSHIP', model: 'bassline', col: '#ff6a4a', stats: [2, 5, 5, 2],
+    trait: 'HEAVY PLATING: takes 25% less damage. Bass bolts punch through.',
+    speed: 0.82, agility: 0.8, shield: 150, bombs: 4, laser: 1, fireCD: 0.17, dmg: 2, pierce: 1, locks: 6, lockRate: 0.09, homing: 1.5, rollCD: 1, r: 1.45, armor: 0.75, res: 1,
+    bolt: [1, 0.55, 0.25], hyper: [1, 0.85, 0.4], boltW: 0.8, glow: [1, 0.55, 0.2], pitch: 0.5 },
+  { id: 'arpeggio', name: 'ARPEGGIO', role: 'INTERCEPTOR', model: 'arpeggio', col: '#6dff8a', stats: [5, 2, 3, 5],
+    trait: 'NIMBLE: rapid fire, quick rolls and 10 lock-ons.',
+    speed: 1.25, agility: 1.35, shield: 70, bombs: 2, laser: 1, fireCD: 0.075, dmg: 1, pierce: 0, locks: 10, lockRate: 0.045, homing: 1, rollCD: 0.4, r: 0.95, armor: 1, res: 1,
+    bolt: [0.5, 1, 0.85], hyper: [0.6, 1, 1], boltW: 0.35, glow: [0.4, 1, 0.6], pitch: 1.5 },
+  { id: 'maestro', name: 'MAESTRO', role: 'VIRTUOSO', model: 'maestro', col: '#ffd23f', stats: [4, 4, 4, 4], unlock: 'gold',
+    trait: 'VIRTUOSO: starts with twin lasers; volleys hit 50% harder.',
+    speed: 1.1, agility: 1.15, shield: 120, bombs: 3, laser: 2, fireCD: 0.095, dmg: 1, pierce: 0, locks: 8, lockRate: 0.06, homing: 1.5, rollCD: 0.6, r: 1.15, armor: 0.9, res: 1.15,
+    bolt: [1, 0.85, 0.35], hyper: [1, 1, 0.7], boltW: 0.5, glow: [1, 0.85, 0.4], pitch: 1.25 },
+];
+const vehicleUnlocked = (v) => !v.unlock || !!(Game.save && Game.save[v.unlock]);
+function currentVehicle() {
+  const v = VEHICLES.find((x) => x.id === (Game.save && Game.save.vehicle));
+  return v && vehicleUnlocked(v) ? v : VEHICLES[0];
+}
+
+// Power-ups. Timed ones last dur seconds (picking one up again refills it);
+// ENCORE is an instant extra ship. Prism pods carry them.
+const POWERS = {
+  chord: { name: 'CHORD SHOT', dur: 15, col: '#ff7fd0', glyph: 'Ψ', mesh: 'puChord', line: ['tobi', 'Chord Shot! Your lasers fan out three ways!'] },
+  echo: { name: 'ECHO DRONES', dur: 20, col: '#6ff6ff', glyph: '♫', mesh: 'puEcho', line: ['sable', 'Echo drones. They copy every shot you fire.'] },
+  tempo: { name: 'TEMPO UP', dur: 12, col: '#ffe14a', glyph: '»', mesh: 'puTempo', line: ['oz', "Tempo up! Double fire rate, Lead. Shred 'em!"] },
+  harmony: { name: 'HARMONY', dur: 30, col: '#5aa8ff', glyph: '♪', mesh: 'puHarmony', line: ['tobi', 'Harmony notes! They circle you and block enemy shots!'] },
+  fortissimo: { name: 'FORTISSIMO!', dur: 8, col: 'rainbow', glyph: '★', mesh: 'puFortissimo', line: ['oz', "FORTISSIMO! You're invincible. Ram right through 'em!"] },
+  encore: { name: 'ENCORE! 1UP', dur: 0, col: '#ff5a7a', glyph: '♥', mesh: 'puEncore', line: ['maren', 'An Encore! The Cadence is sending you a spare ship.'] },
+};
+const POWER_WEIGHTS = [['chord', 22], ['echo', 18], ['tempo', 20], ['harmony', 18], ['fortissimo', 8], ['encore', 5]];
+const POWER_TIMED = ['chord', 'echo', 'tempo', 'harmony', 'fortissimo'];
+const rainbowTint = (t) => { const c = hsl(t % 1, 1, 0.62); return [c[0] * 1.3, c[1] * 1.3, c[2] * 1.3, 1]; };
+
+// ---------------------------------------------------------------------------
 // Player
 // ---------------------------------------------------------------------------
 class Player {
   constructor() { this.reset(true); }
   reset(full) {
+    const V = this.V = currentVehicle();
     this.d = 0; this.x = 0; this.y = 0; this.vx = 0; this.vy = 0;
     this.bank = 0; this.aimX = 0; this.aimY = 0;
-    this.maxShield = full ? 100 : this.maxShield || 100;
+    this.maxShield = full ? V.shield : this.maxShield || V.shield;
     this.shield = this.maxShield;
-    if (full) { this.lives = 3; this.bombs = 3; this.laserLv = 1; this.golds = 0; }
+    if (full) { this.lives = 3; this.bombs = V.bombs; this.laserLv = V.laser; this.golds = 0; }
     this.invuln = 2; this.rollT = 0; this.rollDir = 1; this.rollCD = 0;
     this.fireCD = 0; this.holdT = 0; this.locks = []; this.lockT = 0;
-    this.alive = true; this.dying = 0; this.r = 1.2;
+    this.alive = true; this.dying = 0; this.r = V.r;
+    this.clearPowers();
+    this.echoes = [{ d: 0, x: 0, y: 0 }, { d: 0, x: 0, y: 0 }];
     this.scrapeT = 0; this.lowWarned = false;
     this.trailL = null; this.trailR = null;
     this.visible = true;
@@ -54,12 +97,12 @@ class Player {
     this.invuln = Math.max(0, this.invuln - dt);
     this.rollCD = Math.max(0, this.rollCD - dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt * 4);
-    const sens = 0.7 + In.settings.sens * 0.15;
+    const V = this.V, sens = 0.7 + In.settings.sens * 0.15;
     let mx = this.control ? In.move.x : 0, my = this.control ? In.move.y : 0;
-    const maxV = 26 * sens;
+    const maxV = 26 * sens * V.speed, agi = 7 * V.agility;
     if (this.control && In.settings.steer === 'pad' && In.stick.active) {
       // relative steering: finger movement maps directly to ship movement
-      const k = 0.28 * sens;
+      const k = 0.28 * sens * (0.8 + 0.2 * V.speed);
       const tx = In.padDelta.x * k, ty = -In.padDelta.y * k * (In.settings.invertY ? -1 : 1);
       const nvx = dt > 0 ? tx / dt : 0, nvy = dt > 0 ? ty / dt : 0;
       this.vx = damp(this.vx, clamp(nvx, -80, 80), 18, dt);
@@ -67,8 +110,8 @@ class Player {
       this.x += tx; this.y += ty;
       mx = clamp(this.vx / 40, -1, 1); my = clamp(this.vy / 40, -1, 1);
     } else {
-      this.vx = damp(this.vx, mx * maxV, 7, dt);
-      this.vy = damp(this.vy, my * maxV * 0.85, 7, dt);
+      this.vx = damp(this.vx, mx * maxV, agi, dt);
+      this.vy = damp(this.vy, my * maxV * 0.85, agi, dt);
       this.x += this.vx * dt; this.y += this.vy * dt;
     }
     // barrel roll: quick lateral dodge
@@ -113,6 +156,7 @@ class Player {
       if (In.bombPressed) this.fireBomb();
     }
     if (!In.fire && this.locks.length && !In.fireReleased) this.releaseLocks();
+    this.updatePowers(dt);
     // shield warning
     if (this.shield < this.maxShield * 0.3 && !this.lowWarned) { this.lowWarned = true; SFX.shieldLow(); G.sayOnce('lowShield'); }
     if (this.shield > this.maxShield * 0.5) this.lowWarned = false;
@@ -122,39 +166,43 @@ class Player {
     if (this.shield < this.maxShield * 0.3 && Math.random() < dt * 25) FX.spawn(_p.x, _p.y, _p.z + 1.5, rr(-1, 1), 2, 8, 0.8, 0.6, 2.2, 0.25, 0.22, 0.25, 0.5, SPR.SMOKE, false, 1);
   }
   startRoll(dir) {
-    this.rollT = 0.55; this.rollDir = dir || 1; this.rollCD = 0.75;
+    this.rollT = 0.55; this.rollDir = dir || 1; this.rollCD = this.V.rollCD;
     SFX.roll(); Haptics.impact('roll');
   }
   get rolling() { return this.rollT > 0.05; }
   worldPos(out) { return Game.rail.world(out, this.d, this.x, this.y); }
   shoot() {
-    const G = Game;
-    this.fireCD = 0.11;
+    const G = Game, V = this.V, pw = this.pow;
+    this.fireCD = V.fireCD * (pw.tempo > 0 ? 0.55 : 1);
     const lv = this.laserLv;
     let ax = this.aimX, ay = this.aimY;
     // gentle aim assist toward an enemy near the reticle
     const tgt = G.findNearReticle(0.075);
     if (tgt) { const dd = Math.max(8, tgt.d - this.d); ax = lerp(ax, (tgt.x - this.x) / dd, 0.65); ay = lerp(ay, (tgt.y - this.y) / dd, 0.65); }
-    const offs = lv >= 2 ? [-0.7, 0.7] : [0];
     const [sx, sy] = G.rail.slope(this.d);
-    for (const o of offs) {
-      // muzzle flash that rides along with the ship
-      G.rail.world(_p, this.d + 1.9, this.x + o, this.y - 0.1);
-      FX.spawn(_p.x, _p.y, _p.z, sx * G.speed, sy * G.speed, -G.speed, 0.06, lv >= 3 ? 2.2 : 1.7, 0.6, lv >= 3 ? 0.5 : 0.55, lv >= 3 ? 0.85 : 1, lv >= 3 ? 1 : 0.6, 1, SPR.SPARKLE);
-      G.pbullets.push({ d: this.d + 1.8, x: this.x + o, y: this.y - 0.1, pd: this.d, px: this.x, py: this.y, vd: G.speed + LASER_REL, vx: ax * LASER_REL, vy: ay * LASER_REL, life: 1.1, dmg: lv >= 3 ? 2 : 1, lv });
-    }
-    SFX.laser(lv);
+    const col = lv >= 3 ? V.hyper : V.bolt, dmg = V.dmg * (lv >= 3 ? 2 : 1);
+    const bolt = (d, x, y, spread, flash) => {
+      if (flash) { // muzzle flash that rides along with the ship
+        G.rail.world(_p, d + 0.1, x, y);
+        FX.spawn(_p.x, _p.y, _p.z, sx * G.speed, sy * G.speed, -G.speed, 0.06, (lv >= 3 ? 2.2 : 1.7) * (0.7 + V.boltW * 0.6), 0.6, col[0], col[1], col[2], 1, SPR.SPARKLE);
+      }
+      G.pbullets.push({ d, x, y, pd: d - 1.8, px: x, py: y, vd: G.speed + LASER_REL, vx: (ax + spread) * LASER_REL, vy: ay * LASER_REL, life: 1.1, dmg, lv, pierce: V.pierce, col, w: V.boltW });
+    };
+    for (const o of lv >= 2 ? [-0.7, 0.7] : [0]) bolt(this.d + 1.8, this.x + o, this.y - 0.1, 0, true);
+    if (pw.chord > 0) for (const a of lv >= 3 ? [-0.3, -0.15, 0.15, 0.3] : [-0.16, 0.16]) bolt(this.d + 1.8, this.x, this.y - 0.1, a, false);
+    if (pw.echo > 0) for (const e of this.echoes) bolt(e.d + 1.5, e.x, e.y, 0, true);
+    SFX.laser(lv, V.pitch);
     Haptics.fire(false);
   }
   paintLocks(dt) {
     const G = Game;
     this.lockT -= dt;
-    if (this.lockT > 0 || this.locks.length >= MAX_LOCKS) return;
+    if (this.lockT > 0 || this.locks.length >= this.V.locks) return;
     const t = G.findNearReticle(0.14, true);
     if (t) {
       this.locks.push(t); t.lockCount = (t.lockCount || 0) + 1; t.lockPulse = 1;
       SFX.lock(this.locks.length - 1); Haptics.impact('lock');
-      this.lockT = 0.07;
+      this.lockT = this.V.lockRate * (this.pow.tempo > 0 ? 0.5 : 1);
     }
   }
   releaseLocks() {
@@ -181,8 +229,8 @@ class Player {
   }
   hurt(amount, scrape) {
     const G = Game;
-    if (!this.alive || this.invuln > 0) return false;
-    this.shield -= amount * G.diff.dmg;
+    if (!this.alive || this.invuln > 0 || this.pow.fortissimo > 0) return false;
+    this.shield -= amount * G.diff.dmg * this.V.armor;
     this.hitFlash = 1; this.jolt = scrape ? 0.4 : 1;
     if (!scrape) { this.invuln = 0.9; SFX.playerHit(); G.shake(0.6); G.flash([1, 0.2, 0.2], 0.35); G.resonanceHit(); Haptics.impact('hit'); G.aberration = 0.012; }
     else { G.shake(0.25); Haptics.impact('scrape'); }
@@ -190,9 +238,63 @@ class Player {
     return true;
   }
   heal(a) { this.shield = Math.min(this.maxShield, this.shield + a); }
+  // ---- power-ups ----
+  clearPowers() { this.pow = { chord: 0, echo: 0, tempo: 0, harmony: 0, fortissimo: 0 }; this.notes = 0; this.noteA = 0; }
+  powerUp(kind) {
+    const G = Game, def = POWERS[kind];
+    if (kind === 'encore') this.lives = Math.min(9, this.lives + 1);
+    else {
+      this.pow[kind] = def.dur;
+      if (kind === 'harmony') this.notes = 3;
+      if (kind === 'echo') for (const e of this.echoes) { e.d = this.d; e.x = this.x; e.y = this.y; }
+      if (kind === 'fortissimo') { G.syncLayers(); G.flash([1, 1, 1], 0.3); G.fovKick = Math.max(G.fovKick, 4); }
+    }
+    G.banner(def.name, def.col, kind === 'fortissimo' || kind === 'encore');
+    SFX.powerUp(kind);
+    G.sayOnce('pu_' + kind);
+  }
+  powerEnd(kind) {
+    if (kind === 'harmony') this.notes = 0;
+    if (kind === 'fortissimo') { Game.syncLayers(); this.invuln = Math.max(this.invuln, 1); }
+    SFX.powerDown();
+  }
+  notePos(i) { const a = this.noteA + (i / Math.max(1, this.notes)) * TAU; return [this.x + Math.cos(a) * 2.7, this.y + Math.sin(a) * 2.7]; }
+  // A harmony note soaks up a shot.
+  noteBlock(i) {
+    const G = Game, [nx, ny] = this.notePos(i);
+    G.rail.world(_p, this.d, nx, ny);
+    FX.spawn(_p.x, _p.y, _p.z, 0, 0, -G.speed, 0.35, 3, 0.3, 0.5, 0.8, 1, 1, SPR.SPARKLE);
+    SFX.note(i + 2);
+    if (--this.notes <= 0) { this.pow.harmony = 0; this.powerEnd('harmony'); }
+  }
+  updatePowers(dt) {
+    const G = Game, pw = this.pow;
+    for (const k of POWER_TIMED) if (pw[k] > 0 && (pw[k] -= dt) <= 0) { pw[k] = 0; this.powerEnd(k); }
+    if (pw.echo > 0) this.echoes.forEach((e, i) => {
+      e.d = this.d - 1.5;
+      e.x = damp(e.x, this.x + (i ? 4.2 : -4.2), 7, dt);
+      e.y = damp(e.y, this.y - 0.6 + Math.sin(G.time * 3 + i * 3) * 0.4, 7, dt);
+    });
+    if (this.notes > 0) { // orbiting notes also sting anything they touch
+      this.noteA += dt * 3.2;
+      for (const e of G.enemies) {
+        if (e.dead || (e.noteCD || 0) > G.time || Math.abs(e.d - this.d) > e.r + 1.5) continue;
+        for (let i = 0; i < this.notes; i++) {
+          const [nx, ny] = this.notePos(i);
+          if (Math.hypot(e.x - nx, e.y - ny) < e.r + 1) { e.noteCD = G.time + 0.35; e.damage(2, { harmony: true }); break; }
+        }
+      }
+    }
+    if (pw.fortissimo > 0 && Math.random() < dt * 40) {
+      this.worldPos(_p);
+      const c = hsl(Math.random(), 1, 0.65);
+      FX.spawn(_p.x + rr(-1.5, 1.5), _p.y + rr(-0.8, 0.8), _p.z + 1.5, rr(-3, 3), rr(-3, 3), 6, 0.5, 1.4, 0.2, c[0], c[1], c[2], 1, SPR.SPARKLE);
+    }
+  }
   die() {
     const G = Game;
     this.alive = false; this.dying = 0; this.control = false;
+    this.clearPowers();
     this.locks.forEach((t) => { t.lockCount = 0; }); this.locks.length = 0;
     Haptics.impact('down');
     G.onPlayerDown();
@@ -205,6 +307,19 @@ class Player {
     this.worldPos(_p);
     if (Math.random() < dt * 30) FX.explode(_p.x + rr(-1, 1), _p.y, _p.z, 0.6, { notes: false });
     if (this.dying > 1.1 && this.visible) { this.visible = false; FX.explode(_p.x, _p.y, _p.z, 3, { notes: false }); SFX.bigBoom(); Game.shake(1); Game.shockwave(_p.x, _p.y, _p.z, 1.4); }
+  }
+  drawPowers(r) {
+    const G = Game, pw = this.pow;
+    if (pw.echo > 0 && !(pw.echo < 2 && Math.floor(pw.echo * 8) % 2)) for (const e of this.echoes) {
+      drawAt(r, MODELS.echo, e.d, e.x, e.y, -this.aimX * 0.9, this.aimY * 0.9, this.rollAngle * 0.6, 1.3, { chrome: 0.5 });
+      G.rail.world(_p, e.d, e.x, e.y); r.sprite(_p.x, _p.y, _p.z, 2.4, 2.4, 0, SPR.GLOW, 0.4, 1, 1, 0.5);
+    }
+    for (let i = 0; i < this.notes; i++) {
+      const [nx, ny] = this.notePos(i);
+      G.rail.world(_p, this.d, nx, ny);
+      r.sprite(_p.x, _p.y, _p.z, 1.5, 1.5, 0, SPR.GLOW, 0.3, 0.6, 1, 0.45);
+      r.sprite(_p.x, _p.y, _p.z, 0.95, 0.95, Math.sin(G.time * 5 + i) * 0.3, SPR.NOTE, 0.45, 0.75, 1, 0.95);
+    }
   }
   updateTrails() {
     const hard = Math.abs(this.vx) > 16 || this.rolling;
@@ -226,15 +341,20 @@ class Player {
     const G = Game;
     const blink = this.invuln > 0 && this.alive && Math.floor(this.invuln * 16) % 2 === 0 && this.invuln < 0.85;
     if (blink) return;
-    const mesh = G.save && G.save.gold ? MODELS.gold : MODELS.player;
-    drawAt(r, mesh, this.d, this.x, this.y, -this.aimX * 0.9, this.aimY * 0.9, this.rollAngle, 1, { chrome: 0.3, flash: this.hitFlash * 0.8 });
+    const V = this.V, fort = this.pow.fortissimo > 0;
+    const mat = { chrome: 0.3, flash: this.hitFlash * 0.8 };
+    if (fort) { const c = rainbowTint(G.realTime * 1.5); mat.emis = [c[0] * 0.5, c[1] * 0.5, c[2] * 0.5]; }
+    drawAt(r, MODELS[V.model], this.d, this.x, this.y, -this.aimX * 0.9, this.aimY * 0.9, this.rollAngle, 1, mat);
+    this.drawPowers(r);
     // engine glow + flame (pulses with the beat)
     this.worldPos(_p);
     railFrame(G.rail, this.d, _t, _R, _U);
     const pulse = 1 + (1 - Music.beatPhase()) * 0.25;
     const bx = _p.x - _t.x * 1.5, by = _p.y - _t.y * 1.5, bz = _p.z - _t.z * 1.5;
-    r.sprite(bx, by, bz, 1.4 * pulse, 1.4 * pulse, 0, SPR.GLOW, 0.4, 0.9, 1, 0.9);
-    r.streak(bx - _t.x * 1.2, by - _t.y * 1.2, bz - _t.z * 1.2, -_t.x * 1.4, -_t.y * 1.4, -_t.z * 1.4, 0.55, SPR.STREAK, 0.5, 0.95, 1, 0.8);
+    const gc = V.glow, boost = this.pow.tempo > 0 ? 1.35 : 1;
+    r.sprite(bx, by, bz, 1.4 * pulse * boost, 1.4 * pulse * boost, 0, SPR.GLOW, gc[0], gc[1], gc[2], 0.9);
+    r.streak(bx - _t.x * 1.2, by - _t.y * 1.2, bz - _t.z * 1.2, -_t.x * 1.4 * boost, -_t.y * 1.4 * boost, -_t.z * 1.4 * boost, 0.55, SPR.STREAK, gc[0] * 0.9 + 0.1, gc[1] * 0.9 + 0.1, gc[2] * 0.9 + 0.1, 0.8);
+    if (fort) { const c = rainbowTint(G.realTime * 2); r.sprite(_p.x, _p.y, _p.z, 7, 7, G.realTime * 3, SPR.SPARKLE, c[0], c[1], c[2], 0.55); }
     if (this.rolling) r.sprite(_p.x, _p.y, _p.z, 4.2, 4.2, G.time * 12, SPR.RING, 0.4, 0.8, 1, 0.55);
     // blob shadow
     const th = G.terrainHeight(_p.x, _p.z), wl = G.env.water ? G.env.water.level : -1e9;
@@ -265,6 +385,7 @@ const ETYPES = {
   cube: { mesh: 'cube', hp: 2, r: 2, score: 120, res: 1, fire: 0.2 },
   chaser: { mesh: 'drone', hp: 5, r: 2, score: 500, res: 2, fire: 0 },
   crystal: { mesh: 'crystal', hp: 3, r: 3.2, score: 300, res: 1.5, fire: 0, ground: true },
+  prism: { mesh: 'prism', hp: 3, r: 2.3, score: 300, res: 1, fire: 0 }, // power-up pod
 };
 
 // Enemies that can juke out of the reticle, and ones that spin out and crash
@@ -359,8 +480,13 @@ class Enemy {
       const dd = this.d - P.d, dx = this.x - P.x, dy = this.y - P.y;
       const rr2 = this.r + P.r;
       if (dd * dd + dx * dx + dy * dy < rr2 * rr2) {
-        if (P.hurt(this.T.big ? 25 : 15)) { G.shake(0.8); }
-        if (!this.T.big && this.type !== 'pylon') this.damage(99, null);
+        if (this.type === 'prism') this.damage(99, null); // flying into a pod just cracks it open
+        else if (P.pow.fortissimo > 0) { // ram!
+          if ((this.ramCD || 0) <= G.time) { this.ramCD = G.time + 0.25; this.damage(this.T.big ? 5 : 99, { ram: true, vd: G.speed + 60, vx: -dx * 6, vy: -dy * 6 }); G.shake(0.3); Haptics.impact('kill'); }
+        } else {
+          if (P.hurt(this.T.big ? 25 : 15)) { G.shake(0.8); }
+          if (!this.T.big && this.type !== 'pylon') this.damage(99, null);
+        }
       }
     }
     // beat-synced fire with a one-beat wind-up telegraph (the core swells, then shoots on the beat)
@@ -480,6 +606,15 @@ class Enemy {
         drawAt(r, MODELS.turretGun, d + this.gunKick * 0.7, x, this.y + 1.1 * s, yaw, aim + this.sPitch * 0.5 + this.gunKick * 0.35, this.sRoll * 0.3, s * (1 + this.sq * 0.3), mat);
         break;
       }
+      case 'prism': { // the power-up spins inside a translucent crystal
+        const pk = POWERS[this.o.kind] || POWERS.chord;
+        drawAt(r, MODELS[pk.mesh], d, x, y, this.t * 2.2, 0, 0, 0.95, { tint: pk.col === 'rainbow' ? rainbowTint(this.t) : [1, 1, 1, 1], chrome: 0.4, flash: this.flash });
+        drawAt(r, this.mesh, d, x, y, this.t * 0.8, 0, this.sRoll, sxy, { blend: 'add', tint: [0.35, 0.6, 0.95, 0.5], cull: false, flash: this.flash }, null, sxy, sz);
+        G.rail.world(_p, d, x, y);
+        const g = 6 + this.beatPop * 2;
+        r.sprite(_p.x, _p.y, _p.z, g, g, this.t, SPR.SPARKLE, 0.6, 0.85, 1, 0.45);
+        break;
+      }
       default:
         drawAt(r, this.mesh, d, x, y, yaw, pitch, roll, sxy, mat, null, sxy, sz);
     }
@@ -537,6 +672,22 @@ const ENEMY_AI = {
       e.x += Math.sign(e.slotX || (e.phase > 3 ? 1 : -1)) * dt * (10 + tt * 30);
       e.roll = -Math.sign(e.slotX || 1) * Math.min(1.2, tt * 2);
       e.pitch = Math.min(0.6, tt);
+    }
+  },
+  // Power-up pod: drifts in, weaves lazily in front of you, then drifts off ahead.
+  prism(e, dt, G, P) {
+    const arr = 2, hold = e.hold, tgt = e.o.dist || 75;
+    e.autoBank = 0;
+    if (e.t < arr) {
+      const k = easeOutCubic(e.t / arr);
+      e.d = P.d + lerp(e.off, tgt, k); e.x = lerp(e.slotX * 1.5, e.slotX, k); e.y = lerp(e.slotY + 12, e.slotY, k);
+    } else if (e.t < arr + hold) {
+      const tt = e.t - arr;
+      e.d = P.d + tgt + Math.sin(tt * 0.9) * 6;
+      e.x = e.slotX + Math.sin(tt * 0.8 + e.phase) * 7; e.y = e.slotY + Math.sin(tt * 1.6 + e.phase) * 3;
+    } else {
+      const tt = e.t - arr - hold;
+      e.d = P.d + tgt + tt * tt * 40; e.y += dt * (6 + tt * 12);
     }
   },
   // Sits in the world; the squadron flies past it.
@@ -801,8 +952,9 @@ class Pickup {
     if (isRing) {
       if (Math.abs(dd) < 2.2 && Math.hypot(dx, dy) < 3.2) this.take();
     } else if (dd * dd + dx * dx + dy * dy < 12) this.take();
-    // magnet for non-ring items when close
-    if (!isRing && Math.abs(dd) < 25 && Math.hypot(dx, dy) < 10) { this.x = damp(this.x, P.x, 3, dt); this.y = damp(this.y, P.y, 3, dt); }
+    // magnet for non-ring items when close (power-ups pull harder: they're the prize)
+    const [range, pull] = POWERS[this.kind] ? [17, 5] : [10, 3];
+    if (!isRing && Math.abs(dd) < 30 && Math.hypot(dx, dy) < range) { this.x = damp(this.x, P.x, pull, dt); this.y = damp(this.y, P.y, pull, dt); }
   }
   take() {
     const G = Game, P = G.player;
@@ -815,13 +967,15 @@ class Pickup {
       case 'bomb': P.bombs = Math.min(9, P.bombs + 1); SFX.pickup(); G.banner('+1 NOVA BOMB', '#ff7a7a'); break;
       case 'laser': P.laserLv = Math.min(3, P.laserLv + 1); SFX.pickup(); G.banner(P.laserLv >= 3 ? 'HYPER LASER!' : 'TWIN LASER!', '#6dff8a'); G.sayOnce('laser' + P.laserLv); break;
       case 'fork': G.onFork(); SFX.ring(true); FX.ringBurst(_p.x, _p.y, _p.z, [1, 0.9, 0.3], wv.x, wv.y, wv.z); break;
+      default: if (POWERS[this.kind]) { P.powerUp(this.kind); FX.ringBurst(_p.x, _p.y, _p.z, [1, 0.8, 1], wv.x, wv.y, wv.z); }
     }
     Haptics.impact('pickup');
   }
   draw(r) {
-    const s = this.kind === 'fork' ? 1.3 : 1;
-    const mesh = this.kind === 'gold' || this.kind === 'ring' ? MODELS.ring : this.kind === 'bomb' ? MODELS.bomb : this.kind === 'laser' ? MODELS.laserUp : MODELS.fork;
-    const tint = this.kind === 'gold' ? [1.2, 0.9, 0.3, 1] : this.kind === 'ring' ? [0.95, 1, 1.1, 1] : [1, 1, 1, 1];
+    const pw = POWERS[this.kind];
+    const s = this.kind === 'fork' ? 1.3 : pw ? 1.15 : 1;
+    const mesh = pw ? MODELS[pw.mesh] : this.kind === 'gold' || this.kind === 'ring' ? MODELS.ring : this.kind === 'bomb' ? MODELS.bomb : this.kind === 'laser' ? MODELS.laserUp : MODELS.fork;
+    const tint = this.kind === 'gold' ? [1.2, 0.9, 0.3, 1] : this.kind === 'ring' ? [0.95, 1, 1.1, 1] : pw && pw.col === 'rainbow' ? rainbowTint(this.t) : [1, 1, 1, 1];
     const spinY = this.kind === 'ring' || this.kind === 'gold' ? Math.sin(this.t * 1.5) * 0.4 : this.t * 2;
     drawAt(r, mesh, this.d, this.x, this.y, spinY, 0, 0, s, { tint, chrome: 0.7, emis: this.kind === 'fork' ? [0.3, 0.25, 0.05] : null });
     Game.rail.world(_p, this.d, this.x, this.y);

@@ -66,12 +66,98 @@ function buildShip(accent, accentD, stripe) {
   return b.build('ship');
 }
 
+// BASSLINE — heavy twin-boom gunship: armoured pod, speaker-cone intakes,
+// chin cannons and big orange exhausts.
+function buildBassline() {
+  const b = new MB();
+  const hull = hex('#b8322a'), hullD = hex('#6e1a15'), metal = hex('#4a4f5e'), metalD = hex('#2a2d38');
+  b.push(); b.scale(1.35, 1, 1); b.rotateX(-PI / 2);
+  b.lathe([[0.3, -1.3], [0.52, -0.8], [0.58, 0.2], [0.46, 1.0], [0.22, 1.55], [0, 1.7]], 6, (j) => (j === 0 ? C.dark : j >= 3 ? hull : metal), { capBottom: true, phase: PI / 6 });
+  b.pop();
+  b.push(); b.translate(0, 0.42, -0.45); b.scale(0.7, 0.5, 1.3); b.sphere(0.42, 6, 4, C.glass); b.pop();
+  for (const s of [1, -1]) {
+    // chin cannon
+    b.push(); b.translate(0.3 * s, -0.42, -0.55); b.rotateX(-PI / 2);
+    b.cylinder(0.1, 0.08, -0.4, 1.1, 5, metalD); b.disc(0.07, 1.11, 5, G.orange, false);
+    b.pop();
+    // stub wing out to the boom
+    b.push(); b.translate(0, -0.05, 0.25);
+    b.extrude([[0.4 * s, -0.35], [1.4 * s, -0.25], [1.4 * s, 0.75], [0.4 * s, 0.85]], 0.22, hull, hullD);
+    b.pop();
+    // engine boom with a speaker-cone intake
+    b.push(); b.translate(1.45 * s, 0, 0.3); b.rotateX(-PI / 2);
+    b.lathe([[0.3, -1.45], [0.4, -1.1], [0.42, 0.4], [0.36, 0.85]], 6, (j) => (j === 0 ? metalD : j === 1 ? metal : hull), { capBottom: false, phase: PI / 6 });
+    b.disc(0.36, 0.85, 6, metalD, false, PI / 6);
+    b.disc(0.24, 0.87, 6, C.black, false, PI / 6);
+    b.disc(0.09, 0.9, 6, C.yellow, false, PI / 6);
+    b.disc(0.3, -1.44, 6, G.orange, true, PI / 6);
+    b.pop();
+    // drooping outer wing with a yellow tip
+    b.push(); b.translate(1.8 * s, -0.1, 0.45); b.rotateZ(-0.35 * s);
+    b.extrude([[0, -0.2], [0.95 * s, 0.25], [0.95 * s, 0.6], [0, 0.75]], 0.14, hull, hullD);
+    b.push(); b.translate(0.95 * s, 0, 0.42); b.box(0, 0, 0, 0.12, 0.16, 0.4, C.yellow); b.pop();
+    b.pop();
+    // tail fin on each boom, canted out
+    b.push(); b.translate(1.45 * s, 0.3, 1.0); b.rotateZ(PI / 2 - 0.25 * s);
+    b.extrude([[0, -0.1], [0.8, 0.25], [0.8, 0.55], [0, 0.5]], 0.1, hull, hullD);
+    b.pop();
+  }
+  b.push(); b.translate(0, 0, 1.32); b.rotateX(-PI / 2); b.disc(0.28, 0, 6, G.orange, true); b.pop();
+  return b.build('bassline');
+}
+
+// ARPEGGIO — needle-nosed interceptor with forward-swept wings and glowing
+// wingtip "strings".
+function buildArpeggio() {
+  const b = new MB();
+  const hull = hex('#18b58c'), hullD = hex('#0e6b53');
+  b.push(); b.scale(1, 0.85, 1); b.rotateX(-PI / 2);
+  b.lathe([[0.18, -1.5], [0.3, -1.0], [0.32, 0.2], [0.24, 1.3], [0.1, 2.3], [0, 2.75]], 6, (j) => (j === 0 ? C.dark : j >= 3 ? C.white : hull), { capBottom: true, phase: PI / 6 });
+  b.pop();
+  b.push(); b.translate(0, 0.2, -0.55); b.scale(0.45, 0.42, 1.8); b.sphere(0.42, 6, 4, C.glass); b.pop();
+  for (const s of [1, -1]) {
+    b.extrude([[0.2 * s, 0.35], [2.05 * s, -0.35], [2.2 * s, -0.12], [0.2 * s, 1.05]], 0.12, hull, hullD);
+    b.push(); b.translate(0, 0.01, 0); b.extrude([[0.2 * s, 0.85], [2.12 * s, -0.2], [2.2 * s, -0.12], [0.2 * s, 1.05]], 0.13, C.white, C.grey); b.pop();
+    b.push(); b.translate(2.16 * s, 0, -0.25); b.box(0, 0, 0, 0.08, 0.08, 1.4, G.green); b.pop();
+    b.push(); b.translate(0.28 * s, 0.1, 0.95); b.rotateZ(PI / 2 - 0.45 * s);
+    b.extrude([[0, 0], [0.8, 0.45], [0.8, 0.7], [0, 0.6]], 0.08, hull, hullD);
+    b.pop();
+    b.push(); b.translate(0.25 * s, -0.05, 1.1);
+    b.extrude([[0, 0], [0.75 * s, 0.35], [0.75 * s, 0.5], [0, 0.45]], 0.07, C.white, C.grey);
+    b.pop();
+  }
+  b.push(); b.translate(0, 0, 1.52); b.rotateX(-PI / 2); b.disc(0.22, 0, 6, G.green, true); b.pop();
+  return b.build('arpeggio');
+}
+
+// MAESTRO — golden flying wing crowned with a lyre (unlocked by the forks).
+function buildMaestro() {
+  const b = new MB();
+  const gold = hex('#ffcc33'), goldD = hex('#c7931a'), ivory = hex('#fff4d8');
+  b.extrude([[0, -1.7], [1.2, -0.4], [2.75, 0.85], [2.45, 1.25], [1.1, 0.95], [0, 1.35], [-1.1, 0.95], [-2.45, 1.25], [-2.75, 0.85], [-1.2, -0.4]], 0.16, gold, goldD);
+  b.push(); b.scale(1.1, 0.8, 1); b.rotateX(-PI / 2);
+  b.lathe([[0.25, -1.25], [0.42, -0.7], [0.46, 0.3], [0.3, 1.2], [0.1, 1.85], [0, 2.0]], 6, (j) => (j === 0 ? C.dark : j >= 3 ? ivory : gold), { capBottom: true, phase: PI / 6 });
+  b.pop();
+  b.push(); b.translate(0, 0.28, -0.3); b.scale(0.6, 0.45, 1.4); b.sphere(0.42, 6, 4, C.glass); b.pop();
+  // lyre crest: a standing ring strung with light
+  b.push(); b.translate(0, 0.78, 0.75); b.rotateX(PI / 2); b.torus(0.6, 0.07, 14, 4, gold); b.pop();
+  for (const x of [-0.3, 0, 0.3]) { const h = Math.sqrt(0.36 - x * x) * 2 - 0.1; b.box(x, 0.78, 0.75, 0.04, h, 0.04, G.yellow); }
+  for (const s of [1, -1]) {
+    b.push(); b.translate(0.62 * s, -0.02, 1.05); b.rotateX(-PI / 2); b.cylinder(0.2, 0.24, -0.35, 0.3, 6, goldD); b.disc(0.2, -0.35, 6, G.yellow, true); b.pop();
+    b.push(); b.translate(2.6 * s, 0.05, 1.0); b.box(0, 0, 0, 0.12, 0.1, 0.4, G.white); b.pop();
+    b.push(); b.translate(1.4 * s, 0.09, 0.2); b.extrude([[0, -0.1], [0.9 * s, 0.55], [0.8 * s, 0.7], [0, 0.15]], 0.02, ivory, ivory); b.pop();
+  }
+  return b.build('maestro');
+}
+
 function buildModels() {
   MODELS.player = buildShip(C.blue, C.blueD, C.yellow);
+  MODELS.bassline = buildBassline();
+  MODELS.arpeggio = buildArpeggio();
+  MODELS.maestro = buildMaestro();
   MODELS.oz = buildShip(C.green, hex('#237a3a'), C.yellow);
   MODELS.sable = buildShip(C.purple, hex('#4a2a99'), hex('#ffd23f'));
   MODELS.tobi = buildShip(C.orange, hex('#b35a12'), C.white);
-  MODELS.gold = buildShip(hex('#ffcc33'), hex('#c7931a'), C.white);
 
   // --- Static enemies --------------------------------------------------------
   { // Drone: dark crystal diamond with fins and a magenta eye
@@ -226,6 +312,53 @@ function buildModels() {
     b.push(); b.torus(1.3, 0.12, 12, 4, C.white); b.pop();
     MODELS.laserUp = b.build('laserUp');
   }
+  // Power-ups: each faces the camera (x-y plane) and spins slowly.
+  { const b = new MB(); // CHORD: three bolts fanning out
+    for (const a of [-0.55, 0, 0.55]) { b.push(); b.rotateZ(a); b.translate(0, 0.8, 0); b.diamond(0.24, 0.55, 0.24, 0.24, (i) => (i % 2 ? G.pink : G.magenta)); b.pop(); }
+    b.push(); b.translate(0, -0.3, 0); b.sphere(0.32, 6, 4, G.magenta); b.pop();
+    b.push(); b.rotateX(PI / 2); b.torus(1.35, 0.09, 14, 4, C.white); b.pop();
+    MODELS.puChord = b.build('puChord'); }
+  { const b = new MB(); // ECHO: twin ghost ships
+    b.push(); b.rotateX(PI / 2);
+    for (const s of [-1, 1]) { b.push(); b.translate(0.55 * s, 0, 0); b.extrude([[0, -0.65], [0.45, 0.4], [0, 0.18], [-0.45, 0.4]], 0.2, G.cyan, glow('#2a9fbf')); b.pop(); }
+    b.pop();
+    b.push(); b.rotateX(PI / 2); b.torus(1.35, 0.09, 14, 4, C.white); b.pop();
+    MODELS.puEcho = b.build('puEcho'); }
+  { const b = new MB(); // TEMPO: fast-forward chevrons
+    b.push(); b.rotateX(PI / 2);
+    for (const o of [-0.3, 0.4]) b.extrude([[o - 0.35, -0.7], [o + 0.35, 0], [o - 0.35, 0.7], [o - 0.62, 0.7], [o + 0.06, 0], [o - 0.62, -0.7]], 0.22, G.yellow, glow('#c9a000'));
+    b.pop();
+    b.push(); b.rotateX(PI / 2); b.torus(1.35, 0.09, 14, 4, C.white); b.pop();
+    MODELS.puTempo = b.build('puTempo'); }
+  { const b = new MB(); // HARMONY: a core with three orbiting notes
+    b.sphere(0.45, 8, 5, G.blue);
+    for (let i = 0; i < 3; i++) { const a = (i / 3) * TAU + PI / 2; b.push(); b.translate(Math.cos(a), Math.sin(a), 0); b.sphere(0.22, 6, 4, G.cyan); b.pop(); }
+    b.push(); b.rotateX(PI / 2); b.torus(1.0, 0.05, 16, 3, C.white); b.pop();
+    MODELS.puHarmony = b.build('puHarmony'); }
+  { const b = new MB(); // FORTISSIMO: a star (tinted rainbow when drawn)
+    const pts = []; for (let k = 0; k < 10; k++) { const a = -PI / 2 + (k * PI) / 5, r = k % 2 ? 0.5 : 1.25; pts.push([Math.cos(a) * r, Math.sin(a) * r]); }
+    b.push(); b.rotateX(PI / 2); b.extrude(pts, 0.35, G.white, glow('#d0d0d0')); b.pop();
+    MODELS.puFortissimo = b.build('puFortissimo'); }
+  { const b = new MB(); // ENCORE: a heart (extra ship)
+    const pts = []; for (let k = 0; k < 20; k++) { const t = (k / 20) * TAU; pts.push([Math.pow(Math.sin(t), 3) * 1.0, -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 16]); }
+    b.push(); b.rotateX(PI / 2); b.extrude(pts, 0.35, G.red, glow('#a01830')); b.pop();
+    b.push(); b.rotateX(PI / 2); b.torus(1.35, 0.09, 14, 4, C.white); b.pop();
+    MODELS.puEncore = b.build('puEncore'); }
+  { const b = new MB(); // Prism pod: the crystal shell a power-up rides in
+    b.diamond(1.5, 2.1, 1.5, 1.5, (i) => (i % 2 ? [0.85, 0.95, 1] : [0.55, 0.8, 1]));
+    b.push(); b.torus(1.7, 0.1, 16, 4, G.cyan); b.pop();
+    MODELS.prism = b.build('prism'); }
+  { const b = new MB(); // Echo drone that flies beside you
+    b.diamond(0.45, 0.2, 0.95, 0.5, (i) => (i % 2 ? G.cyan : glow('#2a9fbf')));
+    for (const s of [1, -1]) { b.push(); b.translate(0.4 * s, 0, 0.3); b.box(0, 0, 0, 0.5, 0.05, 0.3, G.white); b.pop(); }
+    MODELS.echo = b.build('echo'); }
+  { const b = new MB(); // Hangar launch pad
+    b.cylinder(3.3, 3.5, -0.3, 0, 8, C.dark, true, PI / 8);
+    b.cylinder(2.2, 2.2, 0, 0.03, 8, hex('#3a4258'), true, PI / 8);
+    b.push(); b.translate(0, 0.04, 0); b.torus(3.1, 0.08, 32, 4, G.cyan); b.pop();
+    b.push(); b.translate(0, 0.05, 0); b.torus(1.9, 0.05, 24, 3, G.blue); b.pop();
+    for (let i = 0; i < 8; i++) { const a = ((i + 0.5) / 8) * TAU; b.box(Math.cos(a) * 2.65, 0.03, Math.sin(a) * 2.65, 0.28, 0.05, 0.28, G.cyan); }
+    MODELS.pad = b.build('pad'); }
   { // Tuning fork (secret collectible)
     const b = new MB();
     b.cylinder(0.12, 0.12, -1.6, -0.2, 6, C.yellow);

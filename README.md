@@ -88,8 +88,27 @@ use Share → Add to Home Screen for fullscreen, offline play.
   to the music and raises the score multiplier up to ×5; getting hit strips layers away.
   Lock-on hits, rings and kills are quantized to the beat and pitched to the current chord,
   and enemies fire on the beat.
-- **Rez-style lock-on.** Hold FIRE to paint up to 8 targets, then release for a homing volley.
+- **Rez-style lock-on.** Hold FIRE to paint targets, then release for a homing volley.
   A barrel roll deflects shots back at enemies.
+- **Four ships to choose from.** Every run starts in the hangar, where you swipe between ships
+  on a turntable and the announcer calls out each name:
+  - **Synthwing:** the all-rounder. Builds Resonance 30% faster.
+  - **Bassline:** a heavy twin-boom gunship with 150 shield and 25% armor. It fires slow,
+    heavy bass bolts that punch through what they kill, and takes 6 lock-ons.
+  - **Arpeggio:** a needle-nosed interceptor with forward-swept wings. It has the fastest
+    handling, rapid fire, quick rolls and 10 lock-ons, but only 70 shield.
+  - **Maestro:** a golden flying wing with a lyre crest. It starts with twin lasers and its
+    volleys hit 50% harder. Unlocked by finding all five golden tuning forks.
+- **Power-ups.** Crystal prism pods drift into view carrying a power-up; shoot one (or fly
+  into it) to free the prize. Big enemies drop power-ups too.
+  - **Chord Shot:** fires a spread of 3, or 5 with hyper lasers.
+  - **Echo:** two drones that copy every shot.
+  - **Tempo:** double fire rate and faster lock-ons.
+  - **Harmony:** three orbiting notes that block shots and sting enemies.
+  - **Fortissimo:** invincible and rams enemies, with the full music arrangement.
+  - **Encore:** an extra ship.
+
+  Active power-ups show as icons with draining timers under the shield gauge.
 - **Enemies that react.** Hits knock enemies back, spin them and squash them on springs. Damaged
   units smoke, and a wounded enemy returns fire. Enemies barrel-roll out of your reticle if you
   linger on them. Destroyed fliers spin out trailing fire and explode on impact, splashing water

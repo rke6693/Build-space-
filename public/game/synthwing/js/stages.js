@@ -31,6 +31,8 @@ const warn = () => (G) => G.warning();
 const boss = (k) => (G) => G.startBoss(k);
 const fork = (off, x, y) => (G) => G.spawnPickup('fork', G.player.d + off, x, y);
 const all = (...fns) => (G) => fns.forEach((f) => f(G));
+// Crystal pod carrying a power-up (random unless given).
+const pod = (x = 0, y = 3, kind) => (G) => G.spawnPod(x, y, kind);
 const carrier = (x = 0, y = 4, hold = 12) => (G) => G.spawnEnemy('carrier', 'carrier', { x, y, off: 260, hold });
 // Follow-the-leader chain weaving toward you.
 const chain = (type, n, o = {}) => (G) => { for (let i = 0; i < n; i++) G.spawnEnemy(type, 'snake', Object.assign({ off: 230, x: 0, y: 0, phase: i }, o, { delay: i * (o.gap || 0.24) })); };
@@ -57,6 +59,7 @@ const STAGES = [
       [5.5, sayT('tobi', 'Hold FIRE to paint targets with lock-ons, then let go to launch a volley!', 'Hold SPACE to lock on to targets, then let go to launch a volley!')],
       [6, wave('drone', 'hover', F.V(5, 5, 0, 3), { hold: 6, fire: 0.08 })],
       [8, all(leave(['oz', 'sable', 'tobi']), say('sable', "Try to keep up, Lead. Breaking formation!"))],
+      [8.5, all(pod(0, 3, 'chord'), say('tobi', "See that crystal pod? Crack it open. There's a power-up inside!"))],
       [9, rings([[150, -6, 0], [185, 0, 2], [220, 6, 0]])],
       [10, wave('drone', 'swoop', F.line(4, 5, -6, 4), { side: -1, hold: 4 })],
       [11, wave('drone', 'swoop', F.line(4, 5, 6, -2), { side: 1, hold: 4 })],
@@ -72,6 +75,7 @@ const STAGES = [
       [24, all(checkpoint(), say('maren', 'Checkpoint ahead. Fly through the gate and the Cadence will log your position.'))],
       [26, trouble('tobi', "Lead! Help! Something's stuck to my tail!")],
       [28, all(ground('turret', [[220, -12], [250, 12]]), prop('lighthouse', [[240, -26, 'ground'], [300, 24, 'ground']]))],
+      [27.5, pod(6, 3, 'harmony')],
       [29, all(say('oz', "See those dark pylons? They're draining the sea's song. Knock 'em down!"), ground('pylon', [[260, -12], [300, 10], [340, -2]]))],
       [31, wave('mine', 'pass', F.grid(4, 2, 9, 0, 1), { stagger: 12, off: 200 })],
       [32, rings([[200, -8, 4], [215, 8, 4]])],
@@ -80,6 +84,7 @@ const STAGES = [
       [40, fork(240, 15, 10)],
       [41, trouble('sable', "Tch — I've got a tail. ...Lead, a little help?")],
       [36.5, strafe('drone', 5, { side: 1, dist: 52 })],
+      [42, pod(-5, 4)],
       [43, wave('swooper', 'behind', F.V(5, 6, 0, 4), { hold: 5 })],
       [46.5, dive('drone', [-10, -5, 0, 5, 10], { y: -1 })],
       [44, item('bomb', 200, -8, 0)],
@@ -115,6 +120,7 @@ const STAGES = [
       [2, all(leave(['oz', 'sable', 'tobi']), say('oz', 'Shoot the smaller rocks for points. Steer around the big ones!'))],
       [4, wave('drone', 'hover', F.V(5, 5, 0, 2), { hold: 5 })],
       [6, prop('station', [[300, -20, 'rail+0'], [360, 22, 'rail+6']])],
+      [5, pod(0, 2, 'tempo')],
       [8, wave('drone', 'swoop', F.line(5, 5, 0, 5), { side: -1, hold: 4 })],
       [10, all(say('tobi', "Sniper signature! When you see the red line, move out of it!"), wave('sniper', 'sniper', [[0, 8]], { hold: 10 }))],
       [11.5, chain('drone', 10, { ax: 16, ay: 8, gap: 0.2 })],
@@ -125,6 +131,7 @@ const STAGES = [
       [19, wave('drone', 'circle', Array.from({ length: 10 }, () => [0, 0]), { radius: 11, hold: 6, dist: 75, spinSpeed: -1.4 })],
       [19, (G) => G.enemies.filter((e) => e.ai === 'circle').forEach((e, i) => { e.phase = (i / 10) * TAU; })],
       [22, trouble('sable', 'Lead! This one is faster than it looks — get it off me!')],
+      [21, pod(-5, 3)],
       [24, strafe('drone', 6, { side: -1, dist: 60, y: 0 })],
       [26, checkpoint()],
       [27, say('maren', "Enemy mining rig ahead. It's feeding something big.")],
@@ -135,6 +142,7 @@ const STAGES = [
       [37, wave('mine', 'pass', F.grid(5, 2, 8, 0, 0), { off: 220, stagger: 10 })],
       [39, trouble('oz', 'Ack, this old tortoise has company! A little help, Lead?')],
       [37.5, loops('swooper', F.line(2, 14, 0, 2))],
+      [40.5, pod(6, 4, 'echo')],
       [42, wave('swooper', 'behind', F.V(5, 6, 0, 2), { hold: 5 })],
       [47, dive('drone', [-12, -4, 4, 12], { y: 2 })],
       [44, all(rings([[200, 0, 0]], 'gold'), item('bomb', 240, 10, 5))],
@@ -160,6 +168,7 @@ const STAGES = [
       [6.5, chain('drone', 8, { ax: 14, ay: 6, speed: 28 })],
       [7, wave('swooper', 'behind', F.line(3, 9, 0, 4), { hold: 5 })],
       [9, all(wave('drone', 'circle', Array.from({ length: 8 }, () => [0, 0]), { radius: 9, hold: 6, dist: 70 }), (G) => G.enemies.filter((e) => e.ai === 'circle').forEach((e, i) => { e.phase = (i / 8) * TAU; }))],
+      [8, pod(0, 3, 'harmony')],
       [11, rings([[160, 0, -4], [200, -6, 0], [240, 6, 4]])],
       [12, wave('sniper', 'sniper', [[-10, 8], [10, 8]], { hold: 10 })],
       [14, trouble('oz', "Blast! I've picked up a stowaway! Shoot it down, Lead!")],
@@ -170,6 +179,8 @@ const STAGES = [
       [23, all(say('sable', 'Ice crystals — shatter them for points. They ring like bells!'), (G) => { for (let i = 0; i < 6; i++) G.spawnGround('crystal', 220 + i * 30, i % 2 ? 14 : -14); })],
       [25, fork(220, 0, -8)],
       [26, carrier(0, 6, 11)],
+      [22, pod(5, 3)],
+      [32, pod(-5, 4)],
       [28, strafe('drone', 5, { side: 1, dist: 50, y: 0 })],
       [30, trouble('tobi', 'Eek! Lead, it keeps shooting at me!')],
       [34, dive('drone', [-8, 0, 8], { y: 0 })],
@@ -196,6 +207,7 @@ const STAGES = [
       [5.5, dive('drone', [-12, -6, 0, 6, 12], { y: 2 })],
       [6, prop('vent', [[220, -8, 'ground'], [260, 8, 'ground'], [300, 0, 'ground']])],
       [7, say('oz', 'Geysers! They blow on the downbeat — go between them!')],
+      [8, pod(0, 4, 'fortissimo')],
       [9, all(prop('pipeArch', [[250, 0, 'rail+6'], [320, 0, 'rail+2']]), say('tobi', 'Fly under the pipes!'))],
       [11, ground('turret', [[230, -14], [260, 14], [290, -6], [320, 8]])],
       [13, wave('swooper', 'behind', F.line(4, 8, 0, 5), { hold: 5 })],
@@ -204,6 +216,7 @@ const STAGES = [
       [18, trouble('sable', "Hot on my tail, Lead! Literally!")],
       [21, carrier(0, 5, 12)],
       [24, prop('vent', [[200, -12, 'ground'], [230, 4, 'ground'], [260, 12, 'ground'], [290, -4, 'ground']])],
+      [23, pod(-6, 3)],
       [25, strafe('swooper', 4, { side: -1, dist: 58, y: 4 })],
       [26, checkpoint()],
       [27, wave('sniper', 'sniper', [[-12, 8], [0, 10], [12, 8]], { hold: 10 })],
@@ -216,6 +229,7 @@ const STAGES = [
       [40, carrier(8, 8, 10)],
       [36.5, loops('swooper', F.line(3, 10, 0, 3))],
       [43, wave('swooper', 'behind', F.V(5, 7, 0, 3), { hold: 5 })],
+      [42, pod(5, 4)],
       [44.5, chain('drone', 10, { ax: 18, ay: 6, gap: 0.2 })],
       [45, all(rings([[200, 0, 0], [240, 0, 4]], 'gold'), item('bomb', 260, 0, -4))],
       [48, join(['oz', 'sable', 'tobi'], 'The lava is rising... no, something is standing UP in it!', 'tobi')],
@@ -237,6 +251,7 @@ const STAGES = [
       [3, prop('monolith', [[240, -18, 'rail-14'], [280, 16, 'rail-14'], [320, -8, 'rail-14']])],
       [4, wave('cube', 'hover', F.V(5, 5, 0, 2), { hold: 5 })],
       [5, chain('cube', 8, { ax: 12, ay: 6 })],
+      [7, pod(0, 3, 'echo')],
       [6, wave('cube', 'swoop', F.line(5, 5, 0, 4), { side: 1, hold: 4 })],
       [8, wave('drone', 'circle', Array.from({ length: 8 }, () => [0, 0]), { radius: 10, hold: 6, dist: 70 })],
       [8, (G) => G.enemies.filter((e) => e.ai === 'circle').forEach((e, i) => { e.phase = (i / 8) * TAU; })],
@@ -245,6 +260,7 @@ const STAGES = [
       [13.5, loops('swooper', F.line(2, 12, 0, 4))],
       [14, trouble('tobi', "It's so quiet here... AAH! Something grabbed my tail!")],
       [17, all(wave('spinner', 'spinner', [[-10, 0], [10, 0], [0, 8]], { hold: 8 }), prop('monolith', [[260, 0, 'rail-16']]))],
+      [21, pod(5, 3)],
       [19, strafe('cube', 6, { side: 1, dist: 55, y: 1 })],
       [20, say('hush', '...every note you play... I will swallow...')],
       [22, checkpoint()],
@@ -253,6 +269,7 @@ const STAGES = [
       [26, wave('mine', 'pass', F.grid(5, 3, 8, 0, 0), { off: 200, stagger: 5 })],
       [28, fork(240, 0, 10)],
       [29, trouble('sable', "I can't hear my own engine. Lead — behind me!")],
+      [33, pod(-5, 4, 'fortissimo')],
       [31, chain('drone', 10, { ax: 16, ay: 8, gap: 0.2 })],
       [32, wave('cube', 'hover', F.grid(5, 2, 6, 0, 2), { hold: 6 })],
       [36, loops('swooper', F.line(3, 10, 0, 3))],
@@ -264,3 +281,6 @@ const STAGES = [
     ],
   },
 ];
+
+// Timelines are authored loosely; the runner expects them in bar order (stable, so same-bar steps keep theirs).
+for (const st of STAGES) st.script.sort((a, b) => a[0] - b[0]);

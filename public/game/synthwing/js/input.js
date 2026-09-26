@@ -13,7 +13,7 @@ const Input = {
   fire: false, firePressed: false, fireReleased: false,
   bombPressed: false, rollPressed: false, rollDir: 0, pausePressed: false,
   nav: { up: false, down: false, left: false, right: false, ok: false, back: false },
-  clicks: [],
+  clicks: [], swipe: 0,
   pointers: new Map(),
   keys: new Set(),
   lastDevice: 'touch',
@@ -115,7 +115,9 @@ const Input = {
       for (const q of this.pointers.values()) if (q.role === 'fire') still = true;
       if (!still) { this.fire = false; this.fireReleased = true; }
     } else if (p.role === 'ui' && !cancel) {
-      if (Math.hypot(p.x - p.sx, p.y - p.sy) < 14) this.clicks.push({ x: p.x, y: p.y });
+      const dx = p.x - p.sx, dy = p.y - p.sy;
+      if (Math.hypot(dx, dy) < 14) this.clicks.push({ x: p.x, y: p.y });
+      else if (Math.abs(dx) > 36 && Math.abs(dx) > Math.abs(dy) * 1.5 && performance.now() - p.t < 600) this.swipe = Math.sign(dx);
     }
   },
   stickRadius() { return this.layout ? this.layout.stickR : 30; },
@@ -207,7 +209,7 @@ const Input = {
     this.firePressed = this.fireReleased = this.bombPressed = this.rollPressed = this.pausePressed = false;
     this.padDelta.x = this.padDelta.y = 0;
     this.nav.up = this.nav.down = this.nav.left = this.nav.right = this.nav.ok = this.nav.back = false;
-    this.clicks.length = 0;
+    this.clicks.length = 0; this.swipe = 0;
   },
 };
 

@@ -112,6 +112,7 @@ const HUD = {
     else if (st === 'logo') this.drawLogo();
     else if (st === 'title') { if (this.sub) this.drawSub(); else this.drawTitle(); }
     else if (st === 'brief') this.drawBrief();
+    else if (st === 'hangar') this.drawHangar();
     else if (st === 'play') { this.drawPlay(dt); if (G.overlay) { if (this.sub) this.drawSub(); else this.drawPause(); } }
     else if (st === 'results') this.drawResults();
     else if (st === 'gameover') this.drawGameOver();
@@ -200,16 +201,54 @@ const HUD = {
     const medals = Object.keys(G.save.medals).length, forks = Object.keys(G.save.forks).length;
     if (medals || forks) this.text('★' + medals + '/5   ♪' + forks + '/5', s.l + 6, s.t + 6, { color: '#ffe14a', outline: '#201000' });
   },
-  newGame() {
-    const G = Game;
-    G.score = 0; G.player.reset(true); G.wingmen = []; G.stageIdx = 0; G.said.clear();
-    G.setState('brief');
-  },
+  newGame() { this.playStage(0); },
+  // Every run goes through the hangar to pick a vehicle, then the briefing.
   playStage(i) {
     const G = Game;
     G.score = 0; G.player.reset(true); G.wingmen = []; G.stageIdx = i; G.said.clear();
     this.sub = null;
-    G.setState('brief');
+    G.setState('hangar');
+  },
+
+  // ---- hangar ------------------------------------------------------------------------
+  drawHangar() {
+    const G = Game, Hg = G.hangar, W = this.W, H = this.H, s = this.safe, land = W > H, g = this.g;
+    const v = VEHICLES[Hg.sel], open = vehicleUnlocked(v);
+    this.header('HANGAR');
+    // LAUNCH is the first button so keyboard / gamepad focus starts on it
+    const lw = land ? 150 : Math.min(200, W - 40), lh = 26;
+    const lx = land ? W - s.r - 12 - lw : W / 2 - lw / 2, ly = H - s.b - lh - (land ? 10 : 18);
+    if (this.button(open ? 'LAUNCH ▶' : 'LOCKED', lx, ly, lw, lh, { disabled: !open, top: 'rgba(60,70,170,0.95)', edge: '#ffe14a' })) G.hangarLaunch();
+    // arrows either side of the ship, page dots underneath
+    const shipX = land ? W * 0.29 : W / 2, shipY = land ? H * 0.5 : H * 0.3;
+    const spread = land ? Math.min(W * 0.24, 140) : W / 2 - s.l - 22, aw = 26, ah = 38;
+    if (this.button('◀', shipX - spread - aw / 2, shipY - ah / 2, aw, ah, { scale: 2 })) G.hangarSelect(-1);
+    if (this.button('▶', shipX + spread - aw / 2, shipY - ah / 2, aw, ah, { scale: 2 })) G.hangarSelect(1);
+    const dotY = land ? H - s.b - 14 : shipY + H * 0.15;
+    VEHICLES.forEach((w, i) => { const x = shipX + (i - (VEHICLES.length - 1) / 2) * 12; this.rect(x - 2, dotY, 5, 5, i === Hg.sel ? (vehicleUnlocked(w) ? w.col : '#8a8aa0') : 'rgba(140,160,210,0.35)'); });
+    if (this.button('◀ BACK', s.l + 6, s.t + 6, 64, 20) || Input.nav.back) { G.setState('title'); return; }
+    if (Input.nav.left) G.hangarSelect(-1);
+    if (Input.nav.right) G.hangarSelect(1);
+    if (Input.swipe) G.hangarSelect(-Input.swipe);
+    // spec sheet, sliding in with the ship
+    const k = easeOutCubic(clamp01(Hg.slide * 1.3));
+    const px = Math.round(land ? W * 0.56 : s.l + 16), pw = land ? W - s.r - 10 - px : W - s.l - s.r - 32;
+    let py = Math.round(land ? s.t + 36 : H * 0.5);
+    g.globalAlpha = k;
+    const off = Math.round((1 - k) * 24 * Hg.dir);
+    this.text(open ? v.name : '? ? ?', px + off, py, { scale: 3, color: open ? ['#ffffff', v.col] : '#6a6a80', outline: '#000', thick: true });
+    py += 26;
+    this.text(open ? v.role : 'LOCKED', px + off, py, { color: open ? v.col : '#9a9ab0', outline: '#000' });
+    py += 14;
+    ['SPEED', 'SHIELD', 'FIREPOWER', 'LOCK-ON'].forEach((lab, i) => {
+      this.text(lab, px, py, { color: '#bfe0ff', outline: '#000' });
+      const n = open ? Math.round(v.stats[i] * k) : 0;
+      for (let j = 0; j < 5; j++) this.rect(px + 66 + j * 13, py, 11, 7, j < n ? v.col : 'rgba(120,140,200,0.3)');
+      py += 12;
+    });
+    py += 5;
+    for (const ln of Font.wrap(open ? v.trait : 'Collect all five golden tuning forks to unlock this ship.', pw)) { this.text(ln, px, py, { color: '#ffffff', outline: '#000' }); py += 9; }
+    g.globalAlpha = 1;
   },
 
   // ---- sub screens (title & pause) -------------------------------------------------
@@ -334,7 +373,7 @@ const HUD = {
     const lines = touch ? [
       ['STEER', 'Drag anywhere on the left half of the screen.'],
       ['FIRE', 'Tap FIRE, or anywhere on the right half, to shoot.'],
-      ['LOCK-ON', 'HOLD FIRE and sweep the reticle over enemies to paint up to 8 targets. Let go to launch a homing volley!'],
+      ['LOCK-ON', 'HOLD FIRE and sweep the reticle over enemies to paint targets (6 to 10, depending on your ship). Let go to launch a homing volley!'],
       ['ROLL', 'Tap ROLL, double-tap or flick the left side. A barrel roll deflects enemy shots back at them.'],
       ['BOMB', 'Tap BOMB to detonate a Nova Bomb.'],
     ] : [
@@ -345,8 +384,9 @@ const HUD = {
     ];
     const tips = [
       ['RESONANCE', 'Every kill builds Resonance. Each level adds a layer to the music and raises your multiplier, up to ×5. Getting hit drops a level.'],
-      ['RINGS', 'Silver rings repair your shield. Every 3 gold rings make it bigger.'],
-      ['SECRETS', 'Each world hides a golden tuning fork. Find all five!'],
+      ['POWER-UPS', 'Shoot crystal pods to free them: Ψ CHORD spread shot · ♫ ECHO drones · » TEMPO rapid fire · ♪ HARMONY shot-blocking notes · ★ FORTISSIMO invincibility · ♥ ENCORE extra ship.'],
+      ['RINGS', 'Silver rings repair your shield; every 3 gold rings make it bigger. Each world hides a golden tuning fork. Find all five!'],
+      ['HANGAR', 'Choose your ship before each run: swipe, or tap the arrows.'],
     ];
     let y = s.t + 34;
     const colW = land ? 64 : 58;
@@ -408,7 +448,7 @@ const HUD = {
         G.reticle.nx = _q.x; G.reticle.ny = _q.y; G.reticle.ok = true;
         const x = _q.x * W, y = _q.y * H;
         this.bracket(x, y, 7, col);
-        if (Input.fire && P.holdT > 0.2) { this.circle(x, y, 14 + Math.sin(this.t * 12) * 1.5, 'rgba(255,120,200,0.8)', false); this.text(P.locks.length + '/8', x + 12, y + 8, { color: '#ff9ad0', outline: '#000' }); }
+        if (Input.fire && P.holdT > 0.2) { this.circle(x, y, 14 + Math.sin(this.t * 12) * 1.5, 'rgba(255,120,200,0.8)', false); this.text(P.locks.length + '/' + P.V.locks, x + 12, y + 8, { color: '#ff9ad0', outline: '#000' }); }
       } else G.reticle.ok = false;
       if (cam.project(_q, near.x, near.y, near.z)) this.bracket(_q.x * W, _q.y * H, 11, col, true);
     }
@@ -467,6 +507,19 @@ const HUD = {
     for (let i = 0; i < Math.max(0, P.lives); i++) { this.shipIcon(lx, y0 + 20); lx += 12; }
     for (let i = 0; i < P.bombs; i++) this.bombIcon(x0 + i * 9, y0 + 30);
     if (P.golds % 3) for (let i = 0; i < 3; i++) this.circle(x0 + bw + 8 + i * 6, y0 + 12, 2, i < P.golds % 3 ? '#ffd23f' : 'rgba(255,210,63,0.25)');
+    // active power-ups, each with a draining timer (blinking as it runs out)
+    let ix = x0;
+    for (const kind of POWER_TIMED) {
+      const left = P.pow[kind];
+      if (left <= 0) continue;
+      const def = POWERS[kind], col = def.col === 'rainbow' ? this.rainbow() : def.col;
+      if (!(left < 2 && Math.floor(left * 8) % 2)) {
+        this.rect(ix, y0 + 40, 13, 11, 'rgba(0,0,24,0.6)'); this.rect(ix, y0 + 40, 13, 1, col);
+        this.text(def.glyph, ix + 4, y0 + 42, { color: col, outline: '#000' });
+        this.rect(ix, y0 + 52, Math.max(1, Math.round(13 * left / def.dur)), 2, col);
+      }
+      ix += 16;
+    }
     // --- top-right: score
     const rx = W - s.r - (Game.settings.lefty ? 6 : 28);
     this.text('SCORE', rx, y0, { align: 'right', color: '#bfe0ff', outline: '#0a0a20' });
@@ -811,7 +864,7 @@ const HUD = {
     if (endY < H * 0.3) {
       this.text('THE END', W / 2, H * 0.5, { scale: 4, align: 'center', color: ['#ffffff', '#ffe14a', '#ff8a2a'], outline: '#1a0a00', thick: true });
       this.text('FINAL SCORE ' + G.score, W / 2, H * 0.5 + 36, { scale: 2, align: 'center', color: '#ffffff', outline: '#000' });
-      if (G.save.gold) this.text('GOLD SYNTHWING UNLOCKED!', W / 2, H * 0.5 + 56, { align: 'center', color: this.rainbow(), outline: '#000' });
+      if (G.save.gold) this.text('MAESTRO UNLOCKED IN THE HANGAR!', W / 2, H * 0.5 + 56, { align: 'center', color: this.rainbow(), outline: '#000' });
       if (Math.floor(this.t * 2) % 2) this.text('TAP TO RETURN TO TITLE', W / 2, H - this.safe.b - 14, { align: 'center', color: '#fff', outline: '#000' });
     }
   },

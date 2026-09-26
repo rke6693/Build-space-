@@ -50,7 +50,7 @@ const Game = {
   },
   loadSave() {
     const s = Store.get(SAVE_KEY, null) || {};
-    this.save = Object.assign({ unlocked: 1, best: {}, medals: {}, forks: {}, cleared: false, hiscore: 0, gold: false, plays: 0 }, s);
+    this.save = Object.assign({ unlocked: 1, best: {}, medals: {}, forks: {}, cleared: false, hiscore: 0, gold: false, plays: 0, vehicle: 'synthwing' }, s);
     let saved = s.settings;
     if (!saved) {
       saved = {};
@@ -210,8 +210,18 @@ const Game = {
     if (this.said.has(key)) return;
     this.said.add(key);
     const L = { lowShield: ['oz', 'Your shield is low, Lead! Fly through a ring to patch it up!'], laser2: ['tobi', 'Twin lasers online! Double the song!'], laser3: ['tobi', 'HYPER LASERS! Those hit twice as hard!'] };
-    if (L[key]) this.say(L[key][0], L[key][1]);
+    const l = L[key] || (key.startsWith('pu_') && POWERS[key.slice(3)] && POWERS[key.slice(3)].line);
+    if (l) this.say(l[0], l[1]);
   },
+  // Weighted pick, skipping anything already running (and extra ships when you have plenty).
+  randomPower() {
+    const P = this.player;
+    const opts = POWER_WEIGHTS.filter(([k]) => !(P.pow[k] > 3) && !(k === 'encore' && P.lives >= 5));
+    let r = Math.random() * opts.reduce((a, o) => a + o[1], 0);
+    for (const [k, w] of opts) if ((r -= w) <= 0) return k;
+    return 'chord';
+  },
+  spawnPod(x, y, kind, o = {}) { return this.spawnEnemy('prism', 'prism', Object.assign({ x, y, off: 230, hold: 7, kind: kind || this.randomPower() }, o)); },
   banner(text, col = '#ffffff', big = false) { this.banners.push({ text, col, t: 0, big }); if (this.banners.length > 3) this.banners.shift(); },
   warning() { this.warnT = 3.2; SFX.alarm(); this.shake(0.2); Haptics.impact('warn'); },
   updateDialog(dt) {
@@ -343,13 +353,14 @@ const Game = {
     if (this.state !== 'play') return;
     let lv = 1 + this.res.level;
     if (this.stage && this.stage.restore && !this.boss) lv = Math.min(lv, 1 + Math.floor(this.restore * 4.99));
+    if (this.player.pow.fortissimo > 0) lv = 5; // fortissimo plays the full arrangement
     Music.setLayer(lv);
   },
   onKill(e, src) {
     const G = this;
     this.stats.kills++;
     const pts = this.addScore(e.score, e);
-    this.resonanceGain(e.T.res || 1);
+    this.resonanceGain((e.T.res || 1) * this.player.V.res);
     if (this.stage && this.stage.restore) this.restore = Math.min(1, this.restore + 0.012 * (e.T.res || 1));
     // musical note in key, rising with the volley chain
     let noteK = e.T.big ? 0 : ri(0, 4);
@@ -361,8 +372,9 @@ const Game = {
       FX.text(e.wx, e.wy + 5, e.wz, 'CHAIN ×' + v + '  +' + bonus, '#ff9ad0', true);
       if (v >= 6) this.banner('PERFECT CHAIN ×' + v, 'rainbow');
     }
-    // occasional drops from big enemies
-    if (e.T.big && e.type !== 'bigrock') G.spawnPickup(Math.random() < 0.5 ? 'ring' : 'bomb', e.d, e.x, e.y);
+    // big enemies drop something; pods release the power-up they carry
+    if (e.T.big && e.type !== 'bigrock') { const r = Math.random(); G.spawnPickup(r < 0.35 ? 'ring' : r < 0.6 ? 'bomb' : this.randomPower(), e.d, e.x, e.y); }
+    if (e.type === 'prism') { G.spawnPickup(e.o.kind, e.d, e.x, e.y); SFX.ring(false); }
     Haptics.impact(e.T.big ? 'bigkill' : 'kill');
   },
   onFork() {
@@ -529,6 +541,65 @@ const Game = {
     cam.fov = 52 * DEG;
   },
 
+  // ---- hangar (vehicle select) ------------------------------------------------
+  enter_hangar() {
+    Input.mode = 'menu';
+    this.setupWorld('brief', () => 0, () => 0, 30);
+    this.railD = 0;
+    const i = VEHICLES.indexOf(currentVehicle());
+    this.hangar = { sel: i, from: i, dir: 1, slide: 1, annT: 0.45 };
+  },
+  update_hangar(dt) {
+    const H = this.hangar;
+    this.time += dt;
+    H.slide = Math.min(1, H.slide + dt * 3.2);
+    if (H.annT > 0 && (H.annT -= dt) <= 0) { const v = VEHICLES[H.sel]; this.announce(vehicleUnlocked(v) ? v.name : 'Locked'); }
+    if (Math.random() < dt * 14) { // sparks rising off the pad rim
+      const a = Math.random() * TAU;
+      FX.spawn(Math.cos(a) * 3.1, -1.15, Math.sin(a) * 3.1, 0, rr(2, 5), 0, rr(0.5, 1), 0.5, 0.1, 0.4, 0.9, 1, 1, SPR.GLOW);
+    }
+    FX.update(dt, this.cam);
+  },
+  hangarSelect(dir) {
+    const H = this.hangar, n = VEHICLES.length;
+    H.from = H.sel; H.sel = (H.sel + dir + n) % n; H.dir = dir; H.slide = 0; H.annT = 0.3;
+    this.ann = null;
+    SFX.roll(); Haptics.ui();
+  },
+  hangarLaunch() {
+    const v = VEHICLES[this.hangar.sel];
+    if (!vehicleUnlocked(v)) { SFX.menuBack(); return; }
+    this.save.vehicle = v.id; this.writeSave();
+    this.score = 0; this.player.reset(true); this.said.clear();
+    this.setState('brief');
+  },
+  // Frame the ship left of centre in landscape (stats on the right), high in portrait.
+  hangarCamera(r) {
+    const cam = this.cam, aspect = r.sceneW / r.sceneH, land = aspect >= 1, t = this.realTime;
+    cam.fov = 36 * DEG;
+    const fov = land ? cam.fov : Math.min(100 * DEG, 2 * Math.atan(Math.tan(cam.fov / 2) * 1.55 / Math.max(0.5, aspect)));
+    const D = land ? 13 : 10.5, halfH = Math.tan(fov / 2) * D, halfW = halfH * aspect;
+    const ox = land ? 0.42 * halfW : 0, oy = land ? -0.08 * halfH : -0.34 * halfH;
+    cam.pos.set(ox + Math.sin(t * 0.25) * 1.2, oy + (land ? 3.6 : 5), D);
+    cam.target.set(ox, oy, 0); cam.up.set(0, 1, 0);
+  },
+  drawHangarScene(r) {
+    const H = this.hangar, t = this.realTime, M = _M;
+    m4euler(M, -26, 4, -70, t * 0.03, 0.4, 0.1, 26);
+    r.draw(MODELS.planet, M, { tint: [0.35, 0.5, 1, 1], tex: TEX.detail, texMix: 0.5, uvScale: [2, 1], fog: 0 });
+    m4euler(M, 0, -1.4, 0, t * 0.15, 0, 0, 1);
+    r.draw(MODELS.pad, M, { chrome: 0.35 });
+    r.sprite(0, -1.2, 0, 7, 7, 0, SPR.GLOW, 0.3, 0.7, 1, 0.35);
+    const k = easeOutCubic(H.slide), bob = Math.sin(t * 1.6) * 0.12;
+    const ship = (i, x, a) => {
+      const v = VEHICLES[i], open = vehicleUnlocked(v);
+      m4euler(M, x, bob, 0, t * 0.5 + (1 - k) * 2 * H.dir, 0.12, Math.sin(t * 1.1) * 0.06, 1.25);
+      r.draw(MODELS[v.model], M, open ? { chrome: 0.35, tint: [1, 1, 1, a] } : { tint: [0.04, 0.04, 0.07, 1], chrome: 0, fog: 0 });
+    };
+    if (k < 1) ship(H.from, -k * 10 * H.dir, 1);
+    ship(H.sel, (1 - k) * 10 * H.dir, 1);
+  },
+
   // ---- briefing ------------------------------------------------------------
   enter_brief() {
     Input.mode = 'menu';
@@ -657,7 +728,7 @@ const Game = {
   // Keep the action flowing: if the sky goes quiet between scripted events,
   // send in a small themed wave.
   fillerCheck(dt) {
-    const busy = this.enemies.some((e) => !e.dead && !e.T.solid && e.type !== 'mine');
+    const busy = this.enemies.some((e) => !e.dead && !e.T.solid && e.type !== 'mine' && e.type !== 'prism');
     if (busy) { this.quietT = 0; return; }
     this.quietT = (this.quietT || 0) + dt;
     const next = this.stage.script[this.scriptIdx];
@@ -676,6 +747,7 @@ const Game = {
       () => loops('swooper', F.line(2, 12, 0, rr(1, 5))),
     ];
     pick(waves)()(this);
+    if (Math.random() < 0.25) this.spawnPod(rr(-8, 8), rr(0, 5));
   },
   updateProp(p, dt) {
     if (p.kind === 'vent') {
@@ -708,7 +780,11 @@ const Game = {
       let hit = false;
       for (const e of this.enemies) {
         if (e.dead) continue;
-        if (segSphere(b.pd, b.px, b.py, b.d, b.x, b.y, e.d, e.x, e.y, e.r + 0.4)) { e.damage(b.dmg, b); hit = true; break; }
+        if (segSphere(b.pd, b.px, b.py, b.d, b.x, b.y, e.d, e.x, e.y, e.r + 0.4)) {
+          if (e.damage(b.dmg, b) && b.pierce > 0) b.pierce--; // bass bolts punch through what they kill
+          else hit = true;
+          break;
+        }
       }
       if (!hit && this.boss && !this.boss.dead) for (const part of this.boss.parts) {
         if (!part.alive && part.weak) continue;
@@ -727,10 +803,14 @@ const Game = {
       const b = eb[i];
       b.d += b.vd * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
       let dead = b.life <= 0 || b.d < P.d - 20;
+      if (!dead && P.alive && P.notes > 0 && Math.abs(b.d - P.d) < b.r + 1.2) { // harmony notes block shots
+        for (let n = 0; n < P.notes; n++) { const [nx, ny] = P.notePos(n); if (Math.hypot(b.x - nx, b.y - ny) < b.r + 1.1) { P.noteBlock(n); dead = true; break; } }
+      }
       if (!dead && P.alive) {
         const dd = b.d - P.d, dx = b.x - P.x, dy = b.y - P.y, r = b.r + P.r * 0.75;
         if (dd * dd + dx * dx + dy * dy < r * r) {
-          if (P.rolling) {
+          if (P.pow.fortissimo > 0) { this.rail.world(_p, b.d, b.x, b.y); FX.hitSpark(_p.x, _p.y, _p.z, 0, 0, -this.speed, [1, 0.9, 1]); dead = true; }
+          else if (P.rolling) {
             // deflect it straight back — it becomes yours
             SFX.deflect(); this.rail.world(_p, b.d, b.x, b.y); FX.hitSpark(_p.x, _p.y, _p.z, 0, 0, -this.speed, [0.6, 0.9, 1]);
             this.pbullets.push({ d: b.d + 1, x: b.x, y: b.y, pd: b.d, px: b.x, py: b.y, vd: this.speed + LASER_REL * 0.8, vx: -b.vx * 0.3, vy: -b.vy * 0.3, life: 1, dmg: 2, lv: 3 });
@@ -769,8 +849,9 @@ const Game = {
         h.vx = lerp(h.vx, (dx / l) * (sp - this.speed), k);
         h.vy = lerp(h.vy, (dy / l) * (sp - this.speed), k);
         if (l < (tg.r || 2) + 1.2) {
-          if (tg.isPart) tg.boss.hit(tg, 2, { homing: true, volley: h.volley });
-          else tg.damage(tg.T && tg.T.big ? 3 : 2, { homing: true, volley: h.volley });
+          const hk = this.player.V.homing;
+          if (tg.isPart) tg.boss.hit(tg, 2 * hk, { homing: true, volley: h.volley });
+          else tg.damage((tg.T && tg.T.big ? 3 : 2) * hk, { homing: true, volley: h.volley });
           if (tg.lockCount) tg.lockCount = Math.max(0, tg.lockCount - 1);
           this.rail.world(_p, h.d, h.x, h.y);
           FX.spawn(_p.x, _p.y, _p.z, 0, 0, -this.speed, 0.25, 4, 1, 0.6, 1, 0.9, 1, SPR.SPARKLE);
@@ -961,6 +1042,7 @@ const Game = {
     // viewport + resolution
     r.resize(Screen.cssW, Screen.cssH, Screen.dpr, this.settings.res || 0, this.quality);
     const st = this.state;
+    if (st === 'hangar') this.hangarCamera(r);
     const env = this.env || ENVS.brief;
     const cam = this.cam;
     // portrait: widen vertical fov so the playfield stays visible
@@ -991,6 +1073,8 @@ const Game = {
       this.drawProjectiles(r);
     } else if (st === 'brief') {
       this.drawBriefScene(r);
+    } else if (st === 'hangar') {
+      this.drawHangarScene(r);
     } else if (st === 'logo') {
       FX.update(dt, cam);
     }
@@ -1030,10 +1114,10 @@ const Game = {
     const R = this.rail;
     for (const b of this.pbullets) {
       R.world(_p, b.d, b.x, b.y);
-      const c = b.lv >= 3 ? [0.4, 0.8, 1] : [0.45, 1, 0.5];
+      const c = b.col || (b.lv >= 3 ? [0.4, 0.8, 1] : [0.45, 1, 0.5]), w = b.w || 0.45;
       const k = 0.014;
-      r.streak(_p.x, _p.y, _p.z, -(R.slope(b.d)[0] * b.vd + b.vx) * k, -(b.vy) * k, b.vd * k, 0.45, SPR.BOLT, c[0], c[1], c[2], 1);
-      r.sprite(_p.x, _p.y, _p.z, 1.1, 1.1, 0, SPR.GLOW, c[0], c[1], c[2], 0.6);
+      r.streak(_p.x, _p.y, _p.z, -(R.slope(b.d)[0] * b.vd + b.vx) * k, -(b.vy) * k, b.vd * k, w, SPR.BOLT, c[0], c[1], c[2], 1);
+      r.sprite(_p.x, _p.y, _p.z, 1.1 + w, 1.1 + w, 0, SPR.GLOW, c[0], c[1], c[2], 0.6);
     }
     const pulse = 0.8 + 0.2 * Math.sin(this.realTime * 20);
     for (const b of this.ebullets) {
@@ -1061,7 +1145,7 @@ const Game = {
     m4euler(M, 16 + Math.sin(t * 0.1) * 2, 6 + Math.sin(t * 0.3), 20, -0.9 + Math.sin(t * 0.07) * 0.05, 0.08, Math.sin(t * 0.25) * 0.05, 0.35);
     r.draw(MODELS.cadence, M, { chrome: 0.2 });
     // squadron escort
-    ['player', 'oz', 'sable', 'tobi'].forEach((m, i) => {
+    [this.player.V.model, 'oz', 'sable', 'tobi'].forEach((m, i) => {
       m4euler(M, 10 + i * 3 + Math.sin(t + i) * 0.4, 9 + (i % 2) * 2 + Math.cos(t * 1.3 + i) * 0.3, 26 - i * 2, -0.9, 0.05, Math.sin(t + i) * 0.2, 0.35);
       r.draw(MODELS[m], M, { chrome: 0.3 });
     });

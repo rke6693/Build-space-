@@ -538,15 +538,28 @@ const SFX = {
   },
   ok() { return AudioSys.ok && AudioSys.running(); },
   bus() { return AudioSys.sfxBus; },
-  laser(level = 1) {
+  laser(level = 1, pitch = 1) { // pitch: each vehicle's gun has its own register
     if (!this.ok()) return;
     const A = AudioSys, t = A.ctx.currentTime;
     if (t - this.lastLaser < 0.035) return;
     this.lastLaser = t;
-    const root = mtof(this.chordTone(0, 6));
-    const g = A.gainEnv(t, 0.001, 0.07, 0, 0.03, 0.04, 0.16, A.route(this.bus(), 0.05, 0.06));
-    const o = A.osc(level >= 2 ? 'p25' : 'square', root * 1.5, t, g._stop, A.filter('lowpass', 5000, 1, g));
-    o.frequency.exponentialRampToValueAtTime(root * 0.5, t + 0.08);
+    const root = mtof(this.chordTone(0, 6)) * pitch, bass = pitch < 0.8;
+    const g = A.gainEnv(t, 0.001, bass ? 0.13 : 0.07, 0, 0.03, bass ? 0.07 : 0.04, bass ? 0.22 : 0.16, A.route(this.bus(), 0.05, 0.06));
+    const o = A.osc(bass ? 'sawtooth' : level >= 2 ? 'p25' : 'square', root * 1.5, t, g._stop, A.filter('lowpass', bass ? 2400 : 5000, bass ? 3 : 1, g));
+    o.frequency.exponentialRampToValueAtTime(root * 0.5, t + (bass ? 0.14 : 0.08));
+  },
+  powerUp(kind) { // quick rising arpeggio up the current chord
+    if (!this.ok()) return;
+    const dest = AudioSys.route(this.bus(), 0.35, 0.2), t = AudioSys.ctx.currentTime, big = kind === 'fortissimo' || kind === 'encore';
+    const n = big ? 8 : 5;
+    for (let i = 0; i < n; i++) INST.sqlead(t + i * 0.045, Math.min(100, this.chordTone(i, 5) + 12), 0.05, 0.8, dest);
+    INST.bell(t + n * 0.045, Math.min(100, this.chordTone(n, 5) + 12), 0.3, 1, dest);
+    if (big) INST.bell(t + n * 0.045, Math.min(100, this.chordTone(n + 2, 5) + 12), 0.4, 0.8, dest);
+  },
+  powerDown() {
+    if (!this.ok()) return;
+    const dest = AudioSys.route(this.bus(), 0.3, 0.1), t = AudioSys.ctx.currentTime;
+    INST.sqlead(t, 79, 0.06, 0.6, dest); INST.sqlead(t + 0.07, 72, 0.06, 0.6, dest); INST.sqlead(t + 0.14, 67, 0.1, 0.6, dest);
   },
   lock(k) {
     if (!this.ok()) return;
