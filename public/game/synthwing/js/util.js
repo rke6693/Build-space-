@@ -240,6 +240,19 @@ function segSphere(p0x, p0y, p0z, p1x, p1y, p1z, cx, cy, cz, r) {
 }
 
 // Safe localStorage wrappers (private mode / sandboxed frames can throw).
+// Error log shared by the frame guard and the global handlers: kept in memory
+// (window.SYNTHWING_ERRORS) so a failure is recorded without ever reaching the player.
+const ERROR_LOG = [];
+function reportError(where, e) {
+  try {
+    const msg = String((e && (e.stack || e.message)) || e).slice(0, 500);
+    ERROR_LOG.push({ where, msg, t: Math.round(performance.now()) });
+    if (ERROR_LOG.length > 40) ERROR_LOG.shift();
+    console.error('[synthwing:' + where + ']', e);
+  } catch (err) { /* logging must never throw */ }
+}
+if (typeof window !== 'undefined') window.SYNTHWING_ERRORS = ERROR_LOG;
+
 const Store = {
   get(key, fallback) {
     try { const s = window.localStorage.getItem(key); return s ? JSON.parse(s) : fallback; } catch (e) { return fallback; }

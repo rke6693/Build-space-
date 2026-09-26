@@ -50,6 +50,9 @@ const AudioSys = {
       this.ctx = new AC({ latencyHint: 'interactive' });
     } catch (e) { this.ctx = null; return; }
     const ctx = this.ctx;
+    // iOS marks the context 'interrupted' for Siri, calls and alarms: pause a
+    // live game so it never carries on in silence (a tap on RESUME restarts audio).
+    ctx.onstatechange = () => { if (ctx.state === 'interrupted' && Game.state === 'play' && !Game.overlay) Game.pause(); };
     this.comp = ctx.createDynamicsCompressor();
     this.comp.threshold.value = -12; this.comp.knee.value = 12; this.comp.ratio.value = 4;
     this.comp.attack.value = 0.004; this.comp.release.value = 0.2;
@@ -745,3 +748,9 @@ const SFX = {
     else if (cons && 'tkpbdgq'.includes(cons)) { const c = A.gainEnv(t, 0.001, 0.012, 0, 0.005, 0.008, 0.2 * loud, dest); A.noiseSrc(t, c._stop, A.filter('bandpass', 1600 * k, 1.2, c)); }
   },
 };
+
+// Sound is never worth a crash: every effect call is guarded and logged.
+for (const k of Object.keys(SFX)) {
+  const f = SFX[k];
+  if (typeof f === 'function') SFX[k] = function () { try { return f.apply(SFX, arguments); } catch (e) { reportError('sfx.' + k, e); return undefined; } };
+}

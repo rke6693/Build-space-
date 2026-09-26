@@ -48,10 +48,20 @@ const Game = {
     this.player = new Player();
     this.setState('boot');
   },
+  // Saves come from storage we don't control (old versions, other tabs, hand
+  // edits), so every field is type-checked and clamped before the game sees it.
   loadSave() {
-    const s = Store.get(SAVE_KEY, null) || {};
-    this.save = Object.assign({ unlocked: 1, best: {}, medals: {}, forks: {}, cleared: false, hiscore: 0, gold: false, plays: 0, vehicle: 'synthwing' }, s);
-    let saved = s.settings;
+    const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+    const int = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v) ? clamp(Math.round(v), lo, hi) : d);
+    const scores = (o) => { const r = {}; for (const k in obj(o)) { const v = o[k]; if (typeof v === 'number' && isFinite(v) && v >= 0) r[k] = Math.round(v); } return r; };
+    const flags = (o) => { const r = {}; for (const k in obj(o)) if (o[k]) r[k] = true; return r; };
+    const s = obj(Store.get(SAVE_KEY, null));
+    this.save = {
+      unlocked: int(s.unlocked, 1, 5, 1), best: scores(s.best), medals: flags(s.medals), forks: flags(s.forks), awards: flags(s.awards),
+      cleared: !!s.cleared, hiscore: int(s.hiscore, 0, 1e10, 0), gold: !!s.gold, plays: int(s.plays, 0, 1e9, 0),
+      vehicle: typeof s.vehicle === 'string' ? s.vehicle : 'synthwing', tally: scores(s.tally),
+    };
+    let saved = s.settings && typeof s.settings === 'object' ? Object.assign({}, s.settings) : null;
     if (!saved) {
       saved = {};
       // first launch: honour the system "reduce motion" preference
@@ -60,8 +70,21 @@ const Game = {
       // v2 made native HD (without scanlines) the default look
       saved.res = 0; saved.crt = false;
     }
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, saved, { v: SETTINGS_VERSION });
-    if (typeof this.settings.haptics === 'boolean') this.settings.haptics = this.settings.haptics ? 2 : 0; // was ON/OFF
+    const S = this.settings = Object.assign({}, DEFAULT_SETTINGS, saved, { v: SETTINGS_VERSION });
+    const oneOf = (v, list, d) => (list.includes(v) ? v : d);
+    S.steer = oneOf(S.steer, ['stick', 'pad'], 'stick');
+    S.res = oneOf(S.res, [0, 480, 360, 240], 0);
+    S.sens = int(S.sens, 1, 5, 3); S.diff = int(S.diff, 0, DIFFS.length - 1, 1);
+    S.music = int(S.music, 0, 10, 8); S.sfx = int(S.sfx, 0, 10, 9); S.voice = int(S.voice, 0, 10, 8);
+    S.haptics = typeof S.haptics === 'boolean' ? (S.haptics ? 2 : 0) : int(S.haptics, 0, 2, 2); // was ON/OFF
+    for (const k of ['invertY', 'lefty', 'crt', 'dither', 'shake', 'flash', 'fps']) S[k] = !!S[k];
+  },
+  // Last resort when a screen keeps throwing: drop back to a clean title screen.
+  recover() {
+    this.overlay = null; HUD.sub = null; Input.releaseAll();
+    this.timers.length = 0; this.ann = null;
+    AudioSys.resume(); AudioSys.setSilence(0, 0.05); AudioSys.setDuck(0);
+    this.setState('title');
   },
   writeSave() { this.save.settings = this.settings; Store.set(SAVE_KEY, this.save); },
   applySettings() {
@@ -442,7 +465,7 @@ const Game = {
     this.overlayT = this.overlay ? this.overlayT + dt : 0;
     HUD.resize();
     Input.poll(dt);
-    Music.update();
+    try { Music.update(); } catch (e) { reportError('music', e); } // audio trouble must never stall the game
     this.readBeats();
     const upd = this['update_' + this.state];
     if (upd && !this.overlay) { upd.call(this, dt); this.updateAnnounce(dt); this.updateDuck(); }

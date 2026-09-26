@@ -6,6 +6,10 @@
 // DualSense controller paired to an iPhone works through the Gamepad API).
 // =============================================================================
 
+// getGamepads() throws a SecurityError where a permissions policy blocks it
+// (e.g. inside some iframes), so every call goes through here.
+function safePads() { try { return (navigator.getGamepads && navigator.getGamepads()) || []; } catch (e) { return []; } }
+
 const Input = {
   mode: 'menu', // 'menu' | 'play'
   move: { x: 0, y: 0 },
@@ -170,7 +174,7 @@ const Input = {
       mx += dx * k; my += dy * k;
     }
     // gamepad
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const pads = safePads();
     for (const gp of pads) {
       if (!gp || !gp.connected) continue;
       const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
@@ -281,7 +285,7 @@ const Haptics = {
     if (this.switchTick) this.ticks(light ? [0] : ticks); // best effort outside a gesture
   },
   rumble(pad, k) {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const pads = safePads();
     for (const gp of pads) {
       if (!gp || !gp.vibrationActuator) continue;
       try {
