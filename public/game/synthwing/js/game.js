@@ -11,14 +11,18 @@ const DIFFS = [
   { name: 'PILOT', dmg: 1, fire: 1, bullet: 1, hp: 1, dodge: 0.3 },
   { name: 'ACE', dmg: 1.45, fire: 1.45, bullet: 1.2, hp: 1.3, dodge: 0.55 },
 ];
-const DEFAULT_SETTINGS = { steer: 'stick', sens: 3, invertY: false, lefty: false, diff: 1, res: 240, crt: true, dither: true, shake: true, flash: true, music: 8, sfx: 9, haptics: true, fps: false };
+// res: internal vertical resolution (0 = native display resolution).
+const SETTINGS_VERSION = 2;
+const DEFAULT_SETTINGS = { v: SETTINGS_VERSION, steer: 'stick', sens: 3, invertY: false, lefty: false, diff: 1, res: 0, crt: false, dither: true, shake: true, flash: true, music: 8, sfx: 9, haptics: true, fps: false };
 const SAVE_KEY = 'synthwing64.save.v1';
 
 const Game = {
   renderer: null, cam: new Camera(), frustum: new Frustum(),
-  state: 'boot', stateT: 0, paused: false, overlay: null,
+  state: 'boot', stateT: 0, overlay: null, overlayT: 0,
   save: null, settings: null,
-  time: 0, realTime: 0, dt: 0,
+  time: 0, realTime: 0, timers: [],
+  // dynamic resolution (native mode only): fraction of the display resolution
+  quality: 1, perfT: 0, perfN: 0, perfSlow: 0, perfGood: 0,
   // world
   stage: null, stageIdx: 0, env: null, rail: null, terrain: null, speed: 58, railD: 0, stageTime: 0, bar: 0, barDur: 2,
   player: null, enemies: [], pbullets: [], homing: [], ebullets: [], pickups: [], props: [], wingmen: [], boss: null, bomb: null,
@@ -26,14 +30,14 @@ const Game = {
   score: 0, stageStartScore: 0, stats: null, res: { level: 0, meter: 0, idle: 0 },
   diff: DIFFS[1], volleyId: 0,
   // feel
-  trauma: 0, flashA: 0, flashCol: [1, 1, 1], aberration: 0, timeScale: 1, hitstopT: 0, slowmoT: 0, saturation: 1, glitch: 0,
+  trauma: 0, flashA: 0, flashCol: [1, 1, 1], aberration: 0, hitstopT: 0, slowmoT: 0, saturation: 1, glitch: 0,
   fovKick: 0, shocks: [], hotTarget: null,
   // beat flags (set each frame from the sequencer)
   onBeat: false, on8th: false, onBar: false, stepCrossed: false, beatIndex: 0, barIndex: 0, stepIndex: 0,
   // dialogue
   dialog: { queue: [], cur: null }, said: new Set(), banners: [], warnT: 0, bossCard: 0,
-  reticle: { x: 0.5, y: 0.5, nx: 0.5, ny: 0.5, ok: false },
-  restore: 0, silence: false, invincible: false,
+  reticle: { nx: 0.5, ny: 0.5, ok: false },
+  restore: 0, silence: false,
 
   // ---------------------------------------------------------------------------
   init(canvas) {
@@ -47,7 +51,16 @@ const Game = {
   loadSave() {
     const s = Store.get(SAVE_KEY, null) || {};
     this.save = Object.assign({ unlocked: 1, best: {}, medals: {}, forks: {}, cleared: false, hiscore: 0, gold: false, plays: 0 }, s);
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, s.settings || {});
+    let saved = s.settings;
+    if (!saved) {
+      saved = {};
+      // first launch: honour the system "reduce motion" preference
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { saved.shake = false; saved.flash = false; }
+    } else if ((saved.v || 1) < SETTINGS_VERSION) {
+      // v2 made native HD (without scanlines) the default look
+      saved.res = 0; saved.crt = false;
+    }
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, saved, { v: SETTINGS_VERSION });
   },
   writeSave() { this.save.settings = this.settings; Store.set(SAVE_KEY, this.save); },
   applySettings() {
@@ -78,7 +91,7 @@ const Game = {
     this.speed = speed;
     this.enemies.length = 0; this.pbullets.length = 0; this.homing.length = 0; this.ebullets.length = 0;
     this.pickups.length = 0; this.props.length = 0; this.boss = null; this.bomb = null;
-    FX.clear(); FX.setWeather(this.env.particles); this.shocks.length = 0; this.fovKick = 0;
+    FX.clear(); FX.setWeather(this.env.particles); this.shocks.length = 0; this.fovKick = 0; this.timers.length = 0;
     this.saturation = 1; this.glitch = 0; this.silence = false; AudioSys.setSilence(0, 0.05);
   },
   terrainHeight(wx, wz) { return this.terrain ? this.terrain.height(wx, wz) : -9999; },
@@ -92,6 +105,15 @@ const Game = {
   shockwave(wx, wy, wz, str = 1) {
     if (this.shocks.length >= 3) this.shocks.shift();
     this.shocks.push({ x: wx, y: wy, z: wz, t: 0, max: 0.6, str: this.settings.flash ? str : str * 0.4 });
+  },
+  // Run fn after `sec` seconds of game time (stops while paused; cleared on scene change).
+  later(sec, fn) { this.timers.push({ t: sec, fn }); },
+  updateTimers(dt) {
+    for (let i = this.timers.length - 1; i >= 0; i--) {
+      const tm = this.timers[i];
+      tm.t -= dt;
+      if (tm.t <= 0) { this.timers.splice(i, 1); tm.fn(); }
+    }
   },
   entityWorldVel(e) { return { x: e.wvx || 0, y: e.wvy || 0, z: e.wvz !== undefined ? e.wvz : -this.speed }; },
 
@@ -108,7 +130,7 @@ const Game = {
     }
     this.barDur = (60 / SONGS[st.song].bpm) * 4;
     const startBar = fromCheckpoint && this.checkpointHit ? st.checkpointBar : 0;
-    this.stageTime = startBar * this.barDur;
+    this.stageTime = startBar * this.barDur; this.bar = startBar;
     this.railD = 400 + this.stageTime * this.speed;
     this.scriptIdx = st.script.findIndex((e) => e[0] >= startBar);
     if (this.scriptIdx < 0) this.scriptIdx = st.script.length;
@@ -118,7 +140,7 @@ const Game = {
     this.restore = st.restore ? (startBar ? 0.4 : 0) : 1;
     this.dialog.queue.length = 0; this.dialog.cur = null; this.banners.length = 0;
     this.phase = 'intro'; this.phaseT = 0; this.warnT = 0; this.bossCard = 0;
-    this.timeScale = 1; this.slowmoT = 0; this.hitstopT = 0;
+    this.slowmoT = 0; this.hitstopT = 0;
     this.terrain.prewarm(this.railD, 560, this.renderer);
     Music.play(SONGS[st.song], { layer: 1 });
     this.updateCamera(0, true);
@@ -224,14 +246,13 @@ const Game = {
     R.meter += 0.3 * v / (1 + R.level * 0.45);
     if (R.meter >= 1) {
       R.level++; R.meter = R.level >= 4 ? 1 : 0.05;
-      this.banner(R.level >= 4 ? 'RESONANCE MAX!' : 'RESONANCE ' + (R.level + 1), R.level >= 4 ? 'rainbow' : '#9ff6ff');
-      if (R.level >= 4) { SFX.ring(true); this.flash([1, 1, 1], 0.15); }
+      if (R.level >= 4) { this.banner('RESONANCE MAX!', 'rainbow'); SFX.ring(true); this.flash([1, 1, 1], 0.15); }
     }
     this.syncLayers();
   },
   resonanceHit() {
     const R = this.res;
-    if (R.level > 0) { R.level--; this.banner('RESONANCE DOWN', '#ff7a7a'); }
+    if (R.level > 0) R.level--;
     R.meter = 0;
     this.syncLayers();
   },
@@ -267,11 +288,10 @@ const Game = {
     this.banner('TUNING FORK FOUND!', '#ffe14a', true);
     this.say('tobi', "A golden tuning fork! Those are legendary — hang on to it!");
   },
-  onCheckpoint() {
+  onCheckpoint(through) {
     this.checkpointHit = true;
-    this.player.heal(30);
+    if (through) { this.player.heal(30); SFX.ring(true); }
     this.banner('CHECKPOINT', '#6ff6ff', true);
-    SFX.ring(true);
   },
 
   // ---------------------------------------------------------------------------
@@ -285,7 +305,7 @@ const Game = {
     Music.queue(key === 'hush' ? SONGS.final : SONGS.boss, { layer: 1 + this.res.level });
     SFX.roar();
     const lines = { conductor: ['static', 'You call that noise MUSIC? I will conduct your silence!'], grinder: ['static', 'CRUNCH. Your little songs taste like gravel.'], serpent: ['static', 'Hush now... let the cold keep you quiet forever...'], anvil: ['static', 'I will hammer your song flat!'], hush: ['hush', '...then let there be nothing at all.'] };
-    const l = lines[key]; if (l) setTimeout(() => this.say(l[0], l[1], true), 1500);
+    const l = lines[key]; if (l) this.later(1.5, () => this.say(l[0], l[1], true));
   },
   onBossDefeated(b) {
     this.slowmoT = 2.2;
@@ -304,7 +324,7 @@ const Game = {
     this.silence = true;
     AudioSys.setSilence(1, 0.6);
     this.say('hush', '...listen... to... nothing.', true);
-    setTimeout(() => this.say('oz', "The music's gone! Keep shooting that mask — every hit brings a note back!", true), 3500);
+    this.later(3.5, () => this.say('oz', "The music's gone! Keep shooting that mask — every hit brings a note back!", true));
   },
   exitSilence() {
     this.silence = false;
@@ -322,22 +342,33 @@ const Game = {
   // ---------------------------------------------------------------------------
   // Main tick
   // ---------------------------------------------------------------------------
-  frame(dt, skipRender) {
+  frame(dt) {
     this.realTime += dt;
-    this.overlayT = this.overlay ? (this.overlayT || 0) + dt : 0;
+    this.overlayT = this.overlay ? this.overlayT + dt : 0;
     HUD.resize();
     Input.poll(dt);
     Music.update();
     this.readBeats();
-    if (this.state !== 'play') {
-      if (this.overlay) { /* menus handled in HUD */ }
-    }
     const upd = this['update_' + this.state];
     if (upd && !this.overlay) upd.call(this, dt);
-    else if (this.overlay && this.state === 'play') { /* paused */ }
     this.stateT += dt;
-    if (!skipRender) { this.render(dt); HUD.draw(dt); }
+    this.adaptQuality(dt);
+    this.render(dt);
+    HUD.draw(dt);
     Input.endFrame();
+  },
+  // Native mode renders at the full display resolution; if the device can't
+  // hold ~50 fps there, step the internal resolution down (and back up later).
+  adaptQuality(dt) {
+    if (this.settings.res !== 0) { this.quality = 1; return; }
+    this.perfT += dt; this.perfN++;
+    if (dt > 1 / 45) this.perfSlow++;
+    if (this.perfT < 2) return;
+    const slowFrac = this.perfSlow / this.perfN;
+    if (slowFrac > 0.5 && this.quality > 0.5) { this.quality = Math.max(0.5, this.quality - 0.125); this.perfGood = 0; }
+    else if (slowFrac < 0.08 && this.quality < 1) { if (++this.perfGood >= 3) { this.quality = Math.min(1, this.quality + 0.125); this.perfGood = 0; } }
+    else this.perfGood = 0;
+    this.perfT = 0; this.perfN = 0; this.perfSlow = 0;
   },
   readBeats() {
     this.onBeat = this.on8th = this.onBar = this.stepCrossed = false;
@@ -375,7 +406,7 @@ const Game = {
     for (const w of this.wingmen) { w.d = P.d - 2; }
     this.terrain.prewarm(this.railD, 520, this.renderer);
     if (Music.name !== 'title') Music.play(SONGS.title, { layer: 5 });
-    this.menu = 'main'; this.menuSel = 0; this.camShot = 0; this.camShotT = 0;
+    this.camShot = 0; this.camShotT = 0;
     this.logoMesh = this.logoMesh || buildLogoMesh('SYNTHWING', { colors: LOGO_COLORS });
     this.logo64 = this.logo64 || buildLogoMesh('64', { voxel: 1, depth: 2.4, colors: LOGO64_COLORS });
   },
@@ -521,6 +552,7 @@ const Game = {
       this.saturation = this.silence ? 0.05 : this.boss && this.boss.dead ? damp(this.saturation, 1, 1.5, dt) : 0.08 + this.restore * 0.92;
       this.glitch = this.silence ? 0.6 : (1 - this.restore) * 0.25;
     }
+    this.updateTimers(gdt);
     FX.update(gdt, this.cam);
     this.terrain.update(this.railD, 560, this.renderer, 2);
     this.updateDialog(dt);
@@ -615,7 +647,7 @@ const Game = {
           if (P.rolling) {
             // deflect it straight back — it becomes yours
             SFX.deflect(); this.rail.world(_p, b.d, b.x, b.y); FX.hitSpark(_p.x, _p.y, _p.z, 0, 0, -this.speed, [0.6, 0.9, 1]);
-            this.pbullets.push({ d: b.d + 1, x: b.x, y: b.y, pd: b.d, px: b.x, py: b.y, vd: this.speed + LASER_REL * 0.8, vx: -b.vx * 0.3, vy: -b.vy * 0.3, life: 1, dmg: 2, lv: 3, deflected: true });
+            this.pbullets.push({ d: b.d + 1, x: b.x, y: b.y, pd: b.d, px: b.x, py: b.y, vd: this.speed + LASER_REL * 0.8, vx: -b.vx * 0.3, vy: -b.vy * 0.3, life: 1, dmg: 2, lv: 3 });
             dead = true;
           } else if (P.hurt(b.dmg)) dead = true;
         }
@@ -661,8 +693,8 @@ const Game = {
       }
       h.d += h.vd * dt; h.x += h.vx * dt; h.y += h.vy * dt;
       this.rail.world(_p, h.d, h.x, h.y);
-      h.trail.pts.unshift(new V3(_p.x, _p.y, _p.z));
-      if (h.trail.pts.length > h.trail.maxPts) h.trail.pts.pop();
+      const tp = h.trail.pts.length >= h.trail.maxPts ? h.trail.pts.pop() : new V3();
+      h.trail.pts.unshift(tp.set(_p.x, _p.y, _p.z));
       if (h.life <= 0) { h.trail.alive = false; H[i] = H[H.length - 1]; H.pop(); }
     }
   },
@@ -714,7 +746,7 @@ const Game = {
     this.boss = null;
     Music.play(SONGS.clear, { loop: false });
     for (const w of this.wingmen) if (w.hp > 0) w.setState('join');
-    this.say('maren', ['Corona sings again! Outstanding work, Synthwing!', "The Halo Belt is humming! You're on a roll, squadron.", "Frostline's aurora is singing — I can hear it from here!", 'The Forge is cold and quiet. The good kind of quiet.', ''][this.stageIdx] || 'Mission complete!', true);
+    this.say('maren', ['Corona sings again! Outstanding work, Synthwing!', "The Halo Belt is humming! You're on a roll, squadron.", "Frostline's aurora is singing — I can hear it from here!", 'The Forge is cold and quiet. The good kind of quiet.', 'The Octave Cluster is singing again. Synthwing... thank you.'][this.stageIdx] || 'Mission complete!', true);
   },
   finishStage() {
     const st = this.stage, s = this.save;
@@ -732,19 +764,8 @@ const Game = {
     this.setState('results');
   },
 
-  // Debug: jump the current stage to a bar (used by automated tests).
-  debugJump(bar) {
-    const st = this.stage; if (!st) return;
-    this.stageTime = bar * this.barDur; this.bar = bar;
-    this.railD = 400 + this.stageTime * this.speed;
-    this.player.d = this.railD + PLAYER_AHEAD;
-    this.scriptIdx = st.script.findIndex((e) => e[0] >= bar); if (this.scriptIdx < 0) this.scriptIdx = st.script.length;
-    this.enemies.length = 0; this.ebullets.length = 0; this.props.length = 0; this.pickups.length = 0;
-    if (this.phase === 'intro') { this.phase = 'main'; this.player.control = true; }
-    this.terrain.prewarm(this.railD, 560, this.renderer);
-  },
   pause() {
-    this.overlay = 'pause'; this.menuSel = 0;
+    this.overlay = 'pause';
     Input.mode = 'menu'; Input.releaseAll();
     AudioSys.suspend();
     SFX.menuBack();
@@ -775,7 +796,7 @@ const Game = {
   },
 
   // ---- game over ---------------------------------------------------------------
-  enter_gameover() { Input.mode = 'menu'; Music.play(SONGS.gameover, { loop: false }); this.menuSel = 0; },
+  enter_gameover() { Input.mode = 'menu'; Music.play(SONGS.gameover, { loop: false }); },
   update_gameover(dt) { this.time += dt; FX.update(dt, this.cam); },
   continueGame() {
     this.score = this.stageStartScore;
@@ -846,10 +867,10 @@ const Game = {
   // Rendering
   // ---------------------------------------------------------------------------
   render(dt) {
-    const r = this.renderer, G = this;
+    const r = this.renderer;
     if (r.lost) return;
     // viewport + resolution
-    r.resize(Screen.cssW, Screen.cssH, Screen.dpr, this.settings.res || 0);
+    r.resize(Screen.cssW, Screen.cssH, Screen.dpr, this.settings.res || 0, this.quality);
     const st = this.state;
     const env = this.env || ENVS.brief;
     const cam = this.cam;
@@ -865,7 +886,7 @@ const Game = {
       const M = _M;
       const px = cam.pos.x + b.dir[0] * b.dist, py = cam.pos.y + b.dir[1] * b.dist, pz = cam.pos.z + b.dir[2] * b.dist;
       m4euler(M, px, py, pz, this.realTime * 0.01, b.tilt || 0, b.tilt || 0, b.scale);
-      r.draw(MODELS.planet, M, { tint: [b.tint[0], b.tint[1], b.tint[2], 1], emis: b.emis, fog: 0, tex: TEX.detail, texMix: 0.6, uvScale: [6, 3] });
+      r.draw(MODELS.planet, M, { tint: [b.tint[0], b.tint[1], b.tint[2], 1], emis: b.emis, fog: 0, tex: TEX.detail, texMix: 0.45, uvScale: [2, 1] });
       if (b.ring) { m4euler(M, px, py, pz, 0.3, b.tilt || 0, 0.2, b.scale); r.draw(MODELS.planetRing, M, { fog: 0, tint: [0.9, 0.8, 0.7, 1] }); }
     }
     if (st === 'play' || st === 'title' || st === 'results' || st === 'ending' || st === 'gameover') {
@@ -911,7 +932,7 @@ const Game = {
     if (p.kind === 'vent') {
       m4euler(_M, p.x, p.y, p.z, 0, 0, 0, 1); r.draw(MODELS.vent, _M);
       if (p.erupt > 0) { m4euler(_M, p.x, p.y + 4, p.z, this.realTime * 3, 0, 0, 1); _M[5] *= 55 * Math.min(1, p.erupt * 3); r.draw(MODELS.geyser, _M, { blend: 'add', tint: [1, 0.7, 0.4, 0.9], cull: false }); }
-      else if (this.beatIndex % 4 === 1 || this.beatIndex % 4 === 3) { this.rail; r.sprite(p.x, p.y + 5, p.z, 5, 5, 0, SPR.GLOW, 1, 0.4, 0.1, 0.6 * (1 - Music.beatPhase())); }
+      else if (this.beatIndex % 4 === 1 || this.beatIndex % 4 === 3) { r.sprite(p.x, p.y + 5, p.z, 5, 5, 0, SPR.GLOW, 1, 0.4, 0.1, 0.6 * (1 - Music.beatPhase())); }
       return;
     }
     p.draw(r);
@@ -945,7 +966,7 @@ const Game = {
     const st = STAGES[this.stageIdx], t = this.realTime, M = _M;
     const col = st.planet;
     m4euler(M, -14, -2, -10, t * 0.08, 0.35, 0.1, 22);
-    r.draw(MODELS.planet, M, { tint: [col[0], col[1], col[2], 1], tex: TEX.detail, texMix: 0.9, uvScale: [8, 4], fog: 0 });
+    r.draw(MODELS.planet, M, { tint: [col[0], col[1], col[2], 1], tex: TEX.detail, texMix: 0.5, uvScale: [2, 1], fog: 0 });
     if (st.id === 'halo') { m4euler(M, -14, -2, -10, 0.3, 0.35, 0.2, 22); r.draw(MODELS.planetRing, M, { fog: 0, tint: [0.9, 0.8, 0.7, 1] }); }
     // the Cadence cruising past
     m4euler(M, 16 + Math.sin(t * 0.1) * 2, 6 + Math.sin(t * 0.3), 20, -0.9 + Math.sin(t * 0.07) * 0.05, 0.08, Math.sin(t * 0.25) * 0.05, 0.35);

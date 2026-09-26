@@ -49,7 +49,7 @@ const FX = {
       const [dx, dy, dz] = randDir();
       this.spawn(x + dx * s, y + dy * s, z + dz * s, ivx * 0.6 + dx * 3, ivy * 0.6 + 3 + dy * 2, ivz * 0.6 + dz * 3, rr(0.9, 1.6), 2 * s, 5 * s, 0.25, 0.22, 0.26, 0.55, SPR.SMOKE, false, 1.2);
     }
-    const ring = this.spawn(x, y, z, ivx, ivy, ivz, 0.35, 1 * s, 9 * s, 1, 0.8, 0.6, 0.9, SPR.SHOCK);
+    this.spawn(x, y, z, ivx, ivy, ivz, 0.35, 1 * s, 9 * s, 1, 0.8, 0.6, 0.9, SPR.SHOCK);
     // musical notes — the signature of a Static unit being "re-tuned"
     if (opt.notes !== false) for (let i = 0; i < 2 + Math.floor(s); i++) {
       const hue = (Math.random() + (opt.hue || 0)) % 1, c = hsl(hue, 0.9, 0.65);

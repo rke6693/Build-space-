@@ -1,7 +1,7 @@
 // SYNTHWING 64 service worker: network-first with an offline fallback, so an
 // installed home-screen copy keeps working without a connection but always
 // picks up new versions when online.
-const CACHE = 'synthwing64-v1';
+const CACHE = 'synthwing64-v2';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png',
   './js/util.js', './js/gl.js', './js/mesh.js', './js/font.js', './js/models.js', './js/audio.js', './js/songs.js', './js/input.js',
   './js/world.js', './js/fx.js', './js/entities.js', './js/bosses.js', './js/stages.js', './js/game.js', './js/hud.js', './js/main.js'];

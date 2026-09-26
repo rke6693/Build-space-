@@ -96,7 +96,7 @@ function buildBossModels() {
 // ---------------------------------------------------------------------------
 class Boss {
   constructor(name, sub) {
-    this.name = name; this.sub = sub; this.t = 0; this.phase = 0;
+    this.name = name; this.sub = sub; this.t = 0;
     this.parts = []; this.dead = false; this.dying = 0; this.d = 0; this.x = 0; this.y = 0;
     this.entering = true; this.enterT = 0; this.off = 70;
     // flinch springs (whole body) + low-health state
@@ -117,7 +117,6 @@ class Boss {
     if (!this.enraged && h < 0.3) {
       this.enraged = true;
       SFX.roar(); Game.shake(0.5); Game.banner(this.name + ' IS ENRAGED!', '#ff5a5a', true);
-      Game.say('tobi', "It's falling apart and getting desperate — finish it!", true);
     }
     if (h < 0.45) {
       this.smokeT -= dt;
@@ -279,7 +278,7 @@ class BossConductor extends Boss {
     this.drawPart(r, BOSS_MODELS.conductorHull, this.hull, this.t * 0.2, 0, 0, 1, { flash: this.hull.flash });
     for (const [i, arm] of [[0, this.armL], [1, this.armR]]) {
       if (!arm.alive) continue;
-      const s = i === 0 ? -1 : 1, ang = this.armAng[i];
+      const s = i === 0 ? -1 : 1;
       // arm beam from shoulder to orb
       for (let k = 1; k < 5; k++) {
         const u = k / 5;

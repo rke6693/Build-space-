@@ -48,8 +48,6 @@ class Player {
     this.hitFlash = 0;
     this.control = true;
   }
-  get wx() { return Game.rail.x(this.d) + this.x; }
-
   update(dt) {
     const G = Game, In = Input;
     if (!this.alive) { this.updateDeath(dt); return; }
@@ -143,7 +141,7 @@ class Player {
       // muzzle flash that rides along with the ship
       G.rail.world(_p, this.d + 1.9, this.x + o, this.y - 0.1);
       FX.spawn(_p.x, _p.y, _p.z, sx * G.speed, sy * G.speed, -G.speed, 0.06, lv >= 3 ? 2.2 : 1.7, 0.6, lv >= 3 ? 0.5 : 0.55, lv >= 3 ? 0.85 : 1, lv >= 3 ? 1 : 0.6, 1, SPR.SPARKLE);
-      G.pbullets.push({ d: this.d + 1.8, x: this.x + o, y: this.y - 0.1, pd: this.d, px: this.x, py: this.y, vd: G.speed + LASER_REL, vx: ax * LASER_REL, vy: ay * LASER_REL, life: 1.1, dmg: lv >= 3 ? 2 : 1, lv, deflected: false });
+      G.pbullets.push({ d: this.d + 1.8, x: this.x + o, y: this.y - 0.1, pd: this.d, px: this.x, py: this.y, vd: G.speed + LASER_REL, vx: ax * LASER_REL, vy: ay * LASER_REL, life: 1.1, dmg: lv >= 3 ? 2 : 1, lv });
     }
     SFX.laser(lv);
   }
@@ -182,7 +180,7 @@ class Player {
   }
   hurt(amount, scrape) {
     const G = Game;
-    if (!this.alive || this.invuln > 0 || G.invincible) return false;
+    if (!this.alive || this.invuln > 0) return false;
     this.shield -= amount * G.diff.dmg;
     this.hitFlash = 1; this.jolt = scrape ? 0.4 : 1;
     if (!scrape) { this.invuln = 0.9; SFX.playerHit(); G.shake(0.6); G.flash([1, 0.2, 0.2], 0.35); G.resonanceHit(); Haptics.tap(1); G.aberration = 0.012; }
@@ -216,11 +214,10 @@ class Player {
       const c = Math.cos(this.rollAngle), s = Math.sin(this.rollAngle);
       for (const [tr, side] of [[this.trailL, -1], [this.trailR, 1]]) {
         const ox = side * 2.5 * c, oy = side * 2.5 * -s;
-        tr.pts.unshift(new V3(_p.x + _R.x * ox + _U.x * oy, _p.y + _R.y * ox + _U.y * oy + 0.1, _p.z + 1.2));
-        if (tr.pts.length > tr.maxPts) tr.pts.pop();
+        const pt = tr.pts.length >= tr.maxPts ? tr.pts.pop() : new V3();
+        tr.pts.unshift(pt.set(_p.x + _R.x * ox + _U.x * oy, _p.y + _R.y * ox + _U.y * oy + 0.1, _p.z + 1.2));
       }
     }
-    // age trail points backwards with the world (they stay put in world space)
   }
   draw(r) {
     if (!this.visible) return;
@@ -307,7 +304,6 @@ class Enemy {
     this.beatPop = 0; this.armed = false; this.aggro = 0; this.aimedT = 0; this.dodgeCD = rr(1, 2);
     this.smokeT = 0; this.muzzle = 0; this.gunKick = 0; this.clang = 0;
   }
-  get P() { return Game.player; }
   update(dt) {
     const G = Game, P = G.player;
     this.t += dt;
@@ -371,7 +367,10 @@ class Enemy {
       else if (this.fireRate > 0 && this.inRange() && Math.random() < this.fireRate * (this.aggro > 0 ? 2 : 1)) this.armed = true;
     }
   }
-  inRange() { const off = this.d - Game.player.d; return off > 22 && off < 230 && Game.player.alive && !Game.clearing; }
+  inRange() {
+    const G = Game, off = this.d - G.player.d;
+    return off > 22 && off < 230 && G.player.alive && G.phase !== 'clear' && G.phase !== 'bossDeath';
+  }
   fire(speed, spread = 0) {
     const G = Game, P = G.player;
     const s = (speed || 42) * G.diff.bullet;
@@ -380,7 +379,7 @@ class Enemy {
     const l = Math.hypot(dd, dx, dy) || 1;
     dd /= l; dx /= l; dy /= l;
     if (spread) { dx += rr(-spread, spread); dy += rr(-spread, spread); }
-    G.ebullets.push({ d: this.d - this.r * 0.6, x: this.x, y: this.y, vd: G.speed + dd * s, vx: dx * s, vy: dy * s, r: 0.9, life: 6, dmg: 10, kind: 'orb', born: 0 });
+    G.ebullets.push({ d: this.d - this.r * 0.6, x: this.x, y: this.y, vd: G.speed + dd * s, vx: dx * s, vy: dy * s, r: 0.9, life: 6, dmg: 10, kind: 'orb' });
     // recoil + muzzle flash
     this.muzzle = 1; this.gunKick = 1; this.kvd += 6; this.sqv -= 4;
     SFX.enemyShot();
@@ -397,12 +396,10 @@ class Enemy {
     this.sqv += 8 / Math.sqrt(mass);
   }
   dodge(dir) {
-    const G = Game;
     this.dodgeCD = 2.8; this.aimedT = 0;
     this.kvx += dir * 36; this.kvy += rr(-8, 8);
     this.sRoll = -dir * TAU * -Math.cos(this.yaw); // spring unwinds it: a full barrel roll
     for (let i = 0; i < 4; i++) FX.spawn(this.wx, this.wy, this.wz, (this.wvx || 0) - dir * (4 + i * 3), this.wvy || 0, this.wvz || 0, 0.3, this.r * 1.3, 0.3, 1, 0.3, 0.7, 0.45, SPR.GLOW);
-    if (Math.random() < 0.3 && G.state === 'play') FX.text(this.wx, this.wy + 2, this.wz, 'DODGE!', '#ff9ad0');
   }
   damage(n, src) {
     if (this.dead) return false;
@@ -440,7 +437,7 @@ class Enemy {
     G.onKill(this, src);
     if (this.type === 'mine') {
       // chain reaction
-      for (const e of G.enemies) if (e !== this && !e.dead && Math.hypot(e.d - this.d, e.x - this.x, e.y - this.y) < 14) setTimeout(() => e.damage(5, { chain: true }), 80);
+      for (const e of G.enemies) if (e !== this && !e.dead && Math.hypot(e.d - this.d, e.x - this.x, e.y - this.y) < 14) G.later(0.08, () => e.damage(5, { chain: true }));
       const P = G.player; if (Math.hypot(P.d - this.d, P.x - this.x, P.y - this.y) < 8) P.hurt(15);
     }
     if (this.onKill) this.onKill(this);
@@ -516,9 +513,6 @@ class Enemy {
 const _emat = { flash: 0 };
 const _telePts = [new V3(), new V3()];
 
-// Formation-slot helpers for AI
-function exitOut(e, dt) { e.x += Math.sign(e.x || 1) * dt * 30; e.y += dt * 12; }
-
 const ENEMY_AI = {
   // Arrive from far ahead, hover at a distance while firing, then fly past.
   hover(e, dt, G, P) {
@@ -545,7 +539,6 @@ const ENEMY_AI = {
   },
   // Sits in the world; the squadron flies past it.
   pass(e, dt, G, P) {
-    if (e.t < dt * 1.5) { e.d0 = e.d; }
     e.x = e.slotX + Math.sin(e.t * 1.6 + e.phase) * (e.o.sway !== undefined ? e.o.sway : 3);
     e.y = e.slotY + Math.cos(e.t * 1.2 + e.phase) * 1.5;
     e.roll = Math.sin(e.t * 1.6 + e.phase) * 0.5;
@@ -710,7 +703,12 @@ const ENEMY_AI = {
   },
   chaser(e, dt, G, P) {
     const w = e.o.wing;
-    if (!w || w.state !== 'trouble') { e.d += dt * 60; e.y += dt * 20; if (e.t > 3) e.gone = true; return; }
+    if (!w || w.state !== 'trouble') { // released: peel away
+      e.relT = (e.relT || 0) + dt;
+      e.d += dt * 60; e.y += dt * 20;
+      if (e.relT > 3) e.gone = true;
+      return;
+    }
     e.d = w.d - 9; e.x = damp(e.x, w.x + Math.sin(e.t * 2) * 1.5, 3, dt); e.y = damp(e.y, w.y + 1, 3, dt);
     e.yaw = 0; e.roll = w.roll * 0.8;
     if (G.onBeat && Math.random() < 0.5) {
@@ -737,7 +735,7 @@ class Prop {
     if (this.kind === 'gate' && !this.passed && -this.z < P.d) {
       this.passed = true;
       P.worldPos(_p);
-      if (Math.hypot(_p.x - this.x, _p.y - this.y) < 9 * this.scale) G.onCheckpoint(this);
+      G.onCheckpoint(Math.hypot(_p.x - this.x, _p.y - this.y) < 9 * this.scale);
     }
     if (!P.alive) return;
     P.worldPos(_p);

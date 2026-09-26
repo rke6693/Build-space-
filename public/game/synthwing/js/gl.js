@@ -281,7 +281,7 @@ precision highp float;
 in vec2 vUV;
 uniform sampler2D uScene;
 uniform vec2 uSceneSize;
-uniform float uScan, uSat, uVig, uAb, uFlashA, uTime, uGlitch, uBright, uAspect;
+uniform float uScan, uSat, uVig, uAb, uFlashA, uTime, uGlitch, uBright, uAspect, uLines;
 uniform vec3 uFlashCol;
 uniform vec4 uShock[3];
 out vec4 frag;
@@ -315,7 +315,7 @@ void main() {
   c = mix(vec3(l), c, uSat);
   c *= uBright;
   if (uScan > 0.0) {
-    float y = uv.y * uSceneSize.y;
+    float y = uv.y * uLines;
     float s = abs(fract(y) - 0.5) * 2.0;
     c *= (1.0 - uScan * 0.42 * s * s) * (1.0 + uScan * 0.1);
   }
@@ -546,13 +546,14 @@ class Renderer {
   }
 
   // ---- sizing ---------------------------------------------------------------
-  resize(cssW, cssH, dpr, renderLines) {
+  // renderLines: internal resolution along the short side (0 = native).
+  // quality: extra scale applied in native mode by the dynamic-resolution governor.
+  resize(cssW, cssH, dpr, renderLines, quality = 1) {
     const ow = Math.max(1, Math.round(cssW * dpr)), oh = Math.max(1, Math.round(cssH * dpr));
     if (this.canvas.width !== ow || this.canvas.height !== oh) { this.canvas.width = ow; this.canvas.height = oh; }
     this.outW = ow; this.outH = oh;
-    // renderLines = internal vertical resolution measured along the *short* side
     const short = Math.min(ow, oh);
-    const lines = Math.min(renderLines || short, short);
+    const lines = renderLines ? Math.min(renderLines, short) : short * quality;
     const scale = lines / short;
     this.sceneW = Math.max(16, Math.round(ow * scale));
     this.sceneH = Math.max(16, Math.round(oh * scale));
@@ -788,6 +789,11 @@ class Renderer {
     gl.uniform1f(u.uAb, post.ab); gl.uniform1f(u.uFlashA, post.flashA); gl.uniform3fv(u.uFlashCol, post.flashCol);
     gl.uniform1f(u.uTime, time); gl.uniform1f(u.uGlitch, post.glitch); gl.uniform1f(u.uBright, post.bright);
     gl.uniform1f(u.uAspect, this.sceneW / this.sceneH);
+    // CRT scanlines follow the scene rows at retro resolutions, and a ~240-line
+    // pitch (whole device pixels) when rendering at HD.
+    let lines = this.sceneH;
+    if (Math.min(this.sceneW, this.sceneH) > 540) lines = this.outH / Math.max(2, Math.round(Math.min(this.outW, this.outH) / 240));
+    gl.uniform1f(u.uLines, lines);
     gl.uniform4fv(u.uShock, post.shocks || NO_SHOCKS);
     gl.uniformMatrix4fv(u.uInvVP, false, IDENT4);
     gl.bindVertexArray(this.fsVao);

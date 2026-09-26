@@ -19,7 +19,7 @@
     Game.init(glCanvas);
   } catch (e) {
     console.error(e);
-    fail('SYNTHWING 64 needs WebGL2. Please update your browser (Safari 15+, Chrome, Firefox or Edge). ' + (e && e.message ? '(' + e.message + ')' : ''));
+    fail('SYNTHWING 64 needs WebGL2. Update to the latest Safari, Chrome, Firefox or Edge and reload.');
     return;
   }
   HUD.init(hudCanvas);
@@ -46,9 +46,7 @@
     last = now;
     if (dt > 0.1) dt = 0.1;
     if (dt <= 0) return;
-    const steps = window.SW_FAST || 1; // test hook: extra simulation steps per frame
-    try { for (let i = 0; i < steps; i++) Game.frame(dt, i < steps - 1); } catch (e) { console.error(e); if (!loop.errShown) { loop.errShown = true; fail('Something went wrong: ' + e.message); } }
+    try { Game.frame(dt); } catch (e) { console.error(e); if (!loop.errShown) { loop.errShown = true; fail('Something went wrong. Reload the page to keep playing.'); } }
   }
   requestAnimationFrame(loop);
-  window.SYNTHWING = Game; // handy for debugging
 })();

@@ -13,9 +13,7 @@ const DEG = Math.PI / 180;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lerp = (a, b, t) => a + (b - a) * t;
-const invLerp = (a, b, v) => (v - a) / (b - a);
 const smoothstep = (a, b, v) => { const t = clamp01((v - a) / (b - a)); return t * t * (3 - 2 * t); };
-const smooth01 = (t) => t * t * (3 - 2 * t);
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 const easeInCubic = (t) => t * t * t;
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -24,7 +22,6 @@ const easeOutElastic = (t) => (t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) 
 // Framerate independent exponential approach.
 const damp = (a, b, k, dt) => a + (b - a) * (1 - Math.exp(-k * dt));
 const wrapAngle = (a) => { while (a > PI) a -= TAU; while (a < -PI) a += TAU; return a; };
-const sign = (v) => (v < 0 ? -1 : 1);
 
 const rand = Math.random;
 const rr = (a, b) => a + Math.random() * (b - a);
@@ -47,12 +44,6 @@ function mulberry32(seed) {
 // ---------------------------------------------------------------------------
 function hash2i(x, y) {
   let h = (x | 0) * 374761393 + (y | 0) * 668265263;
-  h = (h ^ (h >>> 13)) * 1274126177;
-  h = h ^ (h >>> 16);
-  return (h >>> 0) / 4294967296;
-}
-function hash3i(x, y, z) {
-  let h = (x | 0) * 374761393 + (y | 0) * 668265263 + (z | 0) * 2147483647;
   h = (h ^ (h >>> 13)) * 1274126177;
   h = h ^ (h >>> 16);
   return (h >>> 0) / 4294967296;
@@ -116,14 +107,12 @@ class V3 {
   dist(v) { return Math.hypot(this.x - v.x, this.y - v.y, this.z - v.z); }
   distSq(v) { const dx = this.x - v.x, dy = this.y - v.y, dz = this.z - v.z; return dx * dx + dy * dy + dz * dz; }
 }
-const _v = [new V3(), new V3(), new V3(), new V3(), new V3(), new V3(), new V3(), new V3()];
 
 // ---------------------------------------------------------------------------
 // Mat4 (column-major Float32Array(16), OpenGL conventions)
 // ---------------------------------------------------------------------------
 function m4() { const m = new Float32Array(16); m[0] = m[5] = m[10] = m[15] = 1; return m; }
 function m4identity(o) { o.fill(0); o[0] = o[5] = o[10] = o[15] = 1; return o; }
-function m4copy(o, a) { o.set(a); return o; }
 function m4mul(o, a, b) {
   const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3], a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
   const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11], a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
@@ -188,7 +177,6 @@ function m4invert(o, a) {
 // Model matrix from position + orthonormal basis (right, up, forward) + euler
 // rotation in that local frame (yaw about up, pitch about right, roll about fwd)
 // and uniform/non-uniform scale. Models are authored facing -Z.
-const _rm = new Float32Array(9);
 function m4frame(o, px, py, pz, R, U, F, yaw, pitch, roll, sx, sy = sx, sz = sx) {
   // local rotation L = Ry(yaw) * Rx(pitch) * Rz(roll) (in model axes, -Z forward)
   const cy = Math.cos(yaw), sy_ = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), cr = Math.cos(roll), sr = Math.sin(roll);
@@ -219,13 +207,6 @@ function m4frame(o, px, py, pz, R, U, F, yaw, pitch, roll, sx, sy = sx, sz = sx)
 const AXIS_X = new V3(1, 0, 0), AXIS_Y = new V3(0, 1, 0), AXIS_NZ = new V3(0, 0, -1);
 function m4euler(o, px, py, pz, yaw, pitch, roll, s = 1) {
   return m4frame(o, px, py, pz, AXIS_X, AXIS_Y, AXIS_NZ, yaw, pitch, roll, s, s, s);
-}
-function m4transform(out, m, x, y, z) {
-  const w = m[3] * x + m[7] * y + m[11] * z + m[15];
-  out.x = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
-  out.y = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
-  out.z = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
-  return out;
 }
 
 // Colors: hex → [r,g,b] floats

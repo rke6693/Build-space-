@@ -104,9 +104,11 @@ use Share → Add to Home Screen for fullscreen, offline play.
 - **A squadron with a story.** Oz, Sable and Tobi (with Admiral Maren on comms) talk through
   animated pixel portraits in synthesized gibberish voices. Save wingmates when they're
   chased; losing them costs you the stage medal.
-- **Authentic 64-bit look.** A hand-written WebGL2 renderer with low-res rendering, bilinear
-  "VI" upscaling, RGBA5551 dithering, N64 3-point texture filtering, per-pixel fog, sphere-map
-  chrome and optional CRT scanlines.
+- **64-bit look at HD resolution.** A hand-written WebGL2 renderer that renders at native display
+  resolution by default. If the frame rate drops, a dynamic-resolution governor lowers the
+  internal resolution until it recovers. It uses N64 3-point texture filtering, 16-bit ordered
+  dithering, per-pixel fog and sphere-map chrome. Settings offer 480p, 360p and 240p retro
+  modes with a soft "VI" upscale, plus optional CRT scanlines.
 - **No libraries and no asset files.** Every model, texture, font, portrait, song and sound
   effect is generated in code at startup.
 - **Mobile first.** Floating analog stick or touchpad steering, left-handed layout,

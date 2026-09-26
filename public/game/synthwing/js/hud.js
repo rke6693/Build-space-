@@ -12,10 +12,10 @@ const Screen = { cssW: 1, cssH: 1, dpr: 1, safe: { t: 0, r: 0, b: 0, l: 0 } };
 const HUD = {
   canvas: null, g: null, W: 320, H: 240, scale: 1, cssPerPx: 1,
   safe: { t: 0, r: 0, b: 0, l: 0 },
-  btns: [], focus: 0, prevCount: 0, sub: null, subSel: 0,
+  btns: [], focus: 0, sub: null, gridNav: false,
   bands: new Float32Array(6), bandsS: new Float32Array(6),
   fps: 60, fpsAcc: 0, fpsN: 0, t: 0,
-  resultsT: 0, confirmReset: false, stageSel: 0,
+  confirmReset: false, dispScore: undefined, scoreBump: 0, ghost: undefined,
 
   init(canvas) {
     this.canvas = canvas;
@@ -80,7 +80,7 @@ const HUD = {
       edge: dis ? 'rgba(90,90,110,0.9)' : focused ? '#ffe14a' : o.edge || 'rgba(140,200,255,0.9)', glow: true,
     });
     let s = o.scale || (h >= 20 ? 2 : 1);
-    if (s > 1 && Font.width(label, s) > w - 10) s = 1;
+    if (s > 1 && Font.width(label, s) > w - 20) s = 1;
     this.text(label, x + w / 2, y + Math.round((h - 7 * s) / 2), { scale: s, align: 'center', color: dis ? '#6a6a80' : o.color || ['#ffffff', '#bfe0ff'], outline: '#0a0a20' });
     if (focused) { this.text('▶', x - 8, y + Math.round((h - 7) / 2), { color: '#ffe14a' }); }
     if (hit && !dis) { SFX.menuOk(); Haptics.tap(0.4); return true; }
@@ -113,7 +113,7 @@ const HUD = {
     else if (st === 'title') { if (this.sub) this.drawSub(); else this.drawTitle(); }
     else if (st === 'brief') this.drawBrief();
     else if (st === 'play') { this.drawPlay(dt); if (G.overlay) { if (this.sub) this.drawSub(); else this.drawPause(); } }
-    else if (st === 'results') this.drawResults(dt);
+    else if (st === 'results') this.drawResults();
     else if (st === 'gameover') this.drawGameOver();
     else if (st === 'ending') this.drawEnding();
     this.endMenu();
@@ -146,14 +146,22 @@ const HUD = {
     for (let i = 0; i < 60; i++) { const x = (hash2i(i, 3) * W) | 0, y = (hash2i(i, 9) * H) | 0; this.rect(x, y, 1, 1, `rgba(200,220,255,${0.3 + 0.5 * Math.abs(Math.sin(this.t + i))})`); }
     this.text('SYNTHWING', cx, H * 0.26, { scale: 3, align: 'center', color: ['#c9f4ff', '#5fa8ff', '#3a4fd8'], outline: '#0a0a20', thick: true });
     this.text('64', cx, H * 0.26 + 26, { scale: 3, align: 'center', color: ['#ffe14a', '#ff5a3c'], outline: '#0a0a20', thick: true });
-    const blink = Math.floor(this.t * 2) % 2 === 0;
     const verb = Input.lastDevice === 'keyboard' || Input.lastDevice === 'mouse' ? 'PRESS ENTER OR CLICK' : 'TAP TO START';
-    if (blink) this.text(verb, cx, H * 0.62, { scale: 2, align: 'center', color: '#ffffff', outline: '#000' });
-    this.text('♪ Sound on for the full experience ♪', cx, H * 0.62 + 22, { align: 'center', color: '#9ab' });
+    this.g.globalAlpha = 0.45 + 0.55 * (0.5 + 0.5 * Math.cos(this.t * 4));
+    this.text(verb, cx, H * 0.62, { scale: 2, align: 'center', color: '#ffffff', outline: '#000' });
+    this.g.globalAlpha = 1;
+    if (W < H) this.text('Best played in landscape', cx, H - this.safe.b - 12, { align: 'center', color: '#ffe14a' });
+    else if (this.canInstall()) this.text('Share ▶ Add to Home Screen to play fullscreen', cx, H - this.safe.b - 12, { align: 'center', color: '#7a8aa0' });
+  },
+  // iOS Safari, top-level page, not already installed: fullscreen is one step away.
+  canInstall() {
+    if (this._canInstall !== undefined) return this._canInstall;
+    let top = false;
+    try { top = window.top === window.self; } catch (e) { top = false; }
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const standalone = window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-    if (isIOS && !standalone) this.text('Tip: Share ▶ Add to Home Screen for fullscreen', cx, H - this.safe.b - 22, { align: 'center', color: '#7a8aa0' });
-    if (W < H) this.text('Best played in landscape', cx, H - this.safe.b - 12, { align: 'center', color: '#ffe14a' });
+    this._canInstall = !!(top && isIOS && !standalone);
+    return this._canInstall;
   },
   drawLogo() {
     const t = Game.stateT, cx = this.W / 2;
@@ -171,7 +179,7 @@ const HUD = {
     this.lensFlare();
     const items = [
       ['START GAME', () => this.newGame()],
-      ['STAGE SELECT', () => { this.sub = 'stages'; this.focus = 0; this.stageSel = 0; }],
+      ['STAGE SELECT', () => { this.sub = 'stages'; this.focus = 0; }],
       ['SETTINGS', () => { this.sub = 'settings'; this.focus = 0; }],
       ['HOW TO PLAY', () => { this.sub = 'howto'; this.focus = 0; }],
       ['CREDITS', () => { this.sub = 'credits'; this.focus = 0; }],
@@ -191,7 +199,6 @@ const HUD = {
     if (G.save.hiscore) this.text('HI-SCORE ' + String(G.save.hiscore).padStart(7, '0'), W - s.r - 6, s.t + 6, { align: 'right', color: ['#fff6c0', '#ffc040'], outline: '#201000' });
     const medals = Object.keys(G.save.medals).length, forks = Object.keys(G.save.forks).length;
     if (medals || forks) this.text('★' + medals + '/5   ♪' + forks + '/5', s.l + 6, s.t + 6, { color: '#ffe14a', outline: '#201000' });
-    this.text(land ? 'v1.0' : 'v1.0 · WebGL2 · all sound synthesized live', s.l + 6, H - s.b - 10, { color: 'rgba(255,255,255,0.55)' });
   },
   newGame() {
     const G = Game;
@@ -229,7 +236,7 @@ const HUD = {
       ['INVERT Y', S.invertY ? 'ON' : 'OFF', () => { S.invertY = !S.invertY; }],
       ['FIRE BUTTON', S.lefty ? 'LEFT HAND' : 'RIGHT HAND', () => { S.lefty = !S.lefty; }],
       ['DIFFICULTY', DIFFS[S.diff].name, (d) => { S.diff = (S.diff + d + 3) % 3; }],
-      ['RESOLUTION', S.res === 240 ? '240p AUTHENTIC' : S.res === 360 ? '360p' : S.res === 480 ? '480p' : 'NATIVE HD', (d) => { const L = [240, 360, 480, 0]; S.res = L[(L.indexOf(S.res) + d + 4) % 4]; }],
+      ['RESOLUTION', S.res === 240 ? '240p RETRO' : S.res === 360 ? '360p' : S.res === 480 ? '480p' : 'NATIVE HD', (d) => { const L = [0, 480, 360, 240]; S.res = L[(Math.max(0, L.indexOf(S.res)) + d + 4) % 4]; }],
       ['CRT SCANLINES', S.crt ? 'ON' : 'OFF', () => { S.crt = !S.crt; }],
       ['16-BIT DITHER', S.dither ? 'ON' : 'OFF', () => { S.dither = !S.dither; }],
       ['SCREEN SHAKE', S.shake ? 'ON' : 'OFF', () => { S.shake = !S.shake; }],
@@ -377,10 +384,9 @@ const HUD = {
     this.text(st.sub, x, s.t + 52, { color: '#bfe0ff', outline: '#000' });
     const best = G.save.best[st.id];
     if (best) this.text('BEST ' + best + (G.save.medals[st.id] ? '  ★' : ''), x, s.t + 64, { color: '#ffe14a', outline: '#000' });
-    this.text('MEDAL AT ' + st.medal + ' PTS + ALL WINGMEN SAFE', x, s.t + 76, { color: 'rgba(200,220,255,0.7)', outline: '#000' });
+    this.text('★ MEDAL  ' + st.medal + ' PTS · NO WINGMAN LOST', x, s.t + 76, { color: 'rgba(200,220,255,0.7)', outline: '#000' });
     this.drawDialog(true);
     if (G.briefDone && Math.floor(this.t * 2.5) % 2 === 0) this.text(Input.lastDevice === 'touch' ? 'TAP TO LAUNCH' : 'PRESS ENTER TO LAUNCH', W / 2, H - s.b - 20, { scale: 2, align: 'center', color: ['#ffffff', '#ffe14a'], outline: '#1a0a00', thick: true });
-    else if (!G.briefDone) this.text('tap to skip', W - s.r - 8, H - s.b - 12, { align: 'right', color: 'rgba(255,255,255,0.5)' });
   },
 
   // ---- gameplay HUD ------------------------------------------------------------------
@@ -551,7 +557,7 @@ const HUD = {
   bombIcon(x, y) { this.circle(x + 3, y + 3, 3, '#ff4a4a'); this.rect(x + 2, y - 1, 2, 2, '#ccc'); this.rect(x + 2, y + 2, 1, 1, '#fff'); },
   rainbow() { return cssColor(hsl((this.t * 0.6) % 1, 0.9, 0.65)); },
   drawResonance() {
-    const G = Game, W = this.W, H = this.H, s = this.safe, g = this.g;
+    const G = Game, W = this.W, H = this.H, s = this.safe;
     AudioSys.bands(this.bands);
     const lvl = G.res.level, beat = 1 - Music.beatPhase();
     const n = 5, bw = 6, gap = 3, maxH = 16;
@@ -572,7 +578,7 @@ const HUD = {
     this.text(lvl >= 4 ? 'MAX' : 'RES', x0 - 4, y0 - 7, { align: 'right', color: lvl >= 4 ? this.rainbow() : 'rgba(190,230,255,0.8)', outline: '#000' });
   },
   drawTouch() {
-    const L = this.L, g = this.g, P = Game.player;
+    const L = this.L, P = Game.player;
     const st = Input.stick;
     const beat = 1 - Music.beatPhase();
     if (st.active) {
@@ -584,7 +590,7 @@ const HUD = {
     } else {
       const hx = L.leftHanded ? this.W - this.safe.r - 50 : this.safe.l + 50, hy = this.H - this.safe.b - 46;
       this.circle(hx, hy, L.stickR, 'rgba(255,255,255,0.12)', false, 2);
-      this.text('STEER', hx, hy - 3, { align: 'center', color: 'rgba(255,255,255,0.3)' });
+      this.circle(hx, hy, 3, 'rgba(255,255,255,0.18)');
     }
     const btn = (c, label, active, col, sub) => {
       this.circle(c.x, c.y, c.r, active ? col.replace('0.35', '0.65') : col);
@@ -594,7 +600,7 @@ const HUD = {
     };
     const firing = Input.fire;
     const locking = firing && P.holdT > 0.2;
-    btn({ x: L.fire.x, y: L.fire.y, r: L.fire.r + (firing ? 0 : beat * 1.5) }, 'FIRE', firing, locking ? 'rgba(255,90,200,0.35)' : 'rgba(255,80,80,0.35)', locking ? 'LOCK ' + P.locks.length : 'hold:lock');
+    btn({ x: L.fire.x, y: L.fire.y, r: L.fire.r + (firing ? 0 : beat * 1.5) }, locking ? 'LOCK' : 'FIRE', firing, locking ? 'rgba(255,90,200,0.35)' : 'rgba(255,80,80,0.35)');
     btn(L.bomb, 'BOMB', false, P.bombs ? 'rgba(255,160,40,0.35)' : 'rgba(80,80,80,0.35)', '×' + P.bombs);
     btn(L.roll, 'ROLL', P.rolling, 'rgba(80,160,255,0.35)');
   },
@@ -606,7 +612,6 @@ const HUD = {
     const W = this.W, H = this.H, g = this.g;
     const sx = _q.x * W, sy = _q.y * H, cx = W / 2, cy = H / 2;
     // occluded by terrain?
-    const ray = cam.pos.clone();
     for (let i = 1; i < 12; i++) { const d = i * i * 5; if (cam.pos.y + sd[1] * d < G.terrainHeight(cam.pos.x + sd[0] * d, cam.pos.z + sd[2] * d)) return; }
     const edge = 1 - clamp01((Math.hypot(_q.x - 0.5, _q.y - 0.5) - 0.3) * 2.5);
     g.globalCompositeOperation = 'lighter';
@@ -668,7 +673,7 @@ const HUD = {
   },
 
   // ---- results -----------------------------------------------------------------------
-  drawResults(dt) {
+  drawResults() {
     const G = Game, R = G.results, W = this.W, H = this.H, s = this.safe, t = G.resultT;
     if (!R) return;
     const st = G.stage;
@@ -702,7 +707,7 @@ const HUD = {
     if (t > 2.1) {
       const y = py + ph - 34;
       if (R.medal) this.text('★ MEDAL EARNED ★', W / 2, y, { align: 'center', scale: 1, color: this.rainbow(), outline: '#000' });
-      else this.text('MEDAL NEEDS ' + st.medal + ' PTS' + (R.allWings ? '' : ' + ALL WINGMEN'), W / 2, y, { align: 'center', color: '#8899aa', outline: '#000' });
+      else this.text('MEDAL: ' + st.medal + ' PTS' + (R.allWings ? '' : ' · NO WINGMAN LOST'), W / 2, y, { align: 'center', color: '#8899aa', outline: '#000' });
       if (R.newBest) this.text('NEW RECORD!', W / 2, y + 10, { align: 'center', color: '#ffe14a', outline: '#000' });
     }
     if (t > 1.5 && Math.floor(this.t * 2.5) % 2 === 0) this.text(Input.lastDevice === 'touch' ? 'TAP TO CONTINUE' : 'PRESS ENTER', W / 2, py + ph - 12, { align: 'center', color: '#ffffff', outline: '#000' });
@@ -719,7 +724,6 @@ const HUD = {
       const bw = 160, bh = 22;
       if (this.button('CONTINUE', W / 2 - bw / 2, H * 0.52, bw, bh)) G.continueGame();
       if (this.button('QUIT TO TITLE', W / 2 - bw / 2, H * 0.52 + bh + 6, bw, bh)) G.setState('title');
-      this.text('Continuing restarts the stage with its starting score', W / 2, H * 0.52 + 2 * (bh + 6) + 4, { align: 'center', color: '#8899aa' });
     }
   },
 
@@ -742,8 +746,6 @@ const CREDITS = [
   ['h', 'SYNTHWING 64'], ['y', 'A SQUADRON OF SOUND'], ['s', ''],
   ['p', 'The Octave Cluster sings again.'], ['s', ''],
   ['y', 'STARRING'], ['p', 'OZ — the veteran'], ['p', 'SABLE — the ace'], ['p', 'TOBI — the rookie'], ['p', 'ADMIRAL MAREN — the Cadence'], ['p', 'and YOU as LEAD'], ['s', ''],
-  ['y', 'GAME DESIGN · CODE · MUSIC · ART'], ['p', 'Claude'], ['s', ''],
-  ['y', 'MADE WITH'], ['p', 'Hand-written WebGL2 · WebAudio synthesis'], ['p', 'Zero libraries · zero image files · zero samples'], ['s', ''],
-  ['y', 'SPECIAL THANKS'], ['p', 'Every game that taught us a barrel roll'], ['p', 'and every soundtrack that made us hum'], ['s', ''],
+  ['y', 'DESIGN · CODE · MUSIC · ART'], ['p', 'Claude'], ['s', ''],
   ['p', 'Thank you for playing!'],
 ];
