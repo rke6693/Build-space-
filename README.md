@@ -153,6 +153,24 @@ use Share → Add to Home Screen for fullscreen, offline play.
 - **Mobile first.** Floating analog stick or touchpad steering, left-handed layout,
   safe-area aware HUD, gamepad and keyboard support, and a PWA manifest with an offline
   service worker.
+- **20 awards and an attract demo.** Achievements come with unlock toasts and an AWARDS
+  screen, plus lifetime tallies. Left idle on the title screen, the game plays itself like
+  an arcade cabinet until you tap.
+- **Built not to crash.**
+  - Saves are type-checked on load.
+  - Audio faults and gamepad API errors are isolated.
+  - A frame guard logs any error and recovers to the title.
+  - The game pauses on backgrounding, Control Center and iOS audio interruptions.
+  - `node scripts/synthwing-soak.mjs` runs chaos/soak tests (monkey input, context loss,
+    corrupted saves, full campaigns) and fails on any error.
+
+### iOS app
+`apps/synthwing-ios` is the native App Store build (Capacitor 8). It adds Taptic Engine
+haptics, Game Center leaderboards and achievements, a full-screen shell, controller
+support and a privacy manifest. It also includes the App Store listing, screenshots and
+a release checklist. CI (`.github/workflows/ios.yml`) builds it on macOS, runs the attract
+demo in the iOS Simulator and fails on any crash or logged error. See
+`apps/synthwing-ios/README.md`.
 
 ### Controls
 | | Touch | Keyboard | Gamepad |
@@ -165,11 +183,11 @@ use Share → Add to Home Screen for fullscreen, offline play.
 
 ### Single-file build
 `node scripts/build-synthwing.mjs` writes `dist/synthwing64.html`, the whole game in one
-file (about 370 KB). Pass `--artifact` to get a body-only variant for hosts that supply
+file (about 460 KB). Pass `--artifact` to get a body-only variant for hosts that supply
 their own `<head>`.
 
 ### Code map (`public/game/synthwing/js`)
-`util` math/noise · `gl` renderer · `mesh` builder, textures, sprite atlas · `font` pixel font
+`util` math/noise/error log · `native` iOS app bridge · `gl` renderer · `mesh` builder, textures, sprite atlas · `font` pixel font
 and portraits · `models` all 3D models · `audio` synth, sequencer, SFX · `songs` the score ·
 `input` touch/keys/pad · `world` rail, environments, terrain streaming · `fx` particles and
 trails · `entities` player, enemies, pickups, wingmen · `bosses` · `stages` scripted
