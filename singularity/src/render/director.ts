@@ -105,14 +105,18 @@ export class Director {
     if (cand) {
       const ev = cand.ev;
       this.recent.add(ev.id);
-      const r = Math.min(6000, Math.max(260, (ev.radius ?? 700) * (ev.type === 'earthquake' ? 1.1 : 2.1)));
-      const target = new THREE.Vector3(ev.x, this.hf.at(ev.x, ev.z) + Math.min(80, r * 0.04), ev.z);
+      const quake = ev.type === 'earthquake' || ev.type === 'aftershock';
+      // epicentres are often offshore: frame the city side of the rupture, not open sea
+      const ex = quake ? THREE.MathUtils.clamp(ev.x, -1300, 1300) : ev.x;
+      const ez = quake ? THREE.MathUtils.clamp(ev.z, -1300, 1300) : ev.z;
+      const r = quake ? 3400 : Math.min(4500, Math.max(260, (ev.radius ?? 700) * 2.1));
+      const target = new THREE.Vector3(ex, this.hf.at(ex, ez) + Math.min(80, r * 0.04), ez);
       const az = ((ev.id * 2.399963) % (Math.PI * 2)) - Math.PI;
       const shot: Shot = {
         kind: 'event',
         target,
         distance: r,
-        polar: ev.type === 'earthquake' ? 0.9 : 1.05 + ((ev.id * 0.37) % 0.2),
+        polar: quake ? 0.95 : 1.05 + ((ev.id * 0.37) % 0.2),
         azimuth: az,
         azRate: 0.035 * (ev.id % 2 ? 1 : -1),
         push: 0.22,

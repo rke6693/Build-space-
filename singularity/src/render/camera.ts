@@ -19,7 +19,7 @@ export class CameraRig {
   readonly camera: THREE.PerspectiveCamera;
   readonly controls: OrbitControls;
   private tween: { from: CameraPose; to: CameraPose; t0: number; dur: number; onDone?: () => void } | null = null;
-  private intro: { curve: THREE.CatmullRomCurve3; look: THREE.CatmullRomCurve3; t0: number; dur: number; onDone: () => void } | null = null;
+  private intro: { curve: THREE.CatmullRomCurve3; look: THREE.CatmullRomCurve3; elapsed: number; dur: number; onDone: () => void } | null = null;
   shake = 0;
   external = false; // director drives the camera
   private shakeOffset = new THREE.Vector3();
@@ -88,7 +88,7 @@ export class CameraRig {
       new THREE.Vector3(0, 20, -250),
     ];
     this.tween = null;
-    this.intro = { curve: new THREE.CatmullRomCurve3(pts), look: new THREE.CatmullRomCurve3(look), t0: performance.now(), dur: 11000, onDone };
+    this.intro = { curve: new THREE.CatmullRomCurve3(pts), look: new THREE.CatmullRomCurve3(look), elapsed: 0, dur: 11000, onDone };
     this.controls.enabled = false;
   }
 
@@ -110,7 +110,10 @@ export class CameraRig {
     const now = performance.now();
     this.camera.position.sub(this.shakeOffset);
     if (this.intro) {
-      const t = Math.min(1, (now - this.intro.t0) / this.intro.dur);
+      // advance by rendered frame time (capped) so a slow first frame or shader compile
+      // cannot swallow the opening shot
+      this.intro.elapsed += Math.min(dt, 1 / 8) * 1000;
+      const t = Math.min(1, this.intro.elapsed / this.intro.dur);
       const e = ease(t);
       this.camera.position.copy(this.intro.curve.getPoint(e));
       const look = this.intro.look.getPoint(e);

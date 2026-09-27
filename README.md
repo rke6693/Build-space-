@@ -4,6 +4,10 @@ A Next.js 14 micro-SaaS built around the `public/game/index.html` endless runner
 Free tier with 3 runs/day; **Pro ($4.99/mo)** removes the limit and unlocks the
 global leaderboard.
 
+> Also in this repository: **[Project Singularity](singularity/README.md)**, a
+> self-contained browser-based catastrophe simulator for a procedural coastal city
+> (`cd singularity && npm install && npm run dev`).
+
 ## Stack
 
 - **Next.js 14** (App Router, TypeScript) on Vercel
