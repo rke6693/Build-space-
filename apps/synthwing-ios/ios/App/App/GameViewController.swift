@@ -20,6 +20,7 @@ class GameViewController: CAPBridgeViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        NSLog("[synthwing] native shell loaded")
         let ink = UIColor(red: 5 / 255, green: 4 / 255, blue: 12 / 255, alpha: 1)
         view.backgroundColor = ink
         webView?.isOpaque = true

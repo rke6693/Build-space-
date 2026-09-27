@@ -689,7 +689,8 @@ const Game = {
     const cam = this.cam, aspect = r.sceneW / r.sceneH, land = aspect >= 1, t = this.realTime;
     cam.fov = 36 * DEG;
     const fov = land ? cam.fov : Math.min(100 * DEG, 2 * Math.atan(Math.tan(cam.fov / 2) * 1.55 / Math.max(0.5, aspect)));
-    const D = land ? 13 : 10.5, halfH = Math.tan(fov / 2) * D, halfW = halfH * aspect;
+    // pull back on less-wide screens (iPad) so the ship clears the arrows
+    const D = land ? 13 * Math.max(1, 1.9 / aspect) : 10.5, halfH = Math.tan(fov / 2) * D, halfW = halfH * aspect;
     const ox = land ? 0.42 * halfW : 0, oy = land ? -0.08 * halfH : -0.34 * halfH;
     cam.pos.set(ox + Math.sin(t * 0.25) * 1.2, oy + (land ? 3.6 : 5), D);
     cam.target.set(ox, oy, 0); cam.up.set(0, 1, 0);

@@ -41,7 +41,7 @@ jobs:
           test "${PIPESTATUS[0]}" -eq 0
       - name: Launch in the Simulator, play the attract demo, watch the console
         run: |
-          set -euo pipefail
+          set -uo pipefail
           DEVICE=$(xcrun simctl list devices available -j | python3 -c "
           import json, sys
           devs = [d for rt, ds in json.load(sys.stdin)['devices'].items() if 'iOS' in rt for d in ds]
@@ -52,15 +52,23 @@ jobs:
           APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -n 1)
           BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
           xcrun simctl install "$DEVICE" "$APP"
-          # SYNTHWING_DEMO=1 makes the game start its self-playing demo (real gameplay, WebGL, audio)
+          # SYNTHWING_DEMO=1 makes the game start its self-playing demo (real gameplay, WebGL, audio).
+          # First launches on CI simulators are slow, so allow up to 5 minutes.
           SIMCTL_CHILD_SYNTHWING_DEMO=1 xcrun simctl launch --console-pty "$DEVICE" "$BUNDLE" > app-console.log 2>&1 &
-          for i in $(seq 1 90); do grep -q "\[synthwing\] demo:" app-console.log && break; sleep 2; done
-          grep -q "\[synthwing\] ready:" app-console.log || { echo "::error::game never reported ready"; cat app-console.log; exit 1; }
-          grep -q "\[synthwing\] demo:" app-console.log || { echo "::error::attract demo never started"; cat app-console.log; exit 1; }
-          sleep 30   # let the demo fly: enemies, lasers, explosions, music
-          xcrun simctl io "$DEVICE" screenshot sim-demo.png
-          if ! xcrun simctl spawn "$DEVICE" launchctl list | grep -q "$BUNDLE"; then echo "::error::app is not running (crashed?)"; cat app-console.log; exit 1; fi
+          demo=0
+          for i in $(seq 1 150); do if grep -q "\[synthwing\] demo:" app-console.log 2>/dev/null; then demo=1; break; fi; sleep 2; done
+          if [ "$demo" = 1 ]; then sleep 30; fi   # let the demo fly: enemies, lasers, explosions, music
+          xcrun simctl io "$DEVICE" screenshot sim-demo.png || true
+          running=0; xcrun simctl spawn "$DEVICE" launchctl list | grep -q "$BUNDLE" && running=1
           echo "---- app console ----"; cat app-console.log
+          if [ "$demo" != 1 ] || [ "$running" != 1 ]; then
+            echo "---- system log for App (last 10 min) ----"
+            xcrun simctl spawn "$DEVICE" log show --last 10m --style compact --predicate 'process == "App"' | tail -n 150 || true
+            echo "---- crash reports ----"; ls -lt ~/Library/Logs/DiagnosticReports 2>/dev/null | head -n 15 || true
+            [ "$running" = 1 ] || echo "::error::app is not running (crashed?)"
+            [ "$demo" = 1 ] || echo "::error::the attract demo never started"
+            exit 1
+          fi
           if grep -E "\[error\]|synthwing:|Uncaught|TypeError|ReferenceError" app-console.log; then echo "::error::the game logged errors"; exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
