@@ -123,17 +123,17 @@ const Game = {
   tally(key, n = 1) { if (this.demo) return 0; const t = this.save.tally; t[key] = (t[key] || 0) + n; return t[key]; },
 
   // ---- attract demo ------------------------------------------------------------
-  // Like an arcade cabinet: left alone on the title screen, the game plays
-  // itself (random stage and ship, autopilot, can't die). Any touch or key
-  // returns to the title. Nothing is saved or awarded. The iOS app starts it
-  // straight away when launched with SYNTHWING_DEMO=1 (used by CI).
+  // Like an arcade cabinet: left alone on the start or title screen, the game
+  // plays itself (random stage and ship, autopilot, can't die). Any touch or
+  // key returns to the title. Nothing is saved or awarded. The iOS app starts
+  // it straight away when launched with SYNTHWING_DEMO=1 (used by CI).
   startDemo() {
     this.demo = true; this.demoT = 0;
     this.demoVehicle = pick(VEHICLES.filter(vehicleUnlocked)).id;
     this.score = 0; this.player.reset(true); this.said.clear();
     this.stageIdx = Math.floor(Math.random() * this.save.unlocked);
     this.setState('play');
-    console.log('[synthwing] demo: stage ' + (this.stageIdx + 1) + ', ' + this.demoVehicle);
+    console.log('[synthwing] demo: stage ' + (this.stageIdx + 1) + ', ' + this.demoVehicle + ', audio ' + (AudioSys.ctx ? AudioSys.ctx.state : 'off'));
   },
   endDemo() {
     this.demo = false; this.demoVehicle = null;
@@ -583,9 +583,15 @@ const Game = {
   },
 
   // ---- boot / logo -------------------------------------------------------
-  enter_boot() { Input.mode = 'menu'; },
-  update_boot() {
-    if (Input.clicks.length || Input.nav.ok || Input.firePressed) { AudioSys.unlock(); this.setState('logo'); }
+  enter_boot() { Input.mode = 'menu'; this.idleT = 0; this.bootAudio = false; },
+  update_boot(dt) {
+    if (Input.clicks.length || Input.nav.ok || Input.firePressed) { AudioSys.unlock(); this.setState('logo'); return; }
+    // The iOS app lets audio start without a tap: once it runs, skip TAP TO START.
+    if (Native.ok && !this.bootAudio) { this.bootAudio = true; AudioSys.unlock(); }
+    if (Native.ok && AudioSys.running() && this.stateT > 0.4) { this.setState('logo'); return; }
+    // Left alone here, the attract demo plays (silently until the first tap).
+    this.idleT = Input.anyPress ? 0 : this.idleT + dt;
+    if ((window.SYNTHWING_DEMO && this.stateT > 1.5) || this.idleT > 25) { this.idleT = 0; this.demoAuto = true; this.startDemo(); }
   },
   enter_logo() {
     this.setupWorld('brief', () => 0, () => 0, 30);

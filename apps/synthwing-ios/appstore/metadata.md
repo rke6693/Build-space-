@@ -83,7 +83,7 @@ collection.
 > No account needed. Tap START GAME → LAUNCH, then tap through the briefing to
 > fly. Controls: drag the left half to steer, tap/hold the right half to fire
 > and lock on. Game Center sign-in is optional. Leaving the game idle on the
-> title for 25 seconds starts a self-playing demo; tap to exit it.
+> start or title screen for 25 seconds starts a self-playing demo; tap to exit it.
 
 ## Screenshots
 

@@ -11,6 +11,8 @@ What the native shell adds on top of the web build:
   (`@capacitor/haptics`, driven by `js/native.js`).
 - **Game Center.** Sign-in, 6 leaderboards, 20 achievements and the
   dashboard (`ios/App/App/GameCenterPlugin.swift`).
+- **Straight in.** When iOS lets audio start at launch, the app skips the
+  web build's TAP TO START screen and opens on the logo.
 - **Full screen.** The status bar and home indicator are hidden, and edge
   swipes need a second swipe during play.
 - **Controllers.** Extended Gamepad support is declared, which earns the App
