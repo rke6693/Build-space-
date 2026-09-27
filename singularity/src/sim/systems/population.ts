@@ -355,7 +355,7 @@ export function updatePopulation(sim: Simulation) {
       const ds = s.bDS[at];
       const cause = sim.dsChangedCause[at];
       const u = hashUnit(seed, a, s.tick, 9);
-      A.affected[a] = 1;
+      if (ds >= 2) A.affected[a] = 1;
       if (ds >= 4) {
         if (u < 0.35) {
           leaveBuilding(sim, a);
@@ -382,7 +382,9 @@ export function updatePopulation(sim: Simulation) {
     const brn = s.burn[c];
     const smoke = s.smoke[c];
     const shake = sim.shaking[c];
-    if (depth > 0.1 || brn > 0.05 || smoke > 0.6 || shake > 0.08) A.affected[a] = 1;
+    // "affected" = exposed to damaging intensity (≈ MMI VIII shaking, wading-depth water,
+    // fire or dense smoke) or displaced/injured; merely feeling the quake does not count
+    if (depth > 0.1 || brn > 0.05 || smoke > 0.6 || shake > 0.3) A.affected[a] = 1;
     let dmg = 0;
     let cause = -1;
     const at = A.at[a];

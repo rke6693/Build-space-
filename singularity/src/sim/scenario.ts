@@ -59,7 +59,7 @@ export function baseScenario(overrides: Partial<Scenario> = {}): Scenario {
     description: 'A calm autumn evening with light drizzle. Nothing is scheduled: use the disaster toolbox to intervene.',
     seed: DEFAULT_SEED,
     agents: 2400,
-    startHour: 18.35,
+    startHour: 17.7,
     durationMin: 150,
     env: { ...DEFAULT_ENV },
     resilience: { ...DEFAULT_RESILIENCE },
