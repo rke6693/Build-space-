@@ -1,11 +1,10 @@
 import UIKit
 import Capacitor
 
-/// Hosts the game full screen. The status bar is hidden app-wide (Info.plist);
-/// here the home indicator fades out during play and swipes from the screen
+/// Hosts the game full screen. Capacitor's SystemBars plugin hides the status
+/// bar and home indicator (capacitor.config.json); here swipes from the screen
 /// edges need a second swipe, so steering near an edge never leaves the game.
 class GameViewController: CAPBridgeViewController {
-    override var prefersHomeIndicatorAutoHidden: Bool { true }
     override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge { .all }
 
     override func capacitorDidLoad() {

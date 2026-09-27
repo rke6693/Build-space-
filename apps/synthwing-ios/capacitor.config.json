@@ -11,5 +11,12 @@
     "backgroundColor": "#05040c",
     "preferredContentMode": "mobile",
     "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "hidden": true,
+      "style": "DARK",
+      "animation": "NONE"
+    }
   }
 }
