@@ -17,7 +17,7 @@ const Input = {
   fire: false, firePressed: false, fireReleased: false,
   bombPressed: false, rollPressed: false, rollDir: 0, pausePressed: false,
   nav: { up: false, down: false, left: false, right: false, ok: false, back: false },
-  clicks: [], swipe: 0,
+  clicks: [], swipe: 0, anyPress: false,
   pointers: new Map(),
   keys: new Set(),
   lastDevice: 'touch',
@@ -60,6 +60,7 @@ const Input = {
 
   onDown(e) {
     if (e.cancelable) e.preventDefault();
+    this.anyPress = true;
     AudioSys.unlock();
     try { e.target.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     if (e.pointerType === 'touch' || e.pointerType === 'pen') { this.lastDevice = 'touch'; this.touchSeen = true; } else this.lastDevice = e.pointerType === 'mouse' ? 'mouse' : 'touch';
@@ -130,7 +131,7 @@ const Input = {
     const k = e.code;
     if (down) {
       if (this.keys.has(k)) return;
-      this.keys.add(k); this.lastDevice = 'keyboard';
+      this.keys.add(k); this.lastDevice = 'keyboard'; this.anyPress = true;
       AudioSys.unlock();
       if (['Space', 'KeyJ', 'KeyZ'].includes(k)) { if (!this.fire) this.firePressed = true; this.fire = true; }
       if (['KeyK', 'KeyX', 'KeyB'].includes(k)) this.bombPressed = true;
@@ -184,6 +185,7 @@ const Input = {
       const prev = this.gpPrev[gp.index] || [];
       const edge = (i) => b(i) && !prev[i];
       const rel = (i) => !b(i) && prev[i];
+      for (let i = 0; i < gp.buttons.length; i++) if (edge(i)) this.anyPress = true;
       if (edge(0) || edge(7)) { if (!this.fire) this.firePressed = true; this.fire = true; this.lastDevice = 'gamepad'; }
       if ((rel(0) || rel(7)) && !b(0) && !b(7)) { this.fire = false; this.fireReleased = true; }
       if (edge(1) || edge(2)) { if (this.mode === 'play') this.bombPressed = true; }
@@ -213,7 +215,7 @@ const Input = {
     this.firePressed = this.fireReleased = this.bombPressed = this.rollPressed = this.pausePressed = false;
     this.padDelta.x = this.padDelta.y = 0;
     this.nav.up = this.nav.down = this.nav.left = this.nav.right = this.nav.ok = this.nav.back = false;
-    this.clicks.length = 0; this.swipe = 0;
+    this.clicks.length = 0; this.swipe = 0; this.anyPress = false;
   },
 };
 

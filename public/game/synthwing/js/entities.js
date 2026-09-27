@@ -50,7 +50,7 @@ const VEHICLES = [
 ];
 const vehicleUnlocked = (v) => !v.unlock || !!(Game.save && Game.save[v.unlock]);
 function currentVehicle() {
-  const v = VEHICLES.find((x) => x.id === (Game.save && Game.save.vehicle));
+  const v = VEHICLES.find((x) => x.id === (Game.demoVehicle || (Game.save && Game.save.vehicle)));
   return v && vehicleUnlocked(v) ? v : VEHICLES[0];
 }
 

@@ -576,7 +576,7 @@ const HUD = {
     const m = G.mult();
     if (m > 1) this.text('×' + m, rx, y0 + 26, { align: 'right', scale: m >= 5 ? 2 : 1, color: m >= 5 ? this.rainbow() : '#9ff6ff', outline: '#000' });
     // pause button
-    if (Input.lastDevice === 'touch' || Input.touchSeen) {
+    if ((Input.lastDevice === 'touch' || Input.touchSeen) && !G.demo) {
       const pb = this.L.pause;
       this.panel(pb.x, pb.y, pb.w, pb.h, { top: 'rgba(30,40,100,0.7)', bot: 'rgba(10,12,40,0.7)' });
       this.rect(pb.x + 6, pb.y + 5, 2, 8, '#fff'); this.rect(pb.x + 10, pb.y + 5, 2, 8, '#fff');
@@ -636,8 +636,12 @@ const HUD = {
       this.text(P.lives >= 0 ? 'SHIP DOWN' : '', W / 2, H * 0.4, { align: 'center', scale: 2, color: ['#ffffff', '#ff7a7a'], outline: '#200000', thick: true });
       if (P.lives >= 0) this.text('SHIPS LEFT: ' + P.lives, W / 2, H * 0.4 + 20, { align: 'center', color: '#fff', outline: '#000' });
     }
-    // touch controls
-    if ((Input.lastDevice === 'touch' || Input.touchSeen) && !G.overlay) this.drawTouch();
+    // touch controls (hidden while the attract demo plays itself)
+    if ((Input.lastDevice === 'touch' || Input.touchSeen) && !G.overlay && !G.demo) this.drawTouch();
+    if (G.demo) {
+      this.rect(0, H - s.b - 40, W, 18, 'rgba(0,0,20,0.5)');
+      if (Math.floor(this.t * 2) % 2 === 0) this.text(Input.lastDevice === 'touch' || Input.touchSeen ? 'DEMO  ·  TAP TO PLAY' : 'DEMO  ·  PRESS ANY KEY', W / 2, H - s.b - 35, { align: 'center', scale: 1, color: '#ffe14a', outline: '#000' });
+    }
   },
   bracket(x, y, r, col, thin) {
     const g = this.g; g.fillStyle = col;

@@ -1,4 +1,5 @@
 import UIKit
+import WebKit
 import Capacitor
 
 /// Hosts the game full screen. Capacitor's SystemBars plugin hides the status
@@ -9,6 +10,12 @@ class GameViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(GameCenterPlugin())
+        // QA / CI hook: launched with SYNTHWING_DEMO=1, the game starts its
+        // self-playing attract demo right away. Players never set this.
+        if ProcessInfo.processInfo.environment["SYNTHWING_DEMO"] == "1" {
+            let flag = WKUserScript(source: "window.SYNTHWING_DEMO = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true)
+            webView?.configuration.userContentController.addUserScript(flag)
+        }
     }
 
     override func viewDidLoad() {

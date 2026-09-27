@@ -109,10 +109,10 @@ const Game = {
     AudioSys.resume(); AudioSys.setSilence(0, 0.05); AudioSys.setDuck(0);
     this.setState('title');
   },
-  writeSave() { this.save.settings = this.settings; Store.set(SAVE_KEY, this.save); },
+  writeSave() { if (this.demo) return; this.save.settings = this.settings; Store.set(SAVE_KEY, this.save); },
   award(id) {
     const s = this.save, a = AWARDS.find((x) => x.id === id);
-    if (!a || s.awards[id]) return;
+    if (!a || s.awards[id] || this.demo) return;
     s.awards[id] = true;
     this.writeSave();
     HUD.toast(a);
@@ -120,7 +120,54 @@ const Game = {
     Native.achieve(id);
   },
   // Lifetime counters (saved with the next writeSave).
-  tally(key, n = 1) { const t = this.save.tally; t[key] = (t[key] || 0) + n; return t[key]; },
+  tally(key, n = 1) { if (this.demo) return 0; const t = this.save.tally; t[key] = (t[key] || 0) + n; return t[key]; },
+
+  // ---- attract demo ------------------------------------------------------------
+  // Like an arcade cabinet: left alone on the title screen, the game plays
+  // itself (random stage and ship, autopilot, can't die). Any touch or key
+  // returns to the title. Nothing is saved or awarded. The iOS app starts it
+  // straight away when launched with SYNTHWING_DEMO=1 (used by CI).
+  startDemo() {
+    this.demo = true; this.demoT = 0;
+    this.demoVehicle = pick(VEHICLES.filter(vehicleUnlocked)).id;
+    this.score = 0; this.player.reset(true); this.said.clear();
+    this.stageIdx = Math.floor(Math.random() * this.save.unlocked);
+    this.setState('play');
+    console.log('[synthwing] demo: stage ' + (this.stageIdx + 1) + ', ' + this.demoVehicle);
+  },
+  endDemo() {
+    this.demo = false; this.demoVehicle = null;
+    this.player.reset(true);
+    this.setState('title');
+  },
+  // Returns true when the demo just ended (the caller stops updating play).
+  demoPilot(dt) {
+    const P = this.player;
+    this.demoT += dt;
+    if (Input.anyPress || this.demoT > 75) { this.endDemo(); return true; }
+    P.invuln = Math.max(P.invuln, 1);
+    if (!P.alive || !P.control) return false;
+    let best = null, bd = 1e9;
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      const off = e.d - P.d;
+      if (off < 12 || off > 220) continue;
+      const d = Math.hypot(e.x - P.x, e.y - P.y) + off * 0.05;
+      if (d < bd) { bd = d; best = e; }
+    }
+    if (this.boss && !this.boss.dead && !this.boss.entering) for (const p of this.boss.parts) {
+      if (!p.alive || !p.weak || p.invuln) continue;
+      const d = Math.hypot(p.x - P.x, p.y - P.y);
+      if (d < bd + 20) { bd = d; best = p; }
+    }
+    let mx = 0, my = Math.sin(this.demoT * 0.7) * 0.2;
+    if (best) { mx = clamp((best.x - P.x) / 5, -1, 1); my = clamp((best.y - P.y) / 5, -1, 1); }
+    Input.move.x = mx; Input.move.y = my;
+    if (this.demoT % 1.6 < 1.3) { if (!Input.fire) Input.firePressed = true; Input.fire = true; } else if (Input.fire) { Input.fire = false; Input.fireReleased = true; }
+    if (Math.random() < dt * 0.25) Input.rollPressed = true;
+    if (Math.random() < dt * 0.03) Input.bombPressed = true;
+    return false;
+  },
   applySettings() {
     const s = this.settings;
     Input.settings.steer = s.steer; Input.settings.sens = s.sens; Input.settings.invertY = s.invertY;
@@ -568,6 +615,9 @@ const Game = {
   },
   update_title(dt) {
     this.attract(dt);
+    this.idleT = Input.anyPress || HUD.sub ? 0 : (this.idleT || 0) + dt;
+    if (window.SYNTHWING_DEMO && !this.demoAuto && this.stateT > 2) { this.demoAuto = true; this.startDemo(); }
+    else if (this.idleT > 25) { this.idleT = 0; this.startDemo(); }
   },
   // Autopilot flight used by the title & results backdrops.
   attract(dt) {
@@ -701,10 +751,11 @@ const Game = {
   enter_play() {
     Input.mode = 'play';
     this.startStage(this.stageIdx, false);
-    this.save.plays++; this.writeSave();
+    if (!this.demo) { this.save.plays++; this.writeSave(); }
   },
   update_play(dt) {
     const P = this.player;
+    if (this.demo && this.demoPilot(dt)) return;
     // pause
     if (Input.pausePressed && this.phase !== 'clear') { this.pause(); return; }
     // time scaling
@@ -983,6 +1034,7 @@ const Game = {
     this.later(1.6, () => this.say('maren', line, true));
   },
   finishStage() {
+    if (this.demo) { this.endDemo(); return; }
     const st = this.stage, s = this.save;
     const stageScore = this.score - this.stageStartScore;
     const allWings = this.wingmen.every((w) => w.hp > 0);

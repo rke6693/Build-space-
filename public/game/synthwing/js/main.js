@@ -26,6 +26,7 @@
   Input.init(hudCanvas);
   Native.init();
   Haptics.init();
+  if (Native.ok) { const gl = Game.renderer.gl; console.log('[synthwing] ready: WebGL2 ' + gl.getParameter(gl.VERSION) + ', ' + Math.round(window.innerWidth) + 'x' + Math.round(window.innerHeight) + ' @' + window.devicePixelRatio + 'x'); }
   HUD.resize();
 
   // Keep the screen awake while playing (where supported).
