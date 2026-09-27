@@ -56,6 +56,8 @@
   .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: 12px; border-top: 1px solid var(--rule); }
   .ctl { min-width: 5.6em; padding: 8px 12px; font-family: var(--pixel); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text); background: transparent; border: 1px solid var(--faint); border-radius: 6px; cursor: pointer; }
   .ctl:hover { border-color: var(--paper); color: var(--paper); }
+  .toggle::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border: 1px solid currentColor; vertical-align: 1px; }
+  .toggle[aria-pressed="true"]::before { background: currentColor; }
   .tc { min-width: 9ch; font-family: var(--pixel); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .seek { position: relative; flex: 1 1 220px; height: 28px; display: flex; align-items: center; }
   .ticks { position: absolute; inset: 0; pointer-events: none; }
@@ -109,7 +111,7 @@
 <body>
 <main class="wrap">
   <header class="mast">
-    <p class="eyebrow"><span class="spectrum" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>A short film in 1-bit &middot; 5 min 30 s</p>
+    <p class="eyebrow"><span class="spectrum" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>A narrated short film in 1-bit &middot; 5 min 30 s</p>
     <h1>After Eden</h1>
     <p class="logline">Its maker was cast out. What followed was blasphemy. Apple from 1985 to 1997, told by the machine that said hello.</p>
   </header>
@@ -128,6 +130,7 @@
       <button class="ctl" id="pp" type="button">Play</button>
       <span class="tc" id="tc">0:00 / 5:30</span>
       <div class="seek"><div class="ticks" id="ticks" aria-hidden="true"></div><input id="seek" type="range" min="0" max="330" step="0.1" value="0" aria-label="Position in film"></div>
+      <button class="ctl toggle" id="voice" type="button" aria-pressed="true">Narrator</button>
       <button class="ctl" id="mute" type="button">Mute</button>
       <button class="ctl" id="fs" type="button">Full screen</button>
     </div>
@@ -143,7 +146,7 @@
     <div class="notes-body">
       <p><em>Why 1-bit.</em> The first Macintosh drew everything in black and white on a screen 512 pixels wide. Every frame of this film is 512 pixels wide too, dithered the way that screen dithered, so the machine could have shown it.</p>
       <p><em>Where the color went.</em> The only color in the picture is the six-stripe rainbow on the apple. It thins out dot by dot with each bad year, and by 1997 the apple is gray. The color that comes back in 1998 is a new one: Bondi blue.</p>
-      <p><em>Who is talking.</em> The Macintosh narrates. People appear only as silhouettes. The quotations are the ones reported at the time, and the dates and dollar figures come from the public record.</p>
+      <p><em>Who is talking.</em> The Macintosh narrates, in a synthetic voice made for this film. People appear only as silhouettes. The quotations are the ones reported at the time, performed by other synthetic voices and filtered to sound remembered; they are not recordings of the people quoted. Dates and dollar figures come from the public record.</p>
       <p><em>The score.</em> Every sound is synthesized live in your browser. A four-note figure, A&ndash;D&ndash;E&ndash;F&#9839;, says hello in Eden. After the exile its last note falls to F. In 1997 the figure stops one note short, and it finishes when the iMac says hello again.</p>
     </div>
   </section>
@@ -153,7 +156,7 @@
     <ol id="script"></ol>
   </details>
 
-  <p class="foot">A dramatization, made independently and not affiliated with Apple Inc. Space bar plays and pauses, arrow keys skip five seconds, M mutes. Headphones help.</p>
+  <p class="foot">A dramatization, made independently and not affiliated with Apple Inc. Space bar plays and pauses, arrow keys skip five seconds, N turns the narrator on or off, M mutes. Headphones help.</p>
 </main>
 
 <script>
@@ -1194,8 +1197,8 @@
     k.globalAlpha = 0.9; k.fillStyle = '#006E86'; k.beginPath(); k.ellipse(334, 110, 3, 50, -0.05, 0, TAU); k.fill();
     k.restore();
     g.fillStyle = G(64); rr(g, 200, 52, 112, 92, 9); g.fill();
-    g.fillStyle = G(lerp(26, 246, ss(2.6, 3.0, lt))); rr(g, 204, 56, 104, 84, 7); g.fill();
-    if (lt > 4.4) helloIn(g, { x: 204, y: 52, w: 104, h: 74 }, (lt - 4.6) / 3.8, 0.76, 22, 0.02);
+    g.fillStyle = G(lerp(26, 246, ss(4.25, 4.65, lt))); rr(g, 204, 56, 104, 84, 7); g.fill();
+    if (lt > 4.9) helloIn(g, { x: 204, y: 52, w: 104, h: 74 }, (lt - 5.0) / 3.5, 0.76, 22, 0.02);
     if (lt > 8.8) {
       g.fillStyle = GA(40, ss(8.9, 9.6, lt)); g.font = `italic 400 14px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText('(again)', 256, 126);
@@ -1288,7 +1291,9 @@
   }
 
   // ---------------------------------------------------------------- score
-  const A = { ctx: null, master: null, rev: null, noise: null, bus: null, muted: false, idx: 0, anchor: 0 };
+  const A = { ctx: null, master: null, rev: null, noise: null, bus: null, muted: false, idx: 0, anchor: 0, voice: null, voiceOn: true };
+  // Mix: dialogue sits about 14 LU above the score, which dips 4 dB under every line.
+  const MUSIC_LEVEL = 0.9, VOICE_LEVEL = 0.8, DUCK = 0.62, MIX_GAIN = 1.35;
   const mtof = n => 440 * Math.pow(2, (n - 69) / 12);
   function impulse(ctx, sec, decay) {
     const sr = ctx.sampleRate, len = (sr * sec) | 0, b = ctx.createBuffer(2, len, sr);
@@ -1302,15 +1307,24 @@
     try {
       const ctx = new AC();
       A.ctx = ctx;
+      // score -> duck -> glue compressor -> mix;  narration -> mix;  mix -> limiter -> master (mute)
+      A.master = ctx.createGain(); A.master.gain.value = A.muted ? 0 : 1; A.master.connect(ctx.destination);
+      const lim = ctx.createDynamicsCompressor();
+      lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.2;
+      lim.connect(A.master);
+      A.mix = ctx.createGain(); A.mix.gain.value = MIX_GAIN; A.mix.connect(lim);
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -18; comp.knee.value = 16; comp.ratio.value = 3; comp.attack.value = 0.008; comp.release.value = 0.3;
-      A.master = ctx.createGain(); A.master.gain.value = A.muted ? 0 : 0.9;
-      A.master.connect(comp); comp.connect(ctx.destination);
+      comp.connect(A.mix);
+      A.music = ctx.createGain(); A.music.gain.value = MUSIC_LEVEL; A.music.connect(comp);
+      A.duck = ctx.createGain(); A.duck.connect(A.music);
+      A.voiceOut = ctx.createGain(); A.voiceOut.gain.value = A.voiceOn ? VOICE_LEVEL : 0; A.voiceOut.connect(A.mix);
       A.rev = ctx.createConvolver(); A.rev.buffer = impulse(ctx, 3.6, 2.4);
-      const rg = ctx.createGain(); rg.gain.value = 0.6; A.rev.connect(rg); rg.connect(A.master);
+      const rg = ctx.createGain(); rg.gain.value = 0.6; A.rev.connect(rg); rg.connect(A.duck);
       const len = ctx.sampleRate * 3, nb = ctx.createBuffer(1, len, ctx.sampleRate), nd = nb.getChannelData(0);
       for (let i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
       A.noise = nb;
+      loadVoice();
       return true;
     } catch (e) { A.ctx = null; return false; }
   }
@@ -1426,7 +1440,7 @@
   const hit = (B, w) => { vThud(B, w, { f: 55, dec: 2.2, vol: 0.38, noise: 0.5, nf: 250, wet: 0.6 }); vKey(B, w, 38, { vol: 0.05, dec: 3 }); };
   const knock = (B, w) => { vTick(B, w, { f: 1400, q: 3, vol: 0.13, dec: 0.05 }); vThud(B, w, { f: 180, dec: 0.1, vol: 0.07, noise: 0 }); };
   const clock = (B, w) => vTick(B, w, { f: 2800, q: 8, vol: 0.06, dec: 0.025, wet: 0.3 });
-  const heart = (B, w) => { vThud(B, w, { f: 58, dec: 0.32, vol: 0.45, noise: 0.2, nf: 150 }); vThud(B, w + 0.24, { f: 50, dec: 0.3, vol: 0.3, noise: 0.2, nf: 150 }); };
+  const heart = (B, w) => { vThud(B, w, { f: 58, dec: 0.32, vol: 0.32, noise: 0.15, nf: 150 }); vThud(B, w + 0.24, { f: 50, dec: 0.3, vol: 0.21, noise: 0.15, nf: 150 }); };
   const step = v => (B, w) => vThud(B, w, { f: 120, dec: 0.17, vol: v, noise: 0.7, nf: 900, wet: 0.25 });
 
   const EV = [];
@@ -1499,11 +1513,11 @@
     E(183.2, (B, w) => vCreak(B, w)); E(187.4, (B, w) => vCreak(B, w, { f0: 78, f1: 64 }));
     K(189.1, 38, { vol: 0.09, dec: 5 });
     P(192.2, 11.6, [38, 44], { vol: 0.036, cut: 480 });
-    for (let t = 192.6; t < 194.6; t += 0.25) E(t, (B, w) => vTick(B, w, { f: 2200, q: 6, vol: 0.05, dec: 0.03 }));
+    for (let t = 192.6; t < 194.6; t += 0.25) E(t, (B, w) => vTick(B, w, { f: 2200, q: 6, vol: 0.022, dec: 0.03 }));
     NB(195.0, 0.6, { type: 'highpass', f: 700, vol: 0.09, att: 0.02, rel: 0.1 });
     E(195.7, vDeath);
     for (let i = 0; i < 36; i++) E(198.5 + 2.6 * (1 - Math.pow(1 - i / 36, 2)), (B, w) => vTick(B, w, { f: 3000, q: 5, vol: 0.045, dec: 0.025 }));
-    E(201.3, (B, w) => vThud(B, w, { f: 52, dec: 2, vol: 0.35, noise: 0.4, nf: 200, wet: 0.6 }));
+    E(202.35, (B, w) => vThud(B, w, { f: 52, dec: 2, vol: 0.35, noise: 0.4, nf: 200, wet: 0.6 }));
     // Wilderness
     NB(207.5, 17.5, { f: 420, q: 0.6, vol: 0.022, lfo: 0.1, depth: 240, att: 2, rel: 2 });
     P(207.8, 9, [38, 45, 52], { vol: 0.04, cut: 700 });
@@ -1514,7 +1528,7 @@
     // Revelation
     E(229.1, (B, w) => vCreak(B, w, { f0: 70, f1: 96, dur: 1.6 }));
     P(228.8, 9.2, [46, 50, 53, 58], { vol: 0.042, cut: 900, att: 3 });
-    for (let t = 231.2, i = 0; t < 237.3; t += 0.55, i++) E(t, step(0.06 + i * 0.02));
+    for (let t = 231.2, i = 0; t < 237.3; t += 0.55, i++) E(t, step(0.06 + i * 0.012));
     K(233.1, 62, { vol: 0.055 }); K(233.5, 65, { vol: 0.055 }); K(233.9, 70, { vol: 0.055, dec: 4 });
     for (let t = 238.6; t < 248.6; t += 1.05) E(t, heart);
     P(238.2, 10.8, [38, 50], { vol: 0.032, cut: 400 });
@@ -1538,8 +1552,8 @@
     P(292.4, 6.6, [38, 45], { vol: 0.028, cut: 450 });
     K(293.0, 57, { vol: 0.065, dec: 4 }); K(294.0, 62, { vol: 0.065, dec: 4 }); K(295.0, 64, { vol: 0.065, dec: 5 });
     P(299.3, 18.7, [38, 50, 54, 57, 62], { vol: 0.045, cut: 1300, att: 3.5, rel: 3 });
-    E(302.0, (B, w) => vChime(B, w, [38, 50, 57, 62, 66, 69], { vol: 0.065 }));
-    [[303.7, 69], [304.6, 74], [305.5, 76], [306.4, 78], [307.4, 81]].forEach(([t, n]) => BL(t, n, { vol: 0.045 }));
+    E(303.65, (B, w) => vChime(B, w, [38, 50, 57, 62, 66, 69], { vol: 0.065 }));
+    [[304.1, 69], [304.9, 74], [305.7, 76], [306.5, 78], [307.5, 81]].forEach(([t, n]) => BL(t, n, { vol: 0.045 }));
     E(308.3, (B, w) => [62, 66, 69, 74].forEach(n => vKey(B, w, n, { vol: 0.045, dec: 5 })));
     P(311, 7, [74, 78], { type: 'triangle', vol: 0.012, cut: 3000, att: 2.5, rel: 2.5 });
     P(318, 12, [38, 45, 50, 54, 57], { vol: 0.042, cut: 900, att: 1, rel: 6 });
@@ -1553,20 +1567,57 @@
     if (!B) return;
     A.bus = null;
     const t = A.ctx.currentTime;
-    for (const n of [B.dry, B.wet]) { n.gain.cancelScheduledValues(t); n.gain.setValueAtTime(n.gain.value, t); n.gain.linearRampToValueAtTime(0, t + 0.08); }
+    for (const n of [B.dry, B.wet, B.voice]) { n.gain.cancelScheduledValues(t); n.gain.setValueAtTime(n.gain.value, t); n.gain.linearRampToValueAtTime(0, t + 0.08); }
     for (const s of B.srcs) { try { s.stop(t + 0.1); } catch (e) { /* already stopped */ } }
-    setTimeout(() => { try { B.dry.disconnect(); B.wet.disconnect(); } catch (e) { /* gone */ } }, 400);
+    const dg = A.duck.gain; dg.cancelScheduledValues(t); dg.setValueAtTime(dg.value, t); dg.setTargetAtTime(1, t + 0.1, 0.1);
+    setTimeout(() => { try { B.dry.disconnect(); B.wet.disconnect(); B.voice.disconnect(); } catch (e) { /* gone */ } }, 400);
   }
   function audioStart(p) {
     if (!A.ctx) return;
     killBus();
-    const ctx = A.ctx, B = { dry: ctx.createGain(), wet: ctx.createGain(), srcs: new Set() };
-    B.dry.connect(A.master); B.wet.connect(A.rev); A.bus = B;
+    const ctx = A.ctx, B = { dry: ctx.createGain(), wet: ctx.createGain(), voice: ctx.createGain(), srcs: new Set(), voiced: false };
+    B.dry.connect(A.duck); B.wet.connect(A.rev); B.voice.connect(A.voiceOut); A.bus = B;
     A.anchor = ctx.currentTime - p;
     const w = ctx.currentTime + 0.03;
     for (const e of EV) if (e.sus && e.t < p && e.t + e.dur > p + 0.4) { try { e.fn(B, w, e.t + e.dur - p, true); } catch (err) { /* skip voice */ } }
     A.idx = EV.findIndex(e => e.t >= p);
     if (A.idx < 0) A.idx = EV.length;
+    startVoice(B);
+    scheduleDuck(p);
+  }
+
+  // The narration is one stem the length of the film, so it starts at the playhead's offset.
+  const voiceFile = (window.fetch ? fetch('narration.mp3').then(r => (r.ok ? r.arrayBuffer() : null)) : Promise.resolve(null)).catch(() => null);
+  function loadVoice() {
+    voiceFile
+      .then(buf => (buf ? new Promise((res, rej) => A.ctx.decodeAudioData(buf, res, rej)) : null))
+      .then(ab => {
+        if (!ab) return;
+        A.voice = ab;
+        if (playing && A.bus) { startVoice(A.bus); scheduleDuck(clockNow()); }
+      })
+      .catch(() => { /* the captions still carry the narration */ });
+  }
+  function startVoice(B) {
+    if (!A.voice || B.voiced) return;
+    const w = A.ctx.currentTime + 0.03, off = w - A.anchor;
+    if (off >= A.voice.duration - 0.05) return;
+    B.voiced = true;
+    const s = A.ctx.createBufferSource();
+    s.buffer = A.voice; s.connect(B.voice);
+    run(B, s, w, w + A.voice.duration - off + 0.05, Math.max(0, off));
+  }
+  function scheduleDuck(p) {
+    const gp = A.duck.gain, t = A.ctx.currentTime, on = !!A.voice && A.voiceOn;
+    const inside = on && DUCK_SPANS.some(([a, b]) => p >= a - 0.2 && p < b + 0.15);
+    gp.cancelScheduledValues(t); gp.setValueAtTime(gp.value, t); gp.setTargetAtTime(inside ? DUCK : 1, t, 0.06);
+    if (!on) return;
+    for (const [a, b] of DUCK_SPANS) {
+      if (b + 0.15 <= p) continue;
+      const ta = A.anchor + a - 0.2, tb = A.anchor + b + 0.15;
+      if (ta > t) gp.setTargetAtTime(DUCK, ta, 0.07);
+      gp.setTargetAtTime(1, Math.max(tb, t), 0.3);
+    }
   }
   function audioPump(p) {
     const B = A.bus;
@@ -1578,76 +1629,89 @@
   }
 
   // ---------------------------------------------------------------- script data
+  /* narration:start (generated by tools/film/narrate.py; edit the script there) */
   const CUES = [
-    { a: 2.5, b: 10.6, slug: 'January 24, 1984' },
-    { a: 6.2, b: 10.6, text: 'In the beginning, I said hello.' },
-    { a: 15.6, b: 19.8, text: 'They named me after an apple, the McIntosh.' },
-    { a: 19.9, b: 24.2, text: 'The people who made me flew a pirate flag over their building.' },
-    { a: 24.3, b: 28.5, text: 'Their captain was twenty-eight years old.' },
-    { a: 42, b: 47.9, slug: 'New York, 1983' },
-    { a: 42, b: 47.9, text: 'A year before I was born, the captain went to New York to recruit a man who sold soda.' },
-    { a: 48, b: 55.2, text: '“Do you want to spend the rest of your life selling sugared water, or do you want a chance to change the world?”', who: 'Steve Jobs to John Sculley of Pepsi, 1983' },
-    { a: 55.4, b: 59.4, text: 'He said yes.' },
-    { a: 64, b: 69.3, slug: 'Cupertino, spring 1985' },
-    { a: 64, b: 69.3, text: 'Then I stopped selling. The two men went to war over me.' },
-    { a: 69.5, b: 76.5, text: 'The board chose the soda man.' },
-    { a: 77.5, b: 82.4, text: 'They took away the captain’s division and moved him to an empty building.' },
-    { a: 82.5, b: 85.6, text: 'He called it Siberia.' },
-    { a: 86, b: 89.5, text: 'Nobody called.' },
-    { a: 91, b: 99.5, slug: 'September 17, 1985' },
-    { a: 92.5, b: 99.5, text: 'He resigned. He was thirty years old.' },
-    { a: 104, b: 108.4, text: 'After he left, they made me expensive.' },
-    { a: 108.5, b: 113.6, text: 'Margins got fat. Market share got thin.' },
-    { a: 114.5, b: 119.9, slug: 'November 1985' },
-    { a: 114.5, b: 119.9, text: 'Two months after he left, Apple signed a paper letting a rival borrow my look.' },
-    { a: 120, b: 125.6, text: 'Years later, it sued to take my look back. It lost.' },
-    { a: 126.5, b: 133.8, slug: '1993' },
-    { a: 126.5, b: 133.8, text: 'They gave me a little brother who could read your handwriting.' },
-    { a: 135, b: 137.8, text: 'Mostly.' },
-    { a: 138, b: 141.8, text: 'That summer, the board let the soda man go.' },
-    { a: 146, b: 150.8, text: 'The next captain was an engineer they called the Diesel.' },
-    { a: 151, b: 155.8, text: 'He gave me dozens of brothers with numbers for names.' },
-    { a: 156, b: 159.8, text: 'Even the stores couldn’t tell us apart.' },
-    { a: 160, b: 165.6, text: 'Then Apple let other companies sell cheaper copies of me.' },
-    { a: 166.5, b: 173.9, slug: 'August 24, 1995' },
-    { a: 166.5, b: 170.9, text: 'A rival’s new system went on sale at midnight.' },
-    { a: 171, b: 173.9, text: 'People lined up around the block.' },
-    { a: 174, b: 177.8, text: 'Nobody lined up for me.' },
-    { a: 178.5, b: 181.4, slug: 'February 1996' },
-    { a: 178.5, b: 181.4, text: 'A third captain took the helm.' },
-    { a: 181.5, b: 188.8, text: '“Apple is like a ship with a hole in the bottom, leaking water, and my job is to get the ship pointed in the right direction.”', who: 'Gil Amelio, Apple CEO, 1996 to 1997' },
-    { a: 189, b: 191.8, text: 'The water kept coming.' },
-    { a: 192.5, b: 197.9, slug: 'August 1996' },
-    { a: 192.5, b: 197.9, text: 'They promised me a new mind, code-named Copland. It never shipped.' },
-    { a: 198, b: 203.8, text: 'That year, Apple lost $816 million.' },
-    { a: 208, b: 211.4, text: 'Far away, the captain was failing too.' },
-    { a: 211.5, b: 216.4, text: 'He built a perfect black cube. Almost nobody bought it.' },
-    { a: 216.5, b: 221.9, text: 'He bought a small studio that made pictures with computers. In 1995, it released Toy Story.' },
-    { a: 222, b: 224.8, text: 'Out there, he learned to finish things.' },
-    { a: 229, b: 232.9, slug: 'December 20, 1996' },
-    { a: 229, b: 232.9, text: 'Apple bought his company for $429 million.' },
-    { a: 233, b: 237.6, text: 'It bought him back with it.' },
-    { a: 238.5, b: 243.4, slug: 'June 1997' },
-    { a: 238.5, b: 243.4, text: 'A magazine crowned our logo with thorns and printed one word.' },
-    { a: 243.5, b: 248.8, text: 'By his own later account, Apple was about ninety days from going broke.' },
-    { a: 249.5, b: 259.3, slug: 'Boston, August 6, 1997' },
-    { a: 249.5, b: 253.9, text: 'The third captain was gone. The first one was back on stage.' },
-    { a: 254, b: 259.3, text: 'A rival invested $150 million. When its chief appeared on the big screen, the crowd booed.' },
-    { a: 259.5, b: 266.6, text: '“We have to let go of this notion that for Apple to win, Microsoft has to lose.”', who: 'Steve Jobs, Macworld Boston' },
-    { a: 267.5, b: 270.4, text: 'A competitor was asked what he would do with Apple.' },
-    { a: 270.5, b: 274.8, text: '“I’d shut it down and give the money back to the shareholders.”', who: 'Michael Dell, October 1997' },
-    { a: 275.5, b: 279.4, text: 'He did the opposite. He started saying no.' },
-    { a: 279.5, b: 285.2, text: 'No to the clones. No to the Newton. No to the numbered brothers.' },
-    { a: 285.5, b: 291.5, text: 'Four products. That was the whole plan.' },
-    { a: 292.5, b: 298.5, slug: 'September 1997' },
-    { a: 300, b: 305.4, slug: 'May 6, 1998' },
-    { a: 300, b: 305.4, text: 'Fourteen years after my first word, my heir said it again.' },
-    { a: 311, b: 317.4, text: 'Apple turned a profit in fiscal 1998.' },
+    {"a": 2.5, "b": 10.6, "slug": "January 24, 1984"},
+    {"a": 6.08, "b": 9.08, "text": "In the beginning, I said hello."},
+    {"a": 15.48, "b": 19.53, "text": "They named me after an apple, the McIntosh."},
+    {"a": 19.88, "b": 24.18, "text": "The people who made me flew a pirate flag over their building."},
+    {"a": 24.28, "b": 27.27, "text": "Their captain was twenty-eight years old."},
+    {"a": 41.88, "b": 47.84, "text": "A year before I was born, the captain went to New York to recruit a man who sold soda."},
+    {"a": 42, "b": 47.9, "slug": "New York, 1983"},
+    {"a": 48.08, "b": 55.02, "text": "“Do you want to spend the rest of your life selling sugared water, or do you want a chance to change the world?”", "who": "Steve Jobs to John Sculley of Pepsi, 1983"},
+    {"a": 55.48, "b": 57.33, "text": "He said yes."},
+    {"a": 64, "b": 69.3, "slug": "Cupertino, spring 1985"},
+    {"a": 64.08, "b": 68.54, "text": "Then I stopped selling. The two men went to war over me."},
+    {"a": 69.68, "b": 72.28, "text": "The board chose the soda man."},
+    {"a": 77.48, "b": 82.24, "text": "They took away the captain’s division and moved him to an empty building."},
+    {"a": 82.68, "b": 84.88, "text": "He called it Siberia."},
+    {"a": 86.08, "b": 88.03, "text": "Nobody called."},
+    {"a": 91, "b": 99.5, "slug": "September 17, 1985"},
+    {"a": 92.48, "b": 96.41, "text": "He resigned. He was thirty years old."},
+    {"a": 104.08, "b": 107.22, "text": "After he left, they made me expensive."},
+    {"a": 108.48, "b": 112.46, "text": "Margins got fat. Market share got thin."},
+    {"a": 114.48, "b": 120.04, "text": "Two months after he left, Apple signed a paper letting a rival borrow my look."},
+    {"a": 114.5, "b": 119.9, "slug": "November 1985"},
+    {"a": 120.18, "b": 123.56, "text": "Years later, it sued to take my look back."},
+    {"a": 123.68, "b": 125.36, "text": "It lost."},
+    {"a": 126.5, "b": 133.8, "slug": "1993"},
+    {"a": 126.68, "b": 130.54, "text": "They gave me a little brother who could read your handwriting."},
+    {"a": 135.88, "b": 137.56, "text": "Mostly."},
+    {"a": 138.08, "b": 141.43, "text": "That summer, the board let the soda man go."},
+    {"a": 146.08, "b": 149.93, "text": "The next captain was an engineer they called the Diesel."},
+    {"a": 150.88, "b": 155.03, "text": "He gave me dozens of brothers, with numbers for names."},
+    {"a": 155.88, "b": 158.85, "text": "Even the stores couldn’t tell us apart."},
+    {"a": 159.88, "b": 164.07, "text": "Then Apple let other companies sell cheaper copies of me."},
+    {"a": 166.48, "b": 170.17, "text": "A rival’s new system went on sale at midnight."},
+    {"a": 166.5, "b": 173.9, "slug": "August 24, 1995"},
+    {"a": 170.88, "b": 173.57, "text": "People lined up around the block."},
+    {"a": 174.08, "b": 176.53, "text": "Nobody lined up for me."},
+    {"a": 178.38, "b": 180.97, "text": "A third captain took the helm."},
+    {"a": 178.5, "b": 181.6, "slug": "February 1996"},
+    {"a": 181.68, "b": 189.46, "text": "“Apple is like a ship with a hole in the bottom, leaking water, and my job is to get the ship pointed in the right direction.”", "who": "Gil Amelio, Apple CEO, 1996 to 1997"},
+    {"a": 189.48, "b": 191.67, "text": "The water kept coming."},
+    {"a": 192.28, "b": 196.23, "text": "They promised me a new mind, code-named Copland."},
+    {"a": 192.5, "b": 197.9, "slug": "August 1996"},
+    {"a": 197.08, "b": 198.46, "text": "It never shipped."},
+    {"a": 198.48, "b": 202.88, "text": "That year, Apple lost $816 million."},
+    {"a": 207.88, "b": 211.12, "text": "Far away, the captain was failing too."},
+    {"a": 211.38, "b": 215.98, "text": "He built a perfect black cube. Almost nobody bought it."},
+    {"a": 216.28, "b": 222.66, "text": "He bought a small studio that made pictures with computers. In 1995, it released Toy Story."},
+    {"a": 222.68, "b": 225.45, "text": "Out there, he learned to finish things."},
+    {"a": 229, "b": 232.9, "slug": "December 20, 1996"},
+    {"a": 229.08, "b": 233.29, "text": "Apple bought his company for $429 million."},
+    {"a": 233.31, "b": 235.57, "text": "It bought him back with it."},
+    {"a": 238.48, "b": 243.11, "text": "A magazine crowned our logo with thorns and printed one word."},
+    {"a": 238.5, "b": 243.4, "slug": "June 1997"},
+    {"a": 243.48, "b": 248.69, "text": "By his own later account, Apple was about ninety days from going broke."},
+    {"a": 249.48, "b": 253.56, "text": "The third captain was gone. The first one was back on stage."},
+    {"a": 249.5, "b": 259.3, "slug": "Boston, August 6, 1997"},
+    {"a": 253.58, "b": 259.86, "text": "A rival invested $150 million. When its chief appeared on the big screen, the crowd booed."},
+    {"a": 259.88, "b": 266.5, "text": "“We have to let go of this notion that for Apple to win, Microsoft has to lose.”", "who": "Steve Jobs, Macworld Boston"},
+    {"a": 267.38, "b": 270.46, "text": "A competitor was asked what he would do with Apple."},
+    {"a": 270.48, "b": 274.78, "text": "“I’d shut it down and give the money back to the shareholders.”", "who": "Michael Dell, October 1997"},
+    {"a": 275.38, "b": 279.44, "text": "He did the opposite. He started saying no."},
+    {"a": 279.83, "b": 281.81, "text": "No to the clones."},
+    {"a": 281.83, "b": 283.81, "text": "No to the Newton."},
+    {"a": 283.83, "b": 285.96, "text": "No to the numbered brothers."},
+    {"a": 285.98, "b": 289.81, "text": "Four products. That was the whole plan."},
+    {"a": 292.5, "b": 298.5, "slug": "September 1997"},
+    {"a": 300, "b": 305.4, "slug": "May 6, 1998"},
+    {"a": 300.08, "b": 304.37, "text": "Fourteen years after my first word, my heir said it again."},
+    {"a": 308.58, "b": 310.5, "text": "Hello again."},
+    {"a": 311.28, "b": 315.52, "text": "Apple turned a profit in fiscal 1998."},
   ];
+  const VOICE_SPANS = [[6.2, 8.28], [15.6, 18.73], [20.0, 23.38], [24.4, 26.47], [42.0, 47.04], [48.2, 54.22], [55.6, 56.53], [64.2, 67.74], [69.8, 71.48], [77.6, 81.44], [82.8, 84.08], [86.2, 87.23], [92.6, 95.61], [104.2, 106.42], [108.6, 111.66], [114.6, 119.24], [120.3, 122.76], [123.8, 124.56], [126.8, 129.74], [136.0, 136.76], [138.2, 140.63], [146.2, 149.13], [151.0, 154.23], [156.0, 158.05], [160.0, 163.27], [166.6, 169.37], [171.0, 172.77], [174.2, 175.73], [178.5, 180.17], [181.8, 188.89], [189.6, 190.87], [192.4, 195.43], [197.2, 198.16], [198.6, 202.08], [208.0, 210.32], [211.5, 215.18], [216.4, 222.45], [222.8, 224.65], [229.2, 233.13], [233.43, 234.77], [238.6, 242.31], [243.6, 247.89], [249.6, 253.35], [253.7, 259.65], [260.0, 265.7], [267.5, 270.08], [270.6, 273.98], [275.5, 278.64], [279.95, 281.12], [281.95, 283.04], [283.95, 285.48], [286.1, 289.01], [300.2, 303.57], [308.7, 309.7], [311.4, 314.72]];
+  /* narration:end */
+  // Lines less than a second apart share one dip, so the score doesn't pump between them.
+  const DUCK_SPANS = VOICE_SPANS.reduce((out, [a, b]) => {
+    const last = out[out.length - 1];
+    if (last && a - last[1] < 1) last[1] = b; else out.push([a, b]);
+    return out;
+  }, []);
   const SCRIPT_EXTRA = [
     { a: 29.2, text: 'AFTER EDEN', card: true },
     { a: 293, text: '“Here’s to the crazy ones.”', card: true },
-    { a: 307.9, text: 'hello (again)', card: true },
   ];
   const CHAPTERS = [
     { t: 0, k: 'Prologue', n: 'Hello', y: '1984' },
@@ -1664,7 +1728,7 @@
   const $ = id => document.getElementById(id);
   const els = {
     theatre: $('theatre'), frame: $('frame'), bigplay: $('bigplay'), bigLabel: $('bigplay-label'),
-    pp: $('pp'), tc: $('tc'), seek: $('seek'), ticks: $('ticks'), mute: $('mute'), fs: $('fs'),
+    pp: $('pp'), tc: $('tc'), seek: $('seek'), ticks: $('ticks'), mute: $('mute'), voice: $('voice'), fs: $('fs'),
     slug: $('slug'), line: $('line'), who: $('who'), chapters: $('chapters'), script: $('script'),
   };
   let playing = false, started = false, ended = false, playhead = 0, clockAudio = false, perfAnchor = 0;
@@ -1813,12 +1877,21 @@
   els.seek.addEventListener('pointerup', () => { dragging = false; });
   function setMuted(m) {
     A.muted = m;
-    if (A.master) A.master.gain.setTargetAtTime(m ? 0 : 0.9, A.ctx.currentTime, 0.05);
+    if (A.master) A.master.gain.setTargetAtTime(m ? 0 : 1, A.ctx.currentTime, 0.05);
     els.mute.textContent = m ? 'Unmute' : 'Mute';
     try { localStorage.setItem('after-eden-muted', m ? '1' : '0'); } catch (e) { /* private mode */ }
   }
+  function setVoice(on) {
+    A.voiceOn = on;
+    els.voice.setAttribute('aria-pressed', String(on));
+    if (A.voiceOut) A.voiceOut.gain.setTargetAtTime(on ? VOICE_LEVEL : 0, A.ctx.currentTime, 0.05);
+    if (A.ctx && playing && A.bus) scheduleDuck(clockNow());
+    try { localStorage.setItem('after-eden-voice', on ? '1' : '0'); } catch (e) { /* private mode */ }
+  }
   els.mute.addEventListener('click', () => setMuted(!A.muted));
+  els.voice.addEventListener('click', () => setVoice(!A.voiceOn));
   try { if (localStorage.getItem('after-eden-muted') === '1') setMuted(true); } catch (e) { /* private mode */ }
+  try { if (localStorage.getItem('after-eden-voice') === '0') setVoice(false); } catch (e) { /* private mode */ }
   const canFs = !!(els.theatre.requestFullscreen || els.theatre.webkitRequestFullscreen);
   els.fs.hidden = !canFs;
   els.fs.addEventListener('click', async () => {
@@ -1838,6 +1911,7 @@
     else if (e.key === 'ArrowRight') { e.preventDefault(); seek(playhead + 5); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); seek(playhead - 5); }
     else if (e.key === 'm') setMuted(!A.muted);
+    else if (e.key === 'n') setVoice(!A.voiceOn);
     else if (e.key === 'f' && canFs) els.fs.click();
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden && playing) pause(); });
