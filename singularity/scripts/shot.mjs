@@ -19,7 +19,7 @@ try {
     if (a.shot) await page.screenshot(opts(a.shot));
   }
 } catch (e) {
-  logs.push('[action-error] ' + e.message.split('\n')[0]);
+  logs.push('[action-error] ' + e.message.split('\n').slice(0, 14).join(' / '));
 }
 await page.screenshot(opts(out));
 console.log(logs.slice(-40).join('\n'));

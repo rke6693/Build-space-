@@ -135,6 +135,8 @@ export class Viewport {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = this.quality.shadows;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // count every pass of a frame (post-processing would otherwise report only its last quad)
+    this.renderer.info.autoReset = false;
     this.renderer.domElement.className = 'viewport-canvas';
     this.renderer.domElement.setAttribute('aria-label', '3D city viewport. Drag to orbit, right-drag to pan, scroll to zoom.');
     this.renderer.domElement.tabIndex = 0;
@@ -507,7 +509,8 @@ export class Viewport {
     if (this.disposed) return;
     this.raf = requestAnimationFrame(this.loop);
     const now = performance.now();
-    const dtMs = Math.min(100, now - this.last);
+    const rawMs = Math.max(0, now - this.last); // real frame time, for diagnostics / adaptive quality
+    const dtMs = Math.min(100, rawMs); // clamped step for animation
     const dt = dtMs / 1000;
     this.last = now;
     this.time += dt;
@@ -585,11 +588,12 @@ export class Viewport {
       if (this.sky.updateEnvironment(this.renderer, this.quality.envMap)) this.envTimer = now + 2500;
     }
 
+    this.renderer.info.reset();
     if (this.post) this.post.render(dt);
     else this.renderer.render(this.scene, cam);
 
     // stats & labels
-    this.fpsAcc += dtMs;
+    this.fpsAcc += rawMs;
     this.fpsN++;
     if (this.fpsAcc > 500) {
       const info = this.renderer.info;
@@ -605,7 +609,7 @@ export class Viewport {
       this.fpsAcc = 0;
       this.fpsN = 0;
     }
-    if (!this.rig.introPlaying) this.adaptive.frame(dtMs, now);
+    if (!this.rig.introPlaying) this.adaptive.frame(Math.min(rawMs, 1000), now);
     this.labelTimer -= dt;
     if (this.labelTimer <= 0) {
       this.emitLabels();

@@ -118,6 +118,29 @@ test('scenarios can be saved locally and loaded again after reload', async ({ pa
     .toBeGreaterThan(0);
 });
 
+test('results export as JSON summary and CSV with causes', async ({ page }) => {
+  await boot(page);
+  await triggerEarthquake(page);
+  await page.keyboard.press('5');
+  await waitForTick(page, 200);
+  await page.keyboard.press(' ');
+
+  await page.getByRole('button', { name: 'Export results' }).click();
+  const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Summary (JSON)' }).click()]);
+  expect(json.suggestedFilename()).toMatch(/\.json$/);
+  const summary = JSON.parse(await (await import('node:fs/promises')).readFile((await json.path())!, 'utf8'));
+  expect(summary.generator).toBe('PROJECT SINGULARITY');
+  expect(summary.finalMetrics.bModerate + summary.finalMetrics.bExtensive + summary.finalMetrics.bCollapsed).toBeGreaterThan(0);
+  expect(summary.disclaimer).toMatch(/illustrative/i);
+
+  await page.getByRole('button', { name: 'Export results' }).click();
+  const [csv] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Event log with causes/ }).click()]);
+  const text = await (await import('node:fs/promises')).readFile((await csv.path())!, 'utf8');
+  const [header, ...rows] = text.trim().split('\n');
+  expect(header).toMatch(/causes/);
+  expect(rows.length).toBeGreaterThan(3);
+});
+
 test('keyboard shortcuts drive speed, cinematic mode and diagnostics', async ({ page }) => {
   await boot(page);
   await page.keyboard.press('3');

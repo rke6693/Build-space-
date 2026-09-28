@@ -162,6 +162,8 @@ export class CameraRig {
 
   resize(w: number, h: number) {
     this.camera.aspect = w / Math.max(1, h);
+    // portrait screens: widen the vertical field of view so the city still fits across
+    this.camera.fov = THREE.MathUtils.clamp(45 / Math.sqrt(Math.min(1, this.camera.aspect)), 45, 68);
     this.camera.updateProjectionMatrix();
   }
 }

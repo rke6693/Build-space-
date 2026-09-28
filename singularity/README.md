@@ -146,7 +146,7 @@ The goal is plausible, explainable behaviour at city scale, not engineering accu
 ```bash
 npm run typecheck    # strict TypeScript
 npm test             # 65 unit/integration tests (vitest, ~1.5 min)
-npm run e2e          # 9 Playwright browser tests against the production build
+npm run e2e          # 10 Playwright browser tests against the production build
 npm run headless -- showcase 180 3   # run a scenario headless: timing, events, metrics
 npm run city-map     # render the generated city to city-map.png
 ```
@@ -157,7 +157,7 @@ mass conservation, stability, a quiet river at rest, pumps and levee breaches, f
 dependencies and cascades, evacuation and shelter-in-place, event causality, deterministic replay and branching, scenario
 validation/serialisation, CSV/JSON export, extreme inputs (no NaN, bounded memory and event
 counts) and full scripted workflows. The browser tests cover launch, earthquake propagation,
-pause, causal chains and inspection, replay verification, comparison, local save/load,
+pause, causal chains and inspection, replay verification, comparison, local save/load, JSON/CSV export,
 keyboard control, onboarding and the phone layout.
 
 Headless performance on the showcase (2,400 agents, 7,420 buildings): ~2.1 ms per simulated

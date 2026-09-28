@@ -75,6 +75,9 @@ export function App() {
     runtime.callbacks = callbacks;
     runtime.container = container.current;
 
+    // phones: start with the city visible, panels one tap away
+    if (window.innerWidth <= 760) store.set({ leftOpen: false, rightOpen: false });
+
     const boot = setTimeout(() => {
       const city = generateCity(scenario.seed);
       runtime.city = city;

@@ -308,7 +308,9 @@ export class SkyLayer {
     const st = this.state;
     // the ambient term keeps following night/day even when the capture is reused
     this.scene.environmentIntensity = 0.3 + 0.5 * (1 - st.night);
-    const key = [st.sunDir.x.toFixed(2), st.sunDir.y.toFixed(2), st.skyColor.getHexString(), st.horizon.getHexString(), st.sunColor.getHexString()].join('|');
+    // coarse key: re-capture only when the sky changed visibly (a capture costs ~20 draw passes)
+    const q = (c: THREE.Color) => `${Math.round(c.r * 24)},${Math.round(c.g * 24)},${Math.round(c.b * 24)}`;
+    const key = [Math.round(st.sunDir.x * 20), Math.round(st.sunDir.y * 30), q(st.skyColor), q(st.horizon), q(st.sunColor)].join('|');
     if (key === this.lastEnvKey) return true;
     this.lastEnvKey = key;
     if (!this.pmrem) this.pmrem = new THREE.PMREMGenerator(renderer);

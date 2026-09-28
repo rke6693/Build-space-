@@ -96,17 +96,17 @@ export function Timeline() {
       <div className="tl-mid">
         <div className="tl-info">
           <b className="num" data-testid="tl-time">{fmtTick(tick)}</b>
-          <span>/ {fmtTick(max)}</span>
+          <span className="tl-max">/ {fmtTick(max)}</span>
           {status?.replay ? (
             <span className="replay-note" data-testid="replay-note" title="Seeking restores the nearest keyframe and re-runs the deterministic simulation; checksums are compared at every recorded keyframe.">
               ◷ Replay: deterministic re-simulation · {status.verified} keyframe{status.verified === 1 ? '' : 's'} verified{status.mismatches ? ` · ${status.mismatches} MISMATCH` : ' ✓'}
             </span>
           ) : (
-            <span className="muted">recorded to {fmtTick(frontier)}</span>
+            <span className="muted rec">recorded to {fmtTick(frontier)}</span>
           )}
           <span className="spacer" />
           <button className="btn small" onClick={() => addBookmark()} title="Bookmark this moment (B)" data-testid="add-bookmark">
-            <IconBookmark size={13} /> Bookmark
+            <IconBookmark size={13} /> <span className="lbl">Bookmark</span>
           </button>
         </div>
         <div

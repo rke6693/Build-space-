@@ -5,6 +5,7 @@ import { selectEvent, selectObject } from './actions';
 import { CATEGORY, fmtInt, statusColor } from './format';
 import { runtime } from './runtime';
 import { store, useUI } from './store';
+import { setMode } from './TopBar';
 
 export function Labels() {
   const labels = useUI((s) => s.labels);
@@ -134,7 +135,9 @@ export function CinematicOverlay() {
   if (!cinematic) return null;
   return (
     <div className="letterbox">
-      <div className="cine-hint">Cinematic director · press C or Esc for analytical mode</div>
+      <button className="cine-hint" onClick={() => setMode(false)} data-testid="exit-cinematic">
+        Cinematic director · <u>exit</u> (C / Esc)
+      </button>
       {caption && (
         <div className="caption" key={caption.title + caption.tick}>
           <div className="cat" style={{ color: CATEGORY[caption.category]?.color }}>

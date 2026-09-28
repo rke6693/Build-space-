@@ -7,6 +7,15 @@ import { IconClose, IconPlus, IconTrash } from './icons';
 import { runtime } from './runtime';
 import { store, useUI } from './store';
 
+const ENV_LABELS: Record<keyof EnvBase, string> = {
+  rainfall: 'Rainfall (mm/h)',
+  windSpeed: 'Wind speed (m/s)',
+  windDir: 'Wind from (° from north)',
+  temperature: 'Temperature (°C)',
+  seaLevel: 'Sea level offset (m)',
+  soilSaturation: 'Soil saturation (0–1)',
+};
+
 const NEW_SPECS: Record<string, CommandSpec> = {
   earthquake: { kind: 'earthquake', x: 900, z: 5600, magnitude: 6.5, depthKm: 12, aftershocks: true },
   rain: { kind: 'rain', rate: 50, durationMin: 60 },
@@ -91,13 +100,13 @@ function EditorBody() {
           <h3 style={{ fontSize: 13, margin: '18px 0 8px' }}>Base conditions</h3>
           <div className="grid3">
             {(Object.keys(ENV_RANGES) as (keyof EnvBase)[]).map((k) => (
-              <Num key={k} label={k} value={s.env[k]} min={ENV_RANGES[k][0]} max={ENV_RANGES[k][1]} step={k === 'soilSaturation' ? 0.05 : 0.5} onChange={(v) => env(k, v)} />
+              <Num key={k} label={ENV_LABELS[k]} value={s.env[k]} min={ENV_RANGES[k][0]} max={ENV_RANGES[k][1]} step={k === 'soilSaturation' ? 0.05 : 0.5} onChange={(v) => env(k, v)} />
             ))}
           </div>
           <h3 style={{ fontSize: 13, margin: '18px 0 8px' }}>Resilience</h3>
           <div className="grid3">
             <Num label="Seawall raise (m)" value={s.resilience.leveeRaise} min={-2} max={4} step={0.1} onChange={(v) => setS({ ...s, resilience: { ...s.resilience, leveeRaise: v } })} />
-            <Num label="Backup fuel × " value={s.resilience.backupHoursScale} min={0} max={20} step={0.5} onChange={(v) => setS({ ...s, resilience: { ...s.resilience, backupHoursScale: v } })} />
+            <Num label="Backup fuel ×" value={s.resilience.backupHoursScale} min={0} max={20} step={0.5} onChange={(v) => setS({ ...s, resilience: { ...s.resilience, backupHoursScale: v } })} />
             <Num label="Pump capacity ×" value={s.resilience.pumpCapacityScale} min={0} max={5} step={0.1} onChange={(v) => setS({ ...s, resilience: { ...s.resilience, pumpCapacityScale: v } })} />
             <Num label="Crews per station" value={s.resilience.crewsPerStation} min={0} max={4} step={1} onChange={(v) => setS({ ...s, resilience: { ...s.resilience, crewsPerStation: v } })} />
             <Check label="Anchored / retrofitted substations" checked={s.resilience.substationRetrofit} onChange={(v) => setS({ ...s, resilience: { ...s.resilience, substationRetrofit: v } })} />

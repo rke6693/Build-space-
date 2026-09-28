@@ -86,12 +86,12 @@ export function TopBar() {
       </div>
       <div className="spacer" />
       <div className="seg" role="group" aria-label="View mode">
-        <button aria-pressed={!cinematic} onClick={() => setMode(false)} title="Analytical mode: panels, overlays, free orbit camera">
+        <button className="analytical" aria-pressed={!cinematic} onClick={() => setMode(false)} title="Analytical mode: panels, overlays, free orbit camera">
           Analytical
         </button>
-        <button aria-pressed={cinematic} onClick={() => setMode(true)} title="Cinematic mode: automatic event-focused camera (C)">
+        <button aria-pressed={cinematic} onClick={() => setMode(!cinematic)} title="Cinematic mode: automatic event-focused camera (C)" aria-label="Cinematic mode">
           <IconFilm size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-          Cinematic
+          <span className="lbl">Cinematic</span>
         </button>
       </div>
       <select
@@ -137,10 +137,10 @@ export function TopBar() {
           </div>
         )}
       </div>
-      <button className="icon-btn" aria-label="Diagnostics" aria-pressed={diag} onClick={() => store.set({ diagnostics: !diag })} title="Developer diagnostics (G)">
+      <button className="icon-btn hide-sm" aria-label="Diagnostics" aria-pressed={diag} onClick={() => store.set({ diagnostics: !diag })} title="Developer diagnostics (G)">
         <IconActivity />
       </button>
-      <button className="icon-btn" aria-label="Model notes and limitations" onClick={() => store.set({ showNotes: true })} title="How the models work and their limitations">
+      <button className="icon-btn hide-sm" aria-label="Model notes and limitations" onClick={() => store.set({ showNotes: true })} title="How the models work and their limitations">
         <IconInfo />
       </button>
       <button className="icon-btn" aria-label="Guided tour" onClick={() => store.set({ tourStep: 0 })} title="Guided tour (H)">
