@@ -298,6 +298,15 @@ export class SkyLayer {
   }
 
   /** Regenerates the image-based lighting when the sky changed noticeably. */
+  dispose() {
+    this.envTarget?.dispose();
+    this.envTarget = null;
+    this.pmrem?.dispose();
+    this.pmrem = null;
+    this.envMat.dispose();
+    this.fieldTex.dispose();
+  }
+
   /** Returns false while there is no sky state yet (nothing captured). */
   updateEnvironment(renderer: THREE.WebGLRenderer, enabled: boolean): boolean {
     if (!enabled) {

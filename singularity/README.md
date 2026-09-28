@@ -128,6 +128,9 @@ The goal is plausible, explainable behaviour at city scale, not engineering accu
 
 ## Limitations
 
+* The bay's layout (harbour west, downtown on the estuary, polder east) is a fixed archetype that
+  the built-in scenarios are calibrated against; the seed varies terrain detail, coastline and river
+  meander, streets and every building, not the overall geography.
 * Everything below 32 m is averaged: water is a cell-scale depth field, fires are cell-scale,
   and buildings take the hazard value of their cell.
 * PGA alone drives building fragility (no spectral acceleration, so tall buildings are crude).

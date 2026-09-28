@@ -330,13 +330,36 @@ export class Viewport {
     return this.hf.at(x, z);
   }
 
+  /** Frees every GPU resource and the WebGL context (the viewport is rebuilt when the city seed changes). */
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this.onResize);
     this.rig.controls.dispose();
     this.post?.dispose();
+    const textures = new Set<THREE.Texture>();
+    const collect = (v: unknown) => {
+      if (v instanceof THREE.Texture) textures.add(v);
+    };
+    this.scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      m.geometry?.dispose();
+      const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : [];
+      for (const mt of mats) {
+        for (const v of Object.values(mt)) collect(v);
+        const u = (mt as THREE.ShaderMaterial).uniforms;
+        if (u) for (const k of Object.keys(u)) collect(u[k]?.value);
+        mt.dispose();
+      }
+    });
+    // data textures bound through onBeforeCompile uniforms are not visible on the materials
+    for (const u of [this.terrain.uniforms, this.buildings.uniforms, this.roads.uniforms] as Record<string, THREE.IUniform>[]) {
+      for (const k of Object.keys(u)) collect(u[k].value);
+    }
+    for (const t of textures) t.dispose();
+    this.sky.dispose();
     this.renderer.dispose();
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
   }
 

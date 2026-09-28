@@ -79,7 +79,7 @@ function EditorBody() {
               <input id="se-name" type="text" value={s.name} onChange={(e) => setS({ ...s, name: e.target.value })} />
             </div>
             <div className="field">
-              <label htmlFor="se-seed">City seed (changes the whole city)</label>
+              <label htmlFor="se-seed">City seed (terrain detail, streets, buildings)</label>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input id="se-seed" type="number" value={s.seed} onChange={(e) => setS({ ...s, seed: Number(e.target.value) })} />
                 <button className="btn small" onClick={() => setS({ ...s, seed: Math.floor(Math.random() * 1e9) })}>

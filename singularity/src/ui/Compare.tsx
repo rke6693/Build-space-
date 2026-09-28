@@ -151,7 +151,7 @@ function Results({ a, b, labelA, labelB, scenarioB }: { a: HeadlessResult; b: He
     { label: 'Lowest road accessibility', a: low(a.samples, 'roadAccessibility'), b: low(b.samples, 'roadAccessibility'), fmt: (v) => fmtPct(v), higherBetter: true },
     { label: 'Lowest hospital access', a: low(a.samples, 'hospitalAccess'), b: low(b.samples, 'hospitalAccess'), fmt: (v) => fmtPct(v), higherBetter: true },
     { label: 'Peak flooded area', a: peak(a.samples, 'floodedAreaKm2'), b: peak(b.samples, 'floodedAreaKm2'), fmt: (v) => `${v.toFixed(2)} km²` },
-    { label: 'Burnt area', a: a.final.burnedAreaKm2, b: b.final.burnedAreaKm2, fmt: (v) => `${v.toFixed(3)} km²` },
+    { label: 'Burnt area', a: a.final.burnedAreaKm2, b: b.final.burnedAreaKm2, fmt: (v) => `${(v * 100).toFixed(1)} ha` },
     { label: 'Economic loss (illustrative)', a: a.final.lossTotal, b: b.final.lossTotal, fmt: fmtMoney },
   ];
   const ticks = a.samples.map((s) => s.tick);
@@ -174,7 +174,8 @@ function Results({ a, b, labelA, labelB, scenarioB }: { a: HeadlessResult; b: He
         </thead>
         <tbody>
           {rows.map((r) => {
-            const d = r.b - r.a;
+            // a difference smaller than the displayed precision is not a difference
+            const d = r.fmt(r.a) === r.fmt(r.b) ? 0 : r.b - r.a;
             const better = r.higherBetter ? d > 1e-9 : d < -1e-9;
             const worse = r.higherBetter ? d < -1e-9 : d > 1e-9;
             return (
