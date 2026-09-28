@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GRID, HALF, N_CELLS, cellX, cellZ } from '../sim/config';
-import type { City, Frame, SimEvent } from '../sim/types';
+import { BTYPE_NAMES, type City, type Frame, type SimEvent, ZONE_NAMES } from '../sim/types';
 import type { SimClient } from '../worker/client';
 import { AgentLayer } from './agents';
 import { BuildingLayer, type BuildingTint } from './buildings';
@@ -469,16 +469,16 @@ export class Viewport {
       const ud = h.object.userData as { kind?: string; asset?: number; bridge?: number };
       if (h.object === this.terrain.mesh) {
         const c = cellOf(h.point.x, h.point.z);
-        return { selection: { kind: 'cell', id: c, x: h.point.x, z: h.point.z }, point: h.point, label: 'Ground' };
+        return { selection: { kind: 'cell', id: c, x: h.point.x, z: h.point.z }, point: h.point, label: this.cellLabel(c) };
       }
       if (ud.kind === 'buildings' || ud.kind === 'roofs') {
         const b = this.buildings.buildingFromHit(h.object, h.instanceId ?? -1);
         if (b < 0) continue;
         const asset = city.buildings.asset[b];
-        if (asset >= 0) return { selection: { kind: 'asset', id: asset }, point: h.point, label: city.assets[asset].name };
-        return { selection: { kind: 'building', id: b }, point: h.point, label: `Building #${b}` };
+        if (asset >= 0) return { selection: { kind: 'asset', id: asset }, point: h.point, label: this.assetLabel(asset) };
+        return { selection: { kind: 'building', id: b }, point: h.point, label: this.buildingLabel(b) };
       }
-      if (ud.kind === 'asset' && ud.asset !== undefined) return { selection: { kind: 'asset', id: ud.asset }, point: h.point, label: city.assets[ud.asset].name };
+      if (ud.kind === 'asset' && ud.asset !== undefined) return { selection: { kind: 'asset', id: ud.asset }, point: h.point, label: this.assetLabel(ud.asset) };
       if (ud.kind === 'bridge' && ud.bridge !== undefined) return { selection: { kind: 'bridge', id: ud.bridge }, point: h.point, label: city.bridges[ud.bridge].name };
       if (ud.kind === 'levee') {
         const c = this.infra.leveeCell(h.instanceId ?? -1);
@@ -487,6 +487,39 @@ export class Viewport {
       }
     }
     return null;
+  }
+
+  // ---- hover labels: identity plus live state from the latest frame
+  private buildingLabel(k: number): string {
+    const b = this.city.buildings;
+    const parts = [`${BTYPE_NAMES[b.type[k]]} #${k}`, this.city.districts[b.district[k]]?.name ?? ''];
+    const st = this.frame?.bState[k];
+    if (st !== undefined) {
+      const ds = st & 7;
+      parts.push(ds ? `${HOVER_DAMAGE[ds]} damage` : 'undamaged');
+      if (st & 8) parts.push('on fire');
+      if (st & 32) parts.push('flooded');
+      if (!(st & 16)) parts.push('no grid power');
+    }
+    return parts.filter(Boolean).join(' · ');
+  }
+
+  private assetLabel(id: number): string {
+    const a = this.frame?.assets[id];
+    const status = a ? (a.status === 2 ? (a.onBackup ? 'on backup power' : 'operational') : a.status === 1 ? 'degraded' : 'out of service') : '';
+    return [this.city.assets[id].name, status].filter(Boolean).join(' · ');
+  }
+
+  private cellLabel(c: number): string {
+    const parts = [ZONE_NAMES[this.city.zone[c]] ?? 'Ground'];
+    const f = this.frame;
+    if (f) {
+      const land = this.city.zone[c] > 1;
+      if (land && f.water[c] > 0.05) parts.push(`water ${f.water[c].toFixed(2)} m`);
+      if (f.burn[c] > 0) parts.push('burning');
+      if (f.peakPGA[c] > 0.02) parts.push(`peak ${f.peakPGA[c].toFixed(2)} g`);
+    }
+    return parts.join(' · ');
   }
 
   private applyFrame(f: Frame) {
@@ -640,6 +673,8 @@ export class Viewport {
     }
   };
 }
+
+const HOVER_DAMAGE = ['', 'slight', 'moderate', 'extensive', 'complete'];
 
 export function cellOf(x: number, z: number): number {
   const i = Math.min(GRID - 1, Math.max(0, Math.floor((x + HALF) / 32)));
