@@ -192,6 +192,19 @@ export class SimHost {
   }
 
   private loop() {
+    try {
+      this.tickLoop();
+    } catch (e) {
+      // never let an exception kill the loop silently: pause and report
+      this.playing = false;
+      this.post({ type: 'error', message: e instanceof Error ? e.message : String(e) });
+      this.dirty = true;
+      this.publish(true);
+    }
+    this.schedule();
+  }
+
+  private tickLoop() {
     const t = now();
     const dt = Math.min(0.25, (t - this.last) / 1000);
     this.last = t;
@@ -222,7 +235,6 @@ export class SimHost {
       this.windowStart = t;
     }
     this.publish();
-    this.schedule();
   }
 }
 

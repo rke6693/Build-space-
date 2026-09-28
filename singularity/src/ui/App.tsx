@@ -37,7 +37,12 @@ export function App() {
     const client = runtime.client;
     // ---- keep the UI store in sync with the worker (throttled)
     let lastMetrics = 0;
+    let lastError: string | null = null;
     const unsub = client.subscribe(() => {
+      if (client.lastError && client.lastError !== lastError) {
+        lastError = client.lastError;
+        toast('Simulation error — paused', `${client.lastError}. You can seek back or restart; please report this.`, 4, 'user');
+      }
       const now = performance.now();
       const patch: Partial<ReturnType<typeof store.get>> = {
         status: client.status,
