@@ -42,7 +42,7 @@ export function ModelNotes() {
           </ul>
           <h3>Fire</h3>
           <ul>
-            <li>Cellular fire: burning cells radiate heat to neighbours with a downwind bias; cells ignite past a moisture- and temperature-dependent threshold; firebrands spot fires downwind in strong wind. Rain, floodwater and crews suppress fires; crews need open roads, and hydrants need the water works to be powered.</li>
+            <li>Cellular fire: burning cells radiate heat to neighbours with a downwind bias; cells ignite past a moisture- and temperature-dependent threshold; firebrands spot fires downwind in strong wind. Rain, floodwater and crews suppress fires. Engines drive to the nearest open road at the fire perimeter and work cells within about 100 m; they need a passable route, and hydrants need the water works to be powered.</li>
           </ul>
           <h3>Weather</h3>
           <ul>

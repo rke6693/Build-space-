@@ -58,14 +58,26 @@ describe('fire model', () => {
     expect(ignitionThreshold(0.3, 40)).toBeLessThan(ignitionThreshold(0.3, 5));
   });
 
-  it('fire crews are dispatched over the road network', () => {
-    const sc = scenario({
-      env: { rainfall: 0, windSpeed: 6, windDir: 200, temperature: 25, seaLevel: 0, soilSaturation: 0.3 },
-      commands: [{ id: 1, tick: 1, source: 'scenario', spec: { kind: 'fire', x: cellX(start % GRID), z: cellZ((start / GRID) | 0), radius: 0 } }],
-    });
-    const sim = new Simulation(sc, city);
-    for (let k = 0; k < minutesToTicks(20); k++) sim.step();
-    expect(sim.events.some((e) => e.type === 'crew_dispatched')).toBe(true);
-    expect(Array.from(sim.s.crews.state).some((st) => st !== 0)).toBe(true);
+  it('fire crews are dispatched over the road network and knock the fire down', () => {
+    const run = (crewsPerStation: number) => {
+      const base = scenario();
+      const sc = scenario({
+        env: { rainfall: 0, windSpeed: 6, windDir: 200, temperature: 25, seaLevel: 0, soilSaturation: 0.3 },
+        resilience: { ...base.resilience, crewsPerStation },
+        commands: [{ id: 1, tick: 1, source: 'scenario', spec: { kind: 'fire', x: cellX(start % GRID), z: cellZ((start / GRID) | 0), radius: 0 } }],
+      });
+      const sim = new Simulation(sc, city);
+      for (let k = 0; k < minutesToTicks(20); k++) sim.step();
+      let burning = 0;
+      for (let c = 0; c < sim.s.burn.length; c++) if (sim.s.burn[c] > 0) burning++;
+      return { sim, burning, burnt: sim.metrics().burnedAreaKm2 };
+    };
+    const withCrews = run(2);
+    const without = run(0);
+    expect(withCrews.sim.events.some((e) => e.type === 'crew_dispatched')).toBe(true);
+    expect(withCrews.sim.events.some((e) => e.type === 'crew_blocked')).toBe(false);
+    expect(without.sim.events.some((e) => e.type === 'crew_dispatched')).toBe(false);
+    expect(withCrews.burning).toBeLessThan(without.burning);
+    expect(withCrews.burnt).toBeLessThanOrEqual(without.burnt);
   });
 });

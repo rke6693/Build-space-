@@ -6,6 +6,8 @@ import type { Incident } from '../types';
 
 const CREW_SPEED = 13; // m/s free-flow
 const SUPPRESS = 0.0045; // intensity knocked down per s at full water pressure
+const HOSE_CELLS = 3; // an engine works cells within ±3 cells (~100 m of hose lay)
+const STAGING_RINGS = [100, 170, 260]; // m from the fire, tried in order
 
 export function registerIgnition(sim: Simulation, c: number, eventId: number): Incident {
   const s = sim.s;
@@ -186,9 +188,10 @@ export function updateEmergency(sim: Simulation) {
     const desired = Math.min(3, 1 + Math.floor(inc.burning / 6));
     if (inc.crews >= desired) continue;
     if (s.tick % 5 !== inc.id % 5) continue; // stagger expensive searches
-    const target = sim.d.cellNode[inc.cell];
     const dist = sim.tmpDist;
-    dijkstra(g, [target], s.eClosed, sim.tmpHop, dist, null, sim.heap, s.brDS);
+    // engines stage at the fire's edge: any nearby road node that is not burning and still has
+    // an open approach (the node nearest the flames is often cut off by the fire itself)
+    dijkstra(g, stagingNodes(sim, inc.x, inc.z, sim.d.cellNode[inc.cell]), s.eClosed, sim.tmpHop, dist, null, sim.heap, s.brDS);
     let best = -1;
     let bestD = Infinity;
     let idle = 0;
@@ -205,7 +208,7 @@ export function updateEmergency(sim: Simulation) {
     if (best >= 0 && bestD < Infinity) {
       cr.state[best] = 1;
       cr.incident[best] = inc.id;
-      cr.targetNode[best] = target;
+      cr.targetNode[best] = followToSource(g, sim.tmpHop, dist, cr.node[best]);
       cr.nextHop.set(sim.tmpHop.subarray(0, N), best * N);
       cr.edge[best] = -1;
       inc.crews++;
@@ -259,8 +262,8 @@ export function updateEmergency(sim: Simulation) {
     const ci = c % GRID;
     const cj = (c / GRID) | 0;
     let found = false;
-    for (let dj = -2; dj <= 2; dj++) {
-      for (let di = -2; di <= 2; di++) {
+    for (let dj = -HOSE_CELLS; dj <= HOSE_CELLS; dj++) {
+      for (let di = -HOSE_CELLS; di <= HOSE_CELLS; di++) {
         const i = ci + di;
         const j = cj + dj;
         if (i < 0 || j < 0 || i >= GRID || j >= GRID) continue;
@@ -290,24 +293,65 @@ export function updateEmergency(sim: Simulation) {
     }
     const inc = s.incidents.find((x) => x.id === cr.incident[k]);
     if (best >= 0) {
-      planCrew(sim, k, sim.d.cellNode[best], 1);
+      const p = sim.cellCenter(best);
+      planCrew(sim, k, stagingNodes(sim, p.x, p.z, sim.d.cellNode[best]), 1);
     } else {
       if (inc) inc.crews = Math.max(0, inc.crews - 1);
       cr.incident[k] = -1;
-      planCrew(sim, k, sim.city.assets[cr.station[k]].node, 3);
+      planCrew(sim, k, [sim.city.assets[cr.station[k]].node], 3);
     }
   }
 }
 
-function planCrew(sim: Simulation, k: number, target: number, state: number) {
+function planCrew(sim: Simulation, k: number, targets: number[], state: number) {
   const s = sim.s;
   const g = sim.city.roads;
   const N = g.nodeCount;
   const cr = s.crews;
-  cr.targetNode[k] = target;
   cr.state[k] = state;
-  dijkstra(g, [target], s.eClosed, cr.nextHop, sim.tmpDist, null, sim.heap, s.brDS, k * N);
-  if (cr.node[k] !== target && sim.tmpDist[cr.node[k]] === Infinity) cr.state[k] = 4; // blocked where it stands
+  dijkstra(g, targets, s.eClosed, cr.nextHop, sim.tmpDist, null, sim.heap, s.brDS, k * N);
+  if (sim.tmpDist[cr.node[k]] === Infinity) {
+    cr.targetNode[k] = targets[0];
+    cr.state[k] = 4; // blocked where it stands
+    return;
+  }
+  cr.targetNode[k] = followToSource(g, cr.nextHop.subarray(k * N, (k + 1) * N), sim.tmpDist, cr.node[k]);
+}
+
+/**
+ * Road nodes from which engines can work a fire: not burning, with at least one open edge,
+ * taken from the closest ring that has any (within hose reach first, then further out).
+ */
+function stagingNodes(sim: Simulation, x: number, z: number, fallback: number): number[] {
+  const g = sim.city.roads;
+  const s = sim.s;
+  for (const R of STAGING_RINGS) {
+    const out: number[] = [];
+    for (let n = 0; n < g.nodeCount; n++) {
+      const dx = g.nodeX[n] - x;
+      const dz = g.nodeZ[n] - z;
+      if (dx * dx + dz * dz > R * R || s.burn[g.nodeCell[n]] > 0) continue;
+      for (let a = g.adjStart[n]; a < g.adjStart[n + 1]; a++) {
+        if (!s.eClosed[g.adjEdge[a]]) {
+          out.push(n);
+          break;
+        }
+      }
+    }
+    if (out.length) return out;
+  }
+  return [fallback];
+}
+
+/** Follows next-hop edges from a node to the multi-source search source it leads to. */
+function followToSource(g: Simulation['city']['roads'], hop: Int16Array, dist: Float32Array, from: number): number {
+  let n = from;
+  for (let guard = 0; guard < g.nodeCount && dist[n] > 0; guard++) {
+    const e = hop[n];
+    if (e < 0) break;
+    n = g.edgeA[e] === n ? g.edgeB[e] : g.edgeA[e];
+  }
+  return n;
 }
 
 function moveCrew(sim: Simulation, k: number, dt: number) {
@@ -327,7 +371,7 @@ function moveCrew(sim: Simulation, k: number, dt: number) {
       const e = cr.nextHop[k * N + n];
       if (e < 0 || s.eClosed[e]) {
         // route invalidated by a new closure: re-plan once per tick
-        planCrew(sim, k, cr.targetNode[k], cr.state[k] === 3 ? 3 : 1);
+        planCrew(sim, k, [cr.targetNode[k]], cr.state[k] === 3 ? 3 : 1);
         return;
       }
       cr.edge[k] = e;
