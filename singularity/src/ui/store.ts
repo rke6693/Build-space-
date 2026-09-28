@@ -33,6 +33,7 @@ export interface CompareState {
 export interface UIState {
   ready: boolean;
   loadingText: string;
+  fatal: string | null;
   introDone: boolean;
   scenario: Scenario | null;
   status: WorkerStatus | null;
@@ -94,6 +95,7 @@ export function createStore<T extends object>(init: T) {
 export const store = createStore<UIState>({
   ready: false,
   loadingText: 'Generating Meridian Bay…',
+  fatal: null,
   introDone: false,
   scenario: null,
   status: null,

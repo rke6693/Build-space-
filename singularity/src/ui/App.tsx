@@ -81,7 +81,14 @@ export function App() {
     const boot = setTimeout(() => {
       const city = generateCity(scenario.seed);
       runtime.city = city;
-      const vp = new Viewport(container.current!, city, client, callbacks, quality);
+      let vp: Viewport;
+      try {
+        vp = new Viewport(container.current!, city, client, callbacks, quality);
+      } catch (err) {
+        console.error(err);
+        store.set({ fatal: 'This simulator needs WebGL 2, which this browser or device could not provide. Try a current Chrome, Edge, Firefox or Safari with hardware acceleration enabled.' });
+        return;
+      }
       vp.setAutoQuality(autoQuality);
       runtime.viewport = vp;
       vp.setLayers(store.get().layers);

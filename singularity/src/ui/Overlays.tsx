@@ -230,13 +230,14 @@ export function Diagnostics() {
 export function Loading() {
   const ready = useUI((s) => s.ready);
   const text = useUI((s) => s.loadingText);
-  if (ready) return null;
+  const fatal = useUI((s) => s.fatal);
+  if (ready && !fatal) return null;
   return (
-    <div className="loading" role="status" aria-live="polite">
+    <div className="loading" role={fatal ? 'alert' : 'status'} aria-live="polite">
       <div className="inner">
-        <div className="spinner" />
+        {!fatal && <div className="spinner" />}
         <h1>SINGULARITY</h1>
-        <p>{text}</p>
+        <p style={fatal ? { maxWidth: 460, lineHeight: 1.5, color: 'var(--text-2)' } : undefined}>{fatal ?? text}</p>
       </div>
     </div>
   );
