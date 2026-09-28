@@ -280,7 +280,7 @@ export class BuildingLayer {
         // facades read as lit windows rather than uniformly glowing slabs
         totalEmissiveRadiance += warm * win * lit * uNight * power * (1.0 - damage) * mix(0.35, 1.35, winAA);
         // landmark crown lighting
-        if (style > 3.5 && style < 4.5) totalEmissiveRadiance += vec3(0.4, 0.75, 1.0) * uNight * power * step(0.94, vLocal.y) * 1.1;
+        if (style > 3.5 && style < 4.5) totalEmissiveRadiance += vec3(0.25, 0.55, 0.9) * uNight * power * step(0.965, vLocal.y) * side * 0.55;
         // fire glow: lower floors flicker orange
         float flick = 0.65 + 0.35 * sin(uTime * 17.0 + vWP.y * 0.4 + vInfo.w * 30.0) * sin(uTime * 7.3 + vWP.x);
         totalEmissiveRadiance += vec3(1.0, 0.36, 0.08) * fire * flick * (1.2 - clamp(vLocal.y, 0.0, 1.0)) * 2.2;

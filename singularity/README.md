@@ -9,6 +9,17 @@ from identical initial conditions.
 TypeScript · React 19 · Three.js (WebGL, custom shaders) · Web Workers · Vite. No
 other runtime dependencies.
 
+![Meridian Bay overview](docs/screenshots/overview.jpg)
+
+| | |
+|---|---|
+| ![M6.9 earthquake aftermath with live analytics](docs/screenshots/earthquake.jpg) | ![Causal chain of a pump failure back to an aftershock](docs/screenshots/causality.jpg) |
+| *M6.9 offshore earthquake: damage states, lifelines and population in the analytics panel* | *"Why did this happen?" — a flood-pump stop traced back through diesel exhaustion and a substation to an aftershock* |
+| ![Hurricane surge flooding the polder](docs/screenshots/hurricane.jpg) | ![Urban firestorm](docs/screenshots/firestorm.jpg) |
+| *Cat 4 hurricane: seawall breached, Eastport polder under water, lines down (red)* | *Wind-driven urban firestorm spreading through Westhill* |
+| ![Night skyline](docs/screenshots/night.jpg) | ![Cinematic director](docs/screenshots/cinematic.jpg) |
+| *Evening: occupancy-driven window lights, streetlights and powered substations* | *Cinematic mode frames events automatically and captions them* |
+
 ## Run it
 
 Requires Node 20+.
@@ -112,7 +123,7 @@ The goal is plausible, explainable behaviour at city scale, not engineering accu
 | Fire | Cellular spread with heat transfer biased downwind, moisture/temperature ignition thresholds, fuel depletion, wind-driven spotting, suppression by rain, floodwater and crews (who need open roads and water pressure); smoke is advected by the wind. Ignitions come from gas-line breaks in damaged buildings, lightning or the toolbox. |
 | Weather | Ambient wind/rain/temperature/visibility plus storms with trapezoidal intensity profiles adding wind, rain, surge and lightning (Poisson strikes under dense cloud, attracted to tall structures). Gust fragilities damage buildings, lines and towers. |
 | Infrastructure | Power as graph reachability from live generation through intact lines and substations (no load flow). Consumers switch to backup with finite fuel. Telecom towers depend on the exchange, hospitals on power and water, pumps on power. Roads close for water depth, debris, fire, bridge damage or ground settlement; routing uses Dijkstra tables with separate vehicle and pedestrian passability. |
-| Population | 2,400 agents by default (1 agent = 100 residents) commute on the road network with congestion, receive alerts through mobile coverage or word of mouth, evacuate to shelters, are injured or trapped by exposure and building damage, and seek hospitals. Injuries are simulated counts; fatalities are deliberately not modelled. |
+| Population | 2,400 agents by default (1 agent = 100 residents) commute on the road network with congestion, receive alerts through mobile coverage or word of mouth, evacuate to open shelters (or, when none can be reached, take refuge in a nearby intact building — upper floors if flooded), are injured or trapped by exposure and building damage, and seek hospitals. Injuries are simulated counts; fatalities are deliberately not modelled. |
 | Economics | Illustrative only: replacement cost × damage ratio, depth–damage curves and outage-hours for business interruption. All unit values are editable in the scenario editor and labelled as illustrative wherever shown. |
 
 ## Limitations
@@ -134,7 +145,7 @@ The goal is plausible, explainable behaviour at city scale, not engineering accu
 
 ```bash
 npm run typecheck    # strict TypeScript
-npm test             # 63 unit/integration tests (vitest, ~1.5 min)
+npm test             # 65 unit/integration tests (vitest, ~1.5 min)
 npm run e2e          # 9 Playwright browser tests against the production build
 npm run headless -- showcase 180 3   # run a scenario headless: timing, events, metrics
 npm run city-map     # render the generated city to city-map.png
@@ -143,7 +154,7 @@ npm run city-map     # render the generated city to city-map.png
 Unit/integration coverage: math and RNG, city generation invariants (coastal layout, one
 connected road network, no buildings on water or roads, determinism by seed), earthquake attenuation and fragility, flood
 mass conservation, stability, a quiet river at rest, pumps and levee breaches, fire spread and suppression, infrastructure
-dependencies and cascades, event causality, deterministic replay and branching, scenario
+dependencies and cascades, evacuation and shelter-in-place, event causality, deterministic replay and branching, scenario
 validation/serialisation, CSV/JSON export, extreme inputs (no NaN, bounded memory and event
 counts) and full scripted workflows. The browser tests cover launch, earthquake propagation,
 pause, causal chains and inspection, replay verification, comparison, local save/load,

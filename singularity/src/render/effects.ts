@@ -85,7 +85,8 @@ void main() {
   vec3 p = vec3(uCam.x + (aSeed.x - 0.5) * uBox, y, uCam.z + (aSeed.z - 0.5) * uBox);
   vec3 dir = normalize(vec3(uWind.x * 0.12, -1.0, uWind.y * 0.12));
   p += dir * aEnd * 5.0;
-  vA = 1.0 - aEnd * 0.8;
+  // streaks right in front of the lens would read as giant sticks: fade them out
+  vA = (1.0 - aEnd * 0.8) * smoothstep(15.0, 70.0, distance(p, uCam));
   gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
 }`;
 const RAIN_FRAG = /* glsl */ `

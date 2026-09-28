@@ -378,8 +378,9 @@ export interface Metrics {
   affected: number;
   evacuating: number;
   stranded: number; // evacuating but with no passable route to an open shelter
-  evacuated: number; // reached shelter
-  sheltered: number;
+  evacuated: number; // reached a designated public shelter
+  shelterInPlace: number; // no reachable open shelter: refuge in a nearby intact building
+  sheltered: number; // evacuated + shelterInPlace
   injured: number;
   hospitalized: number;
   trapped: number;

@@ -20,7 +20,7 @@ for (let k = 0; k < ticks; k++) {
   worst = Math.max(worst, performance.now() - a);
   if (k % 900 === 0) {
     const m = sim.metrics();
-    console.log(`T+${formatClock(sim.tick * 2)} grid ${(m.gridAvailability * 100).toFixed(0)}% roads ${(m.roadAccessibility * 100).toFixed(0)}% flood ${m.floodedAreaKm2.toFixed(3)}km2 max ${m.maxFloodDepth.toFixed(2)}m fires ${m.activeFires} inj ${m.injured} shel ${m.sheltered} evac ${m.evacuating} collapsed ${m.bCollapsed} ext ${m.bExtensive} loss $${(m.lossTotal / 1e9).toFixed(2)}B pumps ${m.pumpsOnline}/${m.pumpsTotal} hosp ${m.hospitalsAccessible}/${m.hospitalsTotal}`);
+    console.log(`T+${formatClock(sim.tick * 2)} grid ${(m.gridAvailability * 100).toFixed(0)}% roads ${(m.roadAccessibility * 100).toFixed(0)}% flood ${m.floodedAreaKm2.toFixed(3)}km2 max ${m.maxFloodDepth.toFixed(2)}m fires ${m.activeFires} inj ${m.injured} shel ${m.sheltered} (in place ${m.shelterInPlace}) evac ${m.evacuating} (stranded ${m.stranded}) collapsed ${m.bCollapsed} ext ${m.bExtensive} loss $${(m.lossTotal / 1e9).toFixed(2)}B pumps ${m.pumpsOnline}/${m.pumpsTotal} hosp ${m.hospitalsAccessible}/${m.hospitalsTotal}`);
   }
 }
 const el = performance.now() - t0;

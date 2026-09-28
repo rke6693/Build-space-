@@ -259,7 +259,11 @@ export class SkyLayer {
 
     // fog: visibility → density; colour follows the horizon
     const vis = Math.max(0.15, eff.visibilityKm);
-    this.fog.density = Math.min(0.0022, 2.6 / (vis * 1000)) * 0.4 + 0.000025;
+    // visibility drives the haze, but capped so the city stays legible at analysis distances
+    const murk = Math.pow(1 - clamp(vis / 25, 0, 1), 1.5);
+    // rain and haze sit low: looking down from altitude crosses less of it
+    const aloft = 1 - 0.6 * smoothstep(400, 2600, camera.position.y);
+    this.fog.density = (0.00002 + 0.00026 * murk) * aloft;
     this.fog.color.copy(st.horizon).lerp(new THREE.Color('#a9b4c0'), (0.35 + cover * 0.3) * (0.1 + 0.9 * day));
     if (flash > 0) this.fog.color.lerp(new THREE.Color('#c9d2ff'), flash * 0.4);
 

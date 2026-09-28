@@ -1,4 +1,4 @@
-import { METRIC_INTERVAL, PEOPLE_PER_AGENT, STEP_SECONDS } from '../config';
+import { GRID, METRIC_INTERVAL, PEOPLE_PER_AGENT, STEP_SECONDS } from '../config';
 import { pickWeighted } from '../derived';
 import { hashUnit } from '../math';
 import type { Simulation } from '../engine';
@@ -106,6 +106,56 @@ function startEvacuation(sim: Simulation, a: number) {
   A.stuck[a] = 0;
 }
 
+/** Minutes an evacuee keeps looking for a passable route to an open shelter before sheltering in place. */
+const IN_PLACE_AFTER = (5 * 60) / STEP_SECONDS;
+
+/**
+ * No open shelter can be reached (all full, or every route cut): take refuge in the most
+ * suitable intact building nearby, preferring upper floors when the ground is flooded
+ * (vertical evacuation). Recorded as sheltered with no shelter asset (target -1).
+ */
+function shelterInPlace(sim: Simulation, a: number): boolean {
+  const s = sim.s;
+  const A = s.agents;
+  const b = sim.city.buildings;
+  const d = sim.d;
+  const c0 = sim.cellAt(A.x[a], A.z[a]);
+  const i0 = c0 % GRID;
+  const j0 = (c0 / GRID) | 0;
+  let best = -1;
+  let bestScore = -Infinity;
+  for (let dj = -2; dj <= 2; dj++) {
+    const j = j0 + dj;
+    if (j < 0 || j >= GRID) continue;
+    for (let di = -2; di <= 2; di++) {
+      const i = i0 + di;
+      if (i < 0 || i >= GRID) continue;
+      const c = j * GRID + i;
+      if (s.burn[c] > 0.02 || s.smoke[c] > 0.6) continue;
+      const wet = s.water[c] > 0.3;
+      for (let k = d.cellBuildStart[c]; k < d.cellBuildStart[c + 1]; k++) {
+        const bi = d.cellBuild[k];
+        if (s.bDS[bi] >= 3 || s.bFire[bi] > 0.05) continue;
+        if (wet && b.floors[bi] < 2) continue;
+        const score = Math.min(8, b.floors[bi]) - (Math.abs(di) + Math.abs(dj)) * 1.5 + hashUnit(a, bi, 7, 7) * 0.5;
+        if (score > bestScore) {
+          bestScore = score;
+          best = bi;
+        }
+      }
+    }
+  }
+  if (best < 0) return false;
+  A.state[a] = AgentState.Sheltered;
+  A.target[a] = -1;
+  A.at[a] = best;
+  A.edge[a] = -1;
+  A.x[a] = b.x[best];
+  A.z[a] = b.z[best];
+  A.stuck[a] = 0;
+  return true;
+}
+
 function becomeInjured(sim: Simulation, a: number, cause: number) {
   const s = sim.s;
   const A = s.agents;
@@ -202,6 +252,11 @@ function arrive(sim: Simulation, a: number, n: number): boolean {
     if (s.shelterDist[n] !== 0) return false;
     const sh = s.shelterOf[n];
     if (sh < 0) return false;
+    // routing tables refresh on a cadence: a shelter may have closed since they were built
+    if (s.aOperational[sh] === 0) {
+      sim.routingDirty();
+      return false;
+    }
     const as = sim.city.assets[sh];
     if (s.aLoad[sh] >= as.capacity) {
       if (!(s.aFlag[sh] & 1)) {
@@ -235,6 +290,10 @@ function arrive(sim: Simulation, a: number, n: number): boolean {
     if (s.hospitalDist[n] !== 0) return false;
     const h = s.hospitalOf[n];
     if (h < 0) return false;
+    if (s.aOperational[h] === 0) {
+      sim.routingDirty();
+      return false;
+    }
     const as = sim.city.assets[h];
     s.aLoad[h]++;
     A.state[a] = AgentState.Hospitalized;
@@ -275,6 +334,7 @@ function move(sim: Simulation, a: number, dt: number) {
       const e = chooseEdge(sim, a, n);
       if (e < 0 || s.eClosed[e] & mask) {
         A.stuck[a] = Math.min(65000, A.stuck[a] + 1);
+        if (st === AgentState.Evacuating && A.stuck[a] > IN_PLACE_AFTER && shelterInPlace(sim, a)) return;
         if (A.stuck[a] > 450 && st === AgentState.Traveling) {
           // give up and head home (or shelter if home is unusable)
           const home = A.home[a];

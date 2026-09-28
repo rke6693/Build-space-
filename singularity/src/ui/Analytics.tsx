@@ -52,8 +52,8 @@ export function Analytics() {
         </div>
         <div className="kpis">
           <Kpi label="Affected by hazards" value={fmtInt(m.affected)} sub={`of ${fmtInt(m.population)}`} hint="Residents exposed to damaging intensity at any point: shaking above ~0.3 g (MMI VIII), water deeper than 10 cm, fire or dense smoke, or a home/workplace with moderate or worse damage" />
-          <Kpi label="Evacuating" value={fmtInt(m.evacuating)} sub={m.stranded > 0 ? `${fmtInt(m.stranded)} stranded (no route)` : 'en route to shelters'} />
-          <Kpi label="Sheltered" value={fmtInt(m.sheltered)} sub="in open shelters" />
+          <Kpi label="Evacuating" value={fmtInt(m.evacuating)} sub={m.stranded > 0 ? `${fmtInt(m.stranded)} with no open shelter reachable` : 'en route to shelters'} />
+          <Kpi label="Sheltered" value={fmtInt(m.sheltered)} sub={m.shelterInPlace > 0 ? `${fmtInt(m.evacuated)} in shelters · ${fmtInt(m.shelterInPlace)} in place` : 'in public shelters'} hint="Evacuees who reached a public shelter, plus those who took refuge in a nearby intact building (upper floors if flooded) because no open shelter could be reached" />
           <Kpi label="Injured (simulated)" value={fmtInt(m.injured)} sub={`${fmtInt(m.hospitalized)} hospitalised · ${fmtInt(m.trapped)} trapped`} testid="kpi-injured" />
         </div>
       </div>

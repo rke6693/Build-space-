@@ -59,8 +59,10 @@ vec2 waveGrad(vec2 p, float t, float rough, float px) {
   vec2 d3 = normalize(vec2(-wd.y, wd.x) * 0.8 + wd);
   vec2 d4 = normalize(vec2(0.3, 0.9));
   float k1 = 6.2831 / 55.0, k2 = 6.2831 / 23.0, k3 = 6.2831 / 11.0, k4 = 6.2831 / 5.3;
-  g += d1 * k1 * 0.55 * cos(dot(d1, p) * k1 - t * 0.9) * (1.0 - smoothstep(10.0, 28.0, px));
-  g += d2 * k2 * 0.25 * cos(dot(d2, p) * k2 - t * 1.5) * (1.0 - smoothstep(4.0, 12.0, px));
+  // low-frequency phase warp keeps long swells from reading as perfectly regular stripes
+  float warp = vnoise(p * 0.004) * 9.0 + vnoise(p * 0.011 + 5.3) * 4.0;
+  g += d1 * k1 * 0.55 * cos(dot(d1, p) * k1 + warp - t * 0.9) * (1.0 - smoothstep(8.0, 22.0, px));
+  g += d2 * k2 * 0.25 * cos(dot(d2, p) * k2 + warp * 0.7 - t * 1.5) * (1.0 - smoothstep(4.0, 12.0, px));
   g += d3 * k3 * 0.12 * cos(dot(d3, p) * k3 - t * 2.2) * (1.0 - smoothstep(2.0, 5.5, px));
   g += d4 * k4 * 0.05 * cos(dot(d4, p) * k4 - t * 3.1) * (1.0 - smoothstep(0.9, 2.6, px));
   float fine = 1.0 - smoothstep(0.5, 1.4, px);
@@ -115,7 +117,9 @@ void main() {
   // shoreline foam and whitecaps
   float foamNoise = vnoise(vWPos.xz * 0.12 + uTime * 0.3);
   float foam = (1.0 - flood) * smoothstep(0.7, 0.05, vDepth) * smoothstep(0.35, 0.8, foamNoise);
-  foam += (1.0 - flood) * smoothstep(1.2, 1.6, windAmp) * smoothstep(0.78, 0.95, vnoise(vWPos.xz * 0.04 - uTime * 0.2));
+  // whitecaps: small broken streaks that only appear in strong wind
+  float cap = smoothstep(0.72, 0.9, vnoise(vWPos.xz * vec2(0.11, 0.07) - uTime * 0.35)) * smoothstep(0.45, 0.75, vnoise(vWPos.xz * 0.37 + uTime * 0.5));
+  foam += (1.0 - flood) * smoothstep(1.1, 1.6, windAmp) * cap * (1.0 - smoothstep(2.0, 12.0, px)) * 0.8;
   foam += flood * 0.35 * smoothstep(0.25, 0.02, vDepth) * foamNoise;
   col = mix(col, vec3(0.8) * (uAmbient + uSunColor * 0.5), clamp(foam, 0.0, 1.0) * 0.55);
   col += uFlash * vec3(0.5, 0.55, 0.7) * fres;

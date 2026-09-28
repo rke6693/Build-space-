@@ -46,6 +46,7 @@ export function computeMetrics(sim: Simulation): Metrics {
   let evacuating = 0;
   let stranded = 0;
   let sheltered = 0;
+  let inPlace = 0;
   let injured = 0;
   let hospitalized = 0;
   let trapped = 0;
@@ -57,7 +58,10 @@ export function computeMetrics(sim: Simulation): Metrics {
       evacuating++;
       if (A.edge[a] < 0 && s.shelterDist[A.node[a]] === Infinity) stranded++;
     }
-    else if (st === AgentState.Sheltered) sheltered++;
+    else if (st === AgentState.Sheltered) {
+      sheltered++;
+      if (A.target[a] < 0) inPlace++;
+    }
     else if (st === AgentState.Injured || st === AgentState.ToHospital) injured++;
     else if (st === AgentState.Hospitalized) hospitalized++;
     else if (st === AgentState.Trapped) trapped++;
@@ -156,7 +160,8 @@ export function computeMetrics(sim: Simulation): Metrics {
     affected: affected * P,
     evacuating: evacuating * P,
     stranded: stranded * P,
-    evacuated: sheltered * P,
+    evacuated: (sheltered - inPlace) * P,
+    shelterInPlace: inPlace * P,
     sheltered: sheltered * P,
     injured: (injured + hospitalized + trapped) * P,
     hospitalized: hospitalized * P,
@@ -203,7 +208,7 @@ export function computeMetrics(sim: Simulation): Metrics {
 }
 
 export const METRIC_KEYS: (keyof Metrics)[] = [
-  'tick', 't', 'population', 'affected', 'evacuating', 'stranded', 'evacuated', 'sheltered', 'injured', 'hospitalized', 'trapped',
+  'tick', 't', 'population', 'affected', 'evacuating', 'stranded', 'evacuated', 'shelterInPlace', 'sheltered', 'injured', 'hospitalized', 'trapped',
   'bNone', 'bSlight', 'bModerate', 'bExtensive', 'bCollapsed', 'bBurning', 'bFlooded',
   'gridAvailability', 'substationsOnline', 'substationsTotal', 'roadAccessibility', 'roadsClosed', 'bridgesOpen', 'bridgesTotal',
   'floodedAreaKm2', 'maxFloodDepth', 'floodVolume', 'activeFires', 'burnedAreaKm2', 'fireIncidents',

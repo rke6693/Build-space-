@@ -55,7 +55,7 @@ export function ModelNotes() {
           </ul>
           <h3>Population</h3>
           <ul>
-            <li>Each agent represents {PEOPLE_PER_AGENT} residents. Agents commute on the road graph (zone routing tables + greedy final approach), slow down on congested edges, evacuate on orders (instant with mobile coverage, word of mouth otherwise) or when a hazard reaches them, and seek shelters or hospitals. Injuries are simulated counts from exposure and building damage; the model does not simulate fatalities.</li>
+            <li>Each agent represents {PEOPLE_PER_AGENT} residents. Agents commute on the road graph (zone routing tables + greedy final approach), slow down on congested edges, evacuate on orders (instant with mobile coverage, word of mouth otherwise) or when a hazard reaches them, and seek open shelters or hospitals. Evacuees who cannot reach any open shelter for five minutes take refuge in a nearby intact building (upper floors if the ground is flooded). Injuries are simulated counts from exposure and building damage; the model does not simulate fatalities.</li>
           </ul>
           <h3>Economics</h3>
           <p>{ECONOMIC_DISCLAIMER}</p>
