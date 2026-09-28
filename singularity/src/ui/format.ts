@@ -58,3 +58,10 @@ export const statusColor = (s: number) => (s >= 2 ? STATUS.ok : s === 1 ? STATUS
 /** Ordinal damage ramp (neutral → one-hue orange), shared by charts and the 3D tint. */
 export const DAMAGE_COLORS = ['#5b6470', '#f5c9a8', '#ec9a62', '#d95926', '#8f2d0f'];
 export const DAMAGE_NAMES = ['None', 'Slight', 'Moderate', 'Extensive', 'Collapse'];
+
+/** World position (x east, z south, metres from the city centre) as "0.90 km E · 5.60 km S". */
+export function fmtLocation(x: number, z: number): string {
+  const ew = `${(Math.abs(x) / 1000).toFixed(2)} km ${x < 0 ? 'W' : 'E'}`;
+  const ns = `${(Math.abs(z) / 1000).toFixed(2)} km ${z > 0 ? 'S' : 'N'}`;
+  return `${ew} · ${ns}`;
+}

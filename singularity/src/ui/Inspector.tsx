@@ -6,7 +6,7 @@ import { fragility } from '../sim/math';
 import { DS_NAMES, buildingMedians, liquefactionSettlement, mmiFromPga } from '../sim/systems/earthquake';
 import { ASSET_KIND_NAMES, type Asset, BTYPE_NAMES, SCLASS_NAMES, type SimEvent, ZONE_NAMES } from '../sim/types';
 import { focusSelection, selectEvent, selectObject } from './actions';
-import { CATEGORY, DAMAGE_COLORS, fmtMoney, fmtTick, statusColor, statusName } from './format';
+import { CATEGORY, DAMAGE_COLORS, fmtLocation, fmtMoney, fmtTick, statusColor, statusName } from './format';
 import { IconBridge, IconBuilding, IconCamera, IconCell, IconPower, IconShield } from './icons';
 import { runtime } from './runtime';
 import { store, useUI } from './store';
@@ -369,7 +369,7 @@ function CellView({ cell }: { cell: number }) {
         <dd>{(f?.smoke[cell] ?? 0).toFixed(2)}</dd>
         <dt>Coordinates</dt>
         <dd>
-          {(cellX(cell % GRID) / 1000).toFixed(2)} km E, {(-cellZ(Math.floor(cell / GRID)) / 1000).toFixed(2)} km N
+          {fmtLocation(cellX(cell % GRID), cellZ(Math.floor(cell / GRID)))}
         </dd>
       </dl>
     </>

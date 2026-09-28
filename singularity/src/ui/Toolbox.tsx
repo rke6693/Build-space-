@@ -19,7 +19,7 @@ import {
   saveToLibrary,
   currentScenario,
 } from './actions';
-import { compassName, fmtTick } from './format';
+import { compassName, fmtLocation, fmtTick } from './format';
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -423,7 +423,7 @@ function Location({ label, x, z, placing, onPick, offMapNote }: { label: string;
       <div className={`loc ${placing ? 'active' : ''}`}>
         <IconTarget size={15} />
         <span className="num" style={{ flex: 1 }}>
-          {placing ? 'Click on the map…' : `${(x / 1000).toFixed(2)} km E, ${(-z / 1000).toFixed(2)} km N${off && offMapNote ? ` · ${offMapNote}` : ''}`}
+          {placing ? 'Click on the map…' : `${fmtLocation(x, z)}${off && offMapNote ? ` · ${offMapNote}` : ''}`}
         </span>
         <button className="btn small" onClick={onPick} data-testid="pick-location">
           {placing ? 'Cancel' : 'Pick on map'}

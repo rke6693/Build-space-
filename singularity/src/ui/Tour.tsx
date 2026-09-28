@@ -9,6 +9,11 @@ interface Step {
   prepare?: () => void;
 }
 
+/** Later steps point at the earthquake form: open it if the user skipped ahead. */
+function ensureQuakeTool() {
+  store.set({ leftOpen: true, leftTab: 'disasters', ...(store.get().tool ? {} : { tool: 'earthquake' as const }) });
+}
+
 const STEPS: Step[] = [
   {
     target: null,
@@ -29,11 +34,13 @@ const STEPS: Step[] = [
   },
   {
     target: '[data-testid="tool-form"]',
+    prepare: ensureQuakeTool,
     title: 'Set it up',
     body: 'Keep the default offshore epicentre or press “Pick on map” and click anywhere. Try a magnitude around 7.',
   },
   {
     target: '[data-testid="trigger"]',
+    prepare: ensureQuakeTool,
     title: 'Trigger it',
     body: 'Press Trigger. Watch the wavefront cross the city, buildings sway, and damage, outages and fires propagate. The first cascades appear within seconds.',
     done: () => store.get().tool === null,
