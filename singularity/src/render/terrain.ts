@@ -20,7 +20,7 @@ const ZONE_COLORS: Record<number, string> = {
 export interface TerrainUniforms {
   uOverlay: { value: THREE.DataTexture };
   uOverlayOn: { value: number };
-  uGround: { value: THREE.DataTexture }; // r: settlement, g: live shaking
+  uGround: { value: THREE.DataTexture }; // r: settlement, g: live shaking, b: char, a: embers
   uShakeGain: { value: number };
   uTime: { value: number };
   uWet: { value: number };
@@ -88,6 +88,7 @@ export class TerrainLayer {
           '#include <common>',
           `#include <common>
           uniform sampler2D uOverlay;
+          uniform sampler2D uGround;
           uniform float uOverlayOn;
           uniform float uWet;
           uniform float uWorld;
@@ -104,6 +105,10 @@ export class TerrainLayer {
           vec2 ouv = vWPos.xz / uWorld + 0.5;
           float oin = step(0.0, ouv.x) * step(ouv.x, 1.0) * step(0.0, ouv.y) * step(ouv.y, 1.0);
           vec4 ov = texture2D(uOverlay, ouv) * oin;
+          // burn scars and glowing embers from the simulated fire field
+          vec4 gdf = texture2D(uGround, clamp(ouv, 0.0, 1.0)) * oin;
+          float charA = gdf.b * (0.75 + 0.25 * n2);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.05, 0.045, 0.04), charA * 0.88);
           diffuseColor.rgb = mix(diffuseColor.rgb, ov.rgb, ov.a * uOverlayOn);`,
         )
         .replace(
@@ -114,7 +119,8 @@ export class TerrainLayer {
         .replace(
           '#include <emissivemap_fragment>',
           `#include <emissivemap_fragment>
-          totalEmissiveRadiance += ov.rgb * ov.a * uOverlayOn * 0.22;`,
+          totalEmissiveRadiance += ov.rgb * ov.a * uOverlayOn * 0.22;
+          totalEmissiveRadiance += vec3(1.0, 0.28, 0.04) * gdf.a * gdf.a * smoothstep(0.35, 0.75, n2 + 0.3 * n1) * 1.6;`,
         );
     };
 
@@ -191,11 +197,13 @@ export class TerrainLayer {
     this.overlayTex.needsUpdate = true;
   }
 
-  updateGround(settlement: Float32Array, shaking: Float32Array) {
+  updateGround(settlement: Float32Array, shaking: Float32Array, burn: Float32Array, burned: Uint8Array) {
     const d = this.groundData;
     for (let c = 0; c < N_CELLS; c++) {
       d[c * 4] = Math.min(255, settlement[c] * 200);
       d[c * 4 + 1] = Math.min(255, shaking[c] * 255);
+      d[c * 4 + 2] = burned[c] ? 255 : Math.min(255, burn[c] * 400);
+      d[c * 4 + 3] = Math.min(255, burn[c] * 255);
     }
     this.groundTex.needsUpdate = true;
   }

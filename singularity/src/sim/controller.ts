@@ -219,6 +219,7 @@ export class SimController {
       eff: { ...s.eff },
       water: s.water.slice(),
       burn: s.burn.slice(),
+      burned: s.burned.slice(),
       smoke: s.smoke.slice(),
       shaking: sim.shaking.slice(),
       peakPGA: s.peakPGA.slice(),
@@ -256,7 +257,7 @@ export class SimController {
 
 /** Transferable buffers of a frame (for postMessage). */
 export function frameTransferables(f: Frame): ArrayBuffer[] {
-  const list = [f.water, f.burn, f.smoke, f.shaking, f.peakPGA, f.settlement, f.levee, f.clouds, f.bState, f.bDamage, f.agentsXZ, f.agentsState, f.crewsXZ, f.crewsState, f.eClosed, f.eOcc, f.lines, f.bridges, f.levees];
+  const list = [f.water, f.burn, f.burned, f.smoke, f.shaking, f.peakPGA, f.settlement, f.levee, f.clouds, f.bState, f.bDamage, f.agentsXZ, f.agentsState, f.crewsXZ, f.crewsState, f.eClosed, f.eOcc, f.lines, f.bridges, f.levees];
   return list.map((a) => a.buffer as ArrayBuffer);
 }
 

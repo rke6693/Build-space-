@@ -483,13 +483,13 @@ export class Viewport {
     this.buildings.applyFrame(f, (a) => f.assets[a]?.energized ?? 1);
     this.water.update(f.water, f.levee, f.settlement);
     this.water.setSeaLevel(f.eff.seaSurface);
-    this.terrain.updateGround(f.settlement, f.shaking);
+    this.terrain.updateGround(f.settlement, f.shaking, f.burn, f.burned);
     this.roads.applyFrame(f);
     this.infra.applyFrame(f, this.sky.state.night, this.time);
     this.agents.applyFrame(f);
     this.effects.applyFrame(f, this.time);
     this.sky.setCloudField(f.clouds);
-    this.props.update(null, f.burn, this.rig.camera, 3800);
+    this.props.update(f.burned, f.burn, this.rig.camera, 3800);
     // cell max damage for the damage overlay
     this.cellMaxDS.fill(0);
     for (let k = 0; k < b.count; k++) {

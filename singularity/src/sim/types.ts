@@ -705,6 +705,7 @@ export interface Frame {
   eff: EnvEffective;
   water: Float32Array;
   burn: Float32Array;
+  burned: Uint8Array; // 1 = burnt out
   smoke: Float32Array;
   shaking: Float32Array;
   peakPGA: Float32Array;
