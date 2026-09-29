@@ -8,6 +8,7 @@
     "dev": "vite",
     "dev:phone": "vite --host",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "build:single": "tsc --noEmit -p tsconfig.json && vite build -c vite.embed.config.ts && node scripts/inline-html.mjs",
     "preview": "vite preview --port 4173 --strictPort",
     "phone": "tsc --noEmit -p tsconfig.json && vite build && vite preview --host --port 4173 --strictPort",
     "typecheck": "tsc --noEmit -p tsconfig.json",

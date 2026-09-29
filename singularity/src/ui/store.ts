@@ -34,6 +34,8 @@ export interface UIState {
   ready: boolean;
   loadingText: string;
   fatal: string | null;
+  /** Embedded build: an export shown as copyable text (the host frame blocks downloads). */
+  exportDoc: { name: string; text: string } | null;
   introDone: boolean;
   scenario: Scenario | null;
   status: WorkerStatus | null;
@@ -96,6 +98,7 @@ export const store = createStore<UIState>({
   ready: false,
   loadingText: 'Generating Meridian Bay…',
   fatal: null,
+  exportDoc: null,
   introDone: false,
   scenario: null,
   status: null,

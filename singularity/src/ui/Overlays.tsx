@@ -242,3 +242,61 @@ export function Loading() {
     </div>
   );
 }
+
+/** Embedded build only: exports appear here as text to copy (downloads are blocked by the host). */
+export function ExportDialog() {
+  const doc = useUI((s) => s.exportDoc);
+  const [copied, setCopied] = useState<'idle' | 'ok' | 'select'>('idle');
+  useEffect(() => setCopied('idle'), [doc]);
+  if (!doc) return null;
+  const close = () => store.set({ exportDoc: null });
+  const selectAll = () => {
+    const ta = document.getElementById('export-text') as HTMLTextAreaElement | null;
+    ta?.focus();
+    ta?.select();
+  };
+  const copy = () => {
+    const done = () => setCopied('ok');
+    const fallback = () => {
+      selectAll();
+      let ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch {
+        ok = false;
+      }
+      setCopied(ok ? 'ok' : 'select');
+    };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(doc.text).then(done, fallback);
+    else fallback();
+  };
+  const lines = doc.text.split('\n').length;
+  return (
+    <div className="modal-back" role="dialog" aria-modal="true" aria-labelledby="export-title" onKeyDown={(e) => e.key === 'Escape' && close()}>
+      <div className="modal" style={{ width: 'min(760px, 100%)' }}>
+        <div className="modal-head">
+          <h2 id="export-title">{doc.name}</h2>
+          <button className="icon-btn" aria-label="Close export" onClick={close}>
+            ×
+          </button>
+        </div>
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p className="hint" style={{ margin: 0 }}>
+            {lines.toLocaleString()} lines. Copy the text and paste it into a file named <b>{doc.name}</b>.
+          </p>
+          <textarea id="export-text" readOnly value={doc.text} spellCheck={false} style={{ width: '100%', minHeight: 260, fontFamily: 'var(--mono)', fontSize: 12, whiteSpace: 'pre', background: 'var(--panel-solid)', color: 'var(--text)', border: '1px solid var(--line-2)', borderRadius: 8, padding: 10 }} data-testid="export-text" />
+        </div>
+        <div className="modal-foot">
+          {copied === 'ok' && <span className="hint" role="status" style={{ marginRight: 'auto', alignSelf: 'center' }}>Copied to the clipboard.</span>}
+          {copied === 'select' && <span className="hint" role="status" style={{ marginRight: 'auto', alignSelf: 'center' }}>Text selected: use your device’s Copy command.</span>}
+          <button className="btn" onClick={close}>
+            Close
+          </button>
+          <button className="btn primary" onClick={copy} data-testid="export-copy">
+            Copy
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

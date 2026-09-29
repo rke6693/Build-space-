@@ -6,7 +6,7 @@ import { SPEEDS } from '../sim/config';
 import { builtinScenarios, validateScenario } from '../sim/scenario';
 import type { Scenario } from '../sim/types';
 import { addBookmark, goLive, rebuildViewport, seek, seekRelative, selectObject, setSpeed, toast, togglePlay } from './actions';
-import { Diagnostics, CinematicOverlay, HoverTip, Labels, Loading, OverlayLegend, Toasts } from './Overlays';
+import { Diagnostics, CinematicOverlay, ExportDialog, HoverTip, Labels, Loading, OverlayLegend, Toasts } from './Overlays';
 import { ModelNotes } from './ModelNotes';
 import { RightPanel } from './RightPanel';
 import { runtime } from './runtime';
@@ -100,8 +100,11 @@ export function App() {
     runtime.callbacks = callbacks;
     runtime.container = container.current;
 
-    // phones (portrait or landscape): start with the city visible, panels one tap away
-    if (window.innerWidth <= 760 || window.innerHeight <= 520) store.set({ leftOpen: false, rightOpen: false });
+    // small or embedded viewports start with the city visible and panels one tap away:
+    // phones (portrait or landscape) collapse both, mid widths (e.g. a chat side panel) the right one
+    const w = window.innerWidth;
+    if (w <= 900 || window.innerHeight <= 520) store.set({ leftOpen: false, rightOpen: false });
+    else if (w < 1180) store.set({ rightOpen: false });
 
     const boot = setTimeout(() => {
       const city = generateCity(scenario.seed);
@@ -145,8 +148,8 @@ export function App() {
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const s = store.get();
-      if (s.showEditor || s.showNotes) {
-        if (e.key === 'Escape') store.set({ showEditor: false, showNotes: false });
+      if (s.showEditor || s.showNotes || s.exportDoc) {
+        if (e.key === 'Escape') store.set({ showEditor: false, showNotes: false, exportDoc: null });
         return;
       }
       const k = e.key;
@@ -196,6 +199,7 @@ export function App() {
       <CinematicOverlay />
       <ScenarioEditor />
       <ModelNotes />
+      {__EMBED__ && <ExportDialog />}
       <Tour />
       <Loading />
       <div className="sr-only" aria-live="polite">

@@ -176,6 +176,11 @@ export function importScenarioFile(file: File): Promise<string[]> {
 
 // ------------------------------------------------------------------ exports
 export async function download(name: string, text: string, type: string) {
+  // embedded in a host frame that blocks downloads: show the file as copyable text instead
+  if (__EMBED__) {
+    store.set({ exportDoc: { name, text } });
+    return;
+  }
   const blob = new Blob([text], { type });
   // iPhone/iPad (especially as a Home Screen app) cannot save blob downloads: use the share
   // sheet (Save to Files, AirDrop, Mail…) when the browser offers file sharing

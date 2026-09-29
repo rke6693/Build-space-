@@ -37,6 +37,19 @@ On first launch you get an opening camera shot over the bay, then a short guided
 (`H` reopens it). Pick **Scenarios → Showcase — Harbor Quake Cascade** for the
 default demonstration.
 
+### Single-file version
+
+```bash
+npm run build:single   # → dist-embed/singularity.html and dist-embed/artifact.html
+```
+
+`singularity.html` is the whole app (simulation worker, 3D renderer, UI) in one ~1.2 MB HTML
+file: open it from disk or put it on any static host. `artifact.html` is the same page without
+the document skeleton, for hosts that wrap pages themselves (such as a Claude artifact). In that
+build, exports open as copyable text because embedded frames usually block downloads, and if a
+host forbids Web Workers the simulation falls back to the main thread (same results, slower UI
+at high speeds).
+
 ### On an iPhone or iPad
 
 The app runs in Safari on iOS/iPadOS 16 or later (WebGL 2, module workers). Phones start at

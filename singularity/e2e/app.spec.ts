@@ -120,9 +120,11 @@ test('scenarios can be saved locally and loaded again after reload', async ({ pa
 
 test('results export as JSON summary and CSV with causes', async ({ page }) => {
   await boot(page);
+  const t0 = (await status(page)).tick;
   await triggerEarthquake(page);
   await page.keyboard.press('5');
-  await waitForTick(page, 200);
+  // let the shaking arrive and finish (and a metrics sample land) after the trigger tick
+  await waitForTick(page, t0 + 150);
   await page.keyboard.press(' ');
 
   await page.getByRole('button', { name: 'Export results' }).click();

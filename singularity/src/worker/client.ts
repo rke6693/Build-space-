@@ -1,5 +1,6 @@
 import type { Command, CommandSpec, Frame, Metrics, Scenario, SimEvent } from '../sim/types';
 import { SimHost } from './host';
+import { createSimWorker } from './spawn';
 import type { ExportData, FromWorker, HeadlessResult, ToWorker, WorkerStatus } from './protocol';
 
 type Listener = () => void;
@@ -29,21 +30,46 @@ export class SimClient {
   private eventListeners = new Set<(evs: SimEvent[]) => void>();
   private exportWaiters = new Map<number, (d: ExportData) => void>();
   private reqId = 0;
+  /** Messages sent before the worker proved it is alive, replayed if we must fall back. */
+  private pending: ToWorker[] | null = [];
+  private watchdog = 0;
 
   constructor() {
     try {
-      this.worker = new Worker(new URL('./sim.worker.ts', import.meta.url), { type: 'module' });
-      this.worker.onmessage = (ev: MessageEvent<FromWorker>) => this.receive(ev.data);
+      this.worker = createSimWorker();
+      this.worker.onmessage = (ev: MessageEvent<FromWorker>) => {
+        if (this.pending) {
+          this.pending = null;
+          clearTimeout(this.watchdog);
+        }
+        this.receive(ev.data);
+      };
       this.worker.onerror = (ev) => {
+        if (this.pending) {
+          // the worker never started (e.g. a restrictive sandbox): run on the main thread
+          ev.preventDefault();
+          this.fallBackToMainThread();
+          return;
+        }
         this.lastError = ev.message || 'Simulation worker error';
         this.emit();
       };
       this.usingWorker = true;
     } catch {
-      // Fallback: run the same host loop on the main thread.
-      this.host = new SimHost((msg) => queueMicrotask(() => this.receive(msg)));
-      this.usingWorker = false;
+      this.fallBackToMainThread();
     }
+  }
+
+  /** Runs the same host loop on the main thread (slower UI at high speeds, identical results). */
+  private fallBackToMainThread() {
+    const queued = this.pending ?? [];
+    clearTimeout(this.watchdog);
+    this.worker?.terminate();
+    this.worker = null;
+    this.pending = null;
+    this.usingWorker = false;
+    this.host = new SimHost((msg) => queueMicrotask(() => this.receive(msg)));
+    for (const m of queued) this.host.handle(m);
   }
 
   dispose() {
@@ -52,8 +78,14 @@ export class SimClient {
   }
 
   private send(msg: ToWorker) {
-    if (this.worker) this.worker.postMessage(msg);
-    else this.host?.handle(msg);
+    if (this.worker) {
+      if (this.pending) {
+        this.pending.push(msg);
+        // a worker that neither answers nor errors is treated as unavailable
+        if (msg.type === 'init' && !this.watchdog) this.watchdog = window.setTimeout(() => this.pending && this.fallBackToMainThread(), 12000);
+      }
+      this.worker.postMessage(msg);
+    } else this.host?.handle(msg);
   }
 
   subscribe(fn: Listener): () => void {
@@ -185,14 +217,28 @@ export function runScenarioHeadless(scenario: Scenario, label: string, horizonTi
       }
     };
     const msg: ToWorker = { type: 'headless', runId, label, scenario, horizonTicks, sampleEvery: 15 };
-    try {
-      worker = new Worker(new URL('./sim.worker.ts', import.meta.url), { type: 'module' });
-      worker.onmessage = (ev: MessageEvent<FromWorker>) => receive(ev.data);
-      worker.onerror = (ev) => reject(new Error(ev.message));
-      worker.postMessage(msg);
-    } catch {
+    let alive = false;
+    const onMainThread = () => {
+      worker?.terminate();
+      worker = null;
       host = new SimHost((m) => queueMicrotask(() => receive(m)));
       setTimeout(() => host?.handle(msg), 0);
+    };
+    try {
+      worker = createSimWorker();
+      worker.onmessage = (ev: MessageEvent<FromWorker>) => {
+        alive = true;
+        receive(ev.data);
+      };
+      worker.onerror = (ev) => {
+        if (!alive) {
+          ev.preventDefault();
+          onMainThread();
+        } else reject(new Error(ev.message));
+      };
+      worker.postMessage(msg);
+    } catch {
+      onMainThread();
     }
   });
   return {

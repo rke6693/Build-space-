@@ -6,6 +6,7 @@ export default defineConfig({
   // relative asset URLs: the build works from any sub-path (e.g. GitHub Pages /<repo>/)
   base: './',
   plugins: [react()],
+  define: { __EMBED__: 'false' },
   worker: { format: 'es' },
   build: {
     target: 'es2022',

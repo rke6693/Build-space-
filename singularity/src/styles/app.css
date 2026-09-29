@@ -85,7 +85,7 @@ button { cursor: pointer; }
 .brand-name { font-weight: 700; letter-spacing: 0.18em; font-size: 12px; }
 .brand-sub { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
 .divider { width: 1px; height: 26px; background: var(--line-2); flex: none; }
-.status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; border: 1px solid var(--line-2); white-space: nowrap; }
+.status-pill { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; border: 1px solid var(--line-2); white-space: nowrap; }
 .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .status-pill.live { color: #52e0a0; }
 .status-pill.live .dot { animation: pulse 1.6s infinite; }
@@ -93,10 +93,10 @@ button { cursor: pointer; }
 .status-pill.replay { color: var(--warn); }
 .status-pill.ended { color: var(--muted); }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-.clock { display: flex; flex-direction: column; line-height: 1.15; }
+.clock { display: flex; flex-direction: column; line-height: 1.15; flex: none; white-space: nowrap; }
 .clock b { font-size: 15px; font-weight: 600; font-family: var(--mono); }
 .clock span { color: var(--muted); font-size: 11px; }
-.env { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; min-width: 0; }
+.env { display: flex; gap: 6px; flex-wrap: wrap; align-content: flex-start; height: 28px; overflow: hidden; min-width: 0; } /* chips that do not fit wrap onto a clipped second row instead of being cut */
 .chip { display: inline-flex; flex: none; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 7px; background: rgba(255, 255, 255, 0.035); border: 1px solid var(--line); white-space: nowrap; font-size: 12px; }
 .chip svg { opacity: 0.8; }
 .chip .k { color: var(--muted); font-size: 11px; }
@@ -315,7 +315,7 @@ table.data th { color: var(--muted); font-weight: 500; }
 .diag dd { margin: 0; text-align: right; }
 
 /* ---------- modals ---------- */
-.modal-back { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 80; display: grid; place-items: center; padding: max(20px, var(--sat)) max(20px, var(--sar)) max(20px, var(--sab)) max(20px, var(--sal)); }
+.modal-back { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 95; display: grid; place-items: center; padding: max(20px, var(--sat)) max(20px, var(--sar)) max(20px, var(--sab)) max(20px, var(--sal)); }
 .modal { width: min(820px, 100%); max-height: min(86vh, 900px); display: flex; flex-direction: column; background: var(--panel-solid); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: var(--shadow); }
 .modal-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .modal-head h2 { margin: 0; font-size: 15px; flex: 1; }
@@ -372,7 +372,7 @@ table.data th { color: var(--muted); font-weight: 500; }
   .env .chip.opt { display: none; }
 }
 @media (max-width: 1024px) {
-  .brand-sub, .env { display: none; }
+  .brand-sub, .env, .brand-name, .tl-info .rec { display: none; }
   .side.left { width: 290px; }
   .legend-float { left: calc(290px + var(--gap) * 2); }
 }
