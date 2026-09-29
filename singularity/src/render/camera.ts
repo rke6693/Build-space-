@@ -41,6 +41,31 @@ export class CameraRig {
     this.controls.update();
   }
 
+  /** Distance multiplier so wide establishing shots still fit the city on a portrait screen. */
+  get fitScale(): number {
+    const a = this.camera.aspect;
+    return a >= 1 ? 1 : Math.min(1.9, 1 + (1 - a) * 1.4);
+  }
+
+  /** The orbital overview the intro ends on, pulled back on portrait screens. */
+  private overviewPosition(): THREE.Vector3 {
+    const k = this.fitScale;
+    // tall screens: a steeper, more top-down view lets the bay's depth fill the height
+    const portrait = k - 1; // 0 on landscape
+    const kx = k * (1 - 0.3 * portrait);
+    const ky = k * (1 + 1.1 * portrait);
+    return new THREE.Vector3(-2300 * kx, 20 + 1480 * ky, -250 + 3150 * kx);
+  }
+
+  /** Default orbital view of the whole bay. */
+  resetView() {
+    this.tween = null;
+    this.controls.target.set(0, 20, -250);
+    this.camera.position.copy(this.overviewPosition());
+    this.camera.lookAt(this.controls.target);
+    this.controls.update();
+  }
+
   getPose(): CameraPose {
     const off = this.camera.position.clone().sub(this.controls.target);
     const s = new THREE.Spherical().setFromVector3(off);
@@ -78,7 +103,7 @@ export class CameraRig {
       new THREE.Vector3(1300, 70, 1500),
       new THREE.Vector3(250, 160, 1050),
       new THREE.Vector3(-900, 480, 1400),
-      new THREE.Vector3(-2300, 1500, 2900),
+      this.overviewPosition(),
     ];
     const look = [
       new THREE.Vector3(200, 120, 300),
@@ -97,8 +122,7 @@ export class CameraRig {
     const done = this.intro.onDone;
     this.intro = null;
     this.controls.enabled = true;
-    this.controls.target.set(0, 20, -250);
-    this.camera.position.set(-2300, 1500, 2900);
+    this.resetView();
     done();
   }
 

@@ -23,7 +23,7 @@ const STEPS: Step[] = [
   {
     target: '.viewport',
     title: 'Move the camera',
-    body: 'Drag to orbit, right-drag (or two fingers) to pan, scroll to zoom. Press O for an overview and P for a top-down plan view.',
+    body: 'Drag to orbit; right-drag or two-finger drag to pan; scroll or pinch to zoom. Overview and top-down buttons are in the Layers tab (keys O and P).',
   },
   {
     target: '[data-testid="tool-earthquake"]',

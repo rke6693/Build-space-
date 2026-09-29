@@ -298,6 +298,11 @@ export class SkyLayer {
   }
 
   /** Regenerates the image-based lighting when the sky changed noticeably. */
+  /** Forces the next updateEnvironment() to re-capture (e.g. after a WebGL context restore). */
+  invalidateEnvironment() {
+    this.lastEnvKey = '';
+  }
+
   dispose() {
     this.envTarget?.dispose();
     this.envTarget = null;

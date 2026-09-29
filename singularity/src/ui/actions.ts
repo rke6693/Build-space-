@@ -120,6 +120,24 @@ export function deleteFromLibrary(id: string) {
   writeLibrary(loadLibrary().filter((x) => x.id !== id));
 }
 
+/**
+ * Rebuilds the renderer around the current (or a new) city. Used when the seed changes and when
+ * the browser drops the WebGL context without restoring it (iOS does this to background tabs).
+ * The simulation lives in the worker, so nothing but GPU state is lost.
+ */
+export function rebuildViewport(city = runtime.city) {
+  if (!city || !runtime.container || !runtime.callbacks) return;
+  const quality = store.get().quality;
+  const cinematic = store.get().cinematic;
+  runtime.viewport?.dispose();
+  runtime.city = city;
+  runtime.viewport = new Viewport(runtime.container, city, runtime.client, runtime.callbacks, quality);
+  runtime.viewport.setAutoQuality(store.get().autoQuality);
+  runtime.viewport.setLayers(store.get().layers);
+  runtime.viewport.skipIntro();
+  if (cinematic) runtime.viewport.setCinematic(true);
+}
+
 export function loadScenario(s: Scenario, autoplay = true) {
   const scn = cloneScenario(s);
   const vp = runtime.viewport;
@@ -127,13 +145,7 @@ export function loadScenario(s: Scenario, autoplay = true) {
     // New seed ⇒ new city: rebuild the renderer around it.
     store.set({ ready: false, loadingText: `Generating city for seed ${scn.seed}…` });
     setTimeout(() => {
-      const quality = store.get().quality;
-      vp?.dispose();
-      const city = generateCity(scn.seed);
-      runtime.city = city;
-      runtime.viewport = new Viewport(runtime.container!, city, runtime.client, runtime.callbacks!, quality);
-      runtime.viewport.setLayers(store.get().layers);
-      runtime.viewport.skipIntro();
+      rebuildViewport(generateCity(scn.seed));
       runtime.client.init(scn, autoplay);
       store.set({ ready: true, scenario: scn, selection: null, selectedEvent: null, compare: { ...store.get().compare, a: null, b: null } });
     }, 30);
@@ -163,8 +175,22 @@ export function importScenarioFile(file: File): Promise<string[]> {
 }
 
 // ------------------------------------------------------------------ exports
-export function download(name: string, text: string, type: string) {
+export async function download(name: string, text: string, type: string) {
   const blob = new Blob([text], { type });
+  // iPhone/iPad (especially as a Home Screen app) cannot save blob downloads: use the share
+  // sheet (Save to Files, AirDrop, Mail…) when the browser offers file sharing
+  const touch = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+  if (touch && typeof navigator !== 'undefined' && navigator.canShare && typeof File !== 'undefined') {
+    const file = new File([blob], name, { type });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: name });
+        return;
+      } catch (err) {
+        if ((err as DOMException)?.name === 'AbortError') return; // user closed the sheet
+      }
+    }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

@@ -38,6 +38,12 @@ export class AdaptiveQuality {
   enabled = true;
   constructor(public level: QualityLevel, private onChange: (l: QualityLevel) => void) {}
 
+  /** Discards samples, e.g. after a deliberate frame-rate cap was lifted. */
+  reset(now: number) {
+    this.samples = [];
+    this.since = now;
+  }
+
   frame(dtMs: number, now: number) {
     if (!this.enabled) return;
     this.samples.push(dtMs);
@@ -45,9 +51,12 @@ export class AdaptiveQuality {
     if (now - this.since < 3000 || this.samples.length < 60) return;
     const sorted = [...this.samples].sort((a, b) => a - b);
     const p50 = sorted[Math.floor(sorted.length * 0.5)];
+    const p90 = sorted[Math.floor(sorted.length * 0.9)];
     const fps = 1000 / p50;
     const idx = QUALITY_ORDER.indexOf(this.level);
-    if (fps < 38 && idx > 0) {
+    // a rock-steady ~30 fps is a display cap (e.g. iOS Low Power Mode), not an overloaded GPU
+    const capped30 = p50 > 31 && p50 < 35.5 && p90 < 37;
+    if (fps < (capped30 ? 26 : 38) && idx > 0) {
       this.set(QUALITY_ORDER[idx - 1], now);
       this.upCredit = 0;
     } else if (fps > 58 && idx < QUALITY_ORDER.indexOf('high')) {

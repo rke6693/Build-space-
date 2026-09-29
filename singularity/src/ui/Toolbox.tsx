@@ -423,7 +423,7 @@ function Location({ label, x, z, placing, onPick, offMapNote }: { label: string;
       <div className={`loc ${placing ? 'active' : ''}`}>
         <IconTarget size={15} />
         <span className="num" style={{ flex: 1 }}>
-          {placing ? 'Click on the map…' : `${fmtLocation(x, z)}${off && offMapNote ? ` · ${offMapNote}` : ''}`}
+          {placing ? 'Tap or click on the map…' : `${fmtLocation(x, z)}${off && offMapNote ? ` · ${offMapNote}` : ''}`}
         </span>
         <button className="btn small" onClick={onPick} data-testid="pick-location">
           {placing ? 'Cancel' : 'Pick on map'}

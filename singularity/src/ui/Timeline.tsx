@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SPEEDS, STEP_SECONDS } from '../sim/config';
 import { describeCommand } from '../sim/scenario';
 import { addBookmark, goLive, removeBookmark, seek, seekRelative, selectEvent, setSpeed, togglePlay } from './actions';
@@ -12,6 +12,15 @@ export function Timeline() {
   const eventsVersion = useUI((s) => s.eventsVersion);
   const scenario = useUI((s) => s.scenario);
   const trackRef = useRef<HTMLDivElement>(null);
+  const footer = useRef<HTMLElement>(null);
+  // side panels and overlays sit above the timeline, whose height varies (it wraps on phones)
+  useEffect(() => {
+    const el = footer.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--tl-real', `${Math.ceil(el.getBoundingClientRect().height)}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const [drag, setDrag] = useState<number | null>(null);
   const [hover, setHover] = useState<{ x: number; text: string } | null>(null);
   const lastSeek = useRef(0);
@@ -68,7 +77,7 @@ export function Timeline() {
   for (let m = stepMin; m < totalMin; m += stepMin) hours.push(m);
 
   return (
-    <footer className="timeline panel chrome keep" aria-label="Simulation timeline" data-tour="timeline">
+    <footer className="timeline panel chrome keep" aria-label="Simulation timeline" data-tour="timeline" ref={footer}>
       <div className="transport">
         <button className="icon-btn" aria-label="Restart from the beginning" onClick={() => seek(0)} title="Jump to start (Home)">
           <IconRestart />
@@ -93,6 +102,14 @@ export function Timeline() {
           </button>
         ))}
       </div>
+      <button
+        className="speed-cycle"
+        onClick={() => setSpeed(SPEEDS[(SPEEDS.indexOf((status?.speed ?? 1) as (typeof SPEEDS)[number]) + 1) % SPEEDS.length])}
+        aria-label={`Playback speed ${status?.speed ?? 1}×, tap for the next speed`}
+        data-testid="speed-cycle"
+      >
+        {status?.speed ?? 1}×
+      </button>
       <div className="tl-mid">
         <div className="tl-info">
           <b className="num" data-testid="tl-time">{fmtTick(tick)}</b>

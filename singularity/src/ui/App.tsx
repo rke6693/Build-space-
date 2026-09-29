@@ -5,7 +5,7 @@ import { generateCity } from '../sim/city/generate';
 import { SPEEDS } from '../sim/config';
 import { builtinScenarios, validateScenario } from '../sim/scenario';
 import type { Scenario } from '../sim/types';
-import { addBookmark, goLive, seek, seekRelative, selectObject, setSpeed, toast, togglePlay } from './actions';
+import { addBookmark, goLive, rebuildViewport, seek, seekRelative, selectObject, setSpeed, toast, togglePlay } from './actions';
 import { Diagnostics, CinematicOverlay, HoverTip, Labels, Loading, OverlayLegend, Toasts } from './Overlays';
 import { ModelNotes } from './ModelNotes';
 import { RightPanel } from './RightPanel';
@@ -17,6 +17,13 @@ import { Toolbox } from './Toolbox';
 import { TopBar, setMode } from './TopBar';
 import { Tour, tourSeen } from './Tour';
 
+/** Phones and small tablets start one step down; adaptive quality raises it if frames allow. */
+function defaultQuality(): QualityLevel {
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+  const small = Math.min(window.screen?.width ?? 1920, window.screen?.height ?? 1080) < 600;
+  return coarse && small ? 'medium' : 'high';
+}
+
 export function App() {
   const container = useRef<HTMLDivElement>(null);
   const cinematic = useUI((s) => s.cinematic);
@@ -26,7 +33,7 @@ export function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const scnId = params.get('scenario') ?? 'baseline';
-    const quality = (params.get('quality') as QualityLevel | null) ?? 'high';
+    const quality = (params.get('quality') as QualityLevel | null) ?? defaultQuality();
     const intro = params.get('intro') !== '0';
     const tour = params.get('tour');
     const autoQuality = params.get('autoquality') !== '0';
@@ -35,6 +42,7 @@ export function App() {
     if (agents > 0) scenario = validateScenario({ ...scenario, agents }).scenario ?? scenario;
 
     const client = runtime.client;
+    let contextTimer = 0;
     // ---- keep the UI store in sync with the worker (throttled)
     let lastMetrics = 0;
     let lastError: string | null = null;
@@ -76,12 +84,24 @@ export function App() {
       },
       getSpeed: () => store.get().status?.speed ?? 1,
       setSpeed: (s) => client.setSpeed(s),
+      onContextChange: (restored) => {
+        clearTimeout(contextTimer);
+        if (restored) return;
+        // iOS often drops the GPU context of a backgrounded tab; if it is not handed back
+        // promptly, rebuild the renderer (the simulation itself is unaffected)
+        contextTimer = window.setTimeout(() => {
+          if (runtime.viewport?.contextLost) {
+            rebuildViewport();
+            toast('Graphics restored', 'The GPU context was lost (e.g. the app was in the background) and the 3D view has been rebuilt.', 1, 'user');
+          }
+        }, 2500);
+      },
     };
     runtime.callbacks = callbacks;
     runtime.container = container.current;
 
-    // phones: start with the city visible, panels one tap away
-    if (window.innerWidth <= 760) store.set({ leftOpen: false, rightOpen: false });
+    // phones (portrait or landscape): start with the city visible, panels one tap away
+    if (window.innerWidth <= 760 || window.innerHeight <= 520) store.set({ leftOpen: false, rightOpen: false });
 
     const boot = setTimeout(() => {
       const city = generateCity(scenario.seed);
@@ -91,7 +111,10 @@ export function App() {
         vp = new Viewport(container.current!, city, client, callbacks, quality);
       } catch (err) {
         console.error(err);
-        store.set({ fatal: 'This simulator needs WebGL 2, which this browser or device could not provide. Try a current Chrome, Edge, Firefox or Safari with hardware acceleration enabled.' });
+        store.set({
+          fatal:
+            'This simulator needs WebGL 2, which this browser or device could not provide. Try a current Safari, Chrome, Edge or Firefox with hardware acceleration enabled. On iPhone and iPad, Lockdown Mode turns WebGL off: exclude this site in Settings › Privacy & Security › Lockdown Mode › Configure Web Browsing.',
+        });
         return;
       }
       vp.setAutoQuality(autoQuality);

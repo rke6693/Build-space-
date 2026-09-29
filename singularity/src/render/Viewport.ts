@@ -75,6 +75,8 @@ export interface ViewportCallbacks {
   onIntroDone: () => void;
   getSpeed: () => number;
   setSpeed: (s: number) => void;
+  /** The GPU dropped the WebGL context (common on iOS when backgrounded); `restored` false while lost. */
+  onContextChange?: (restored: boolean) => void;
 }
 
 export class Viewport {
@@ -108,7 +110,16 @@ export class Viewport {
   private stats: RenderStats;
   private placement = false;
   private raycaster = new THREE.Raycaster();
-  private pointerDown: { x: number; y: number; t: number } | null = null;
+  private pointerDown: { x: number; y: number; t: number; touch: boolean } | null = null;
+  private activePointers = new Set<number>();
+  private multiTouch = false; // a pinch/two-finger pan is never a tap
+  private lastInteraction = 0;
+  private frameParity = 0;
+  private throttled = false;
+  private floatTargets = true;
+  private resizeObserver: ResizeObserver | null = null;
+  private readonly lowPower = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+  contextLost = false;
   private lastHover = 0;
   private labelTimer = 0;
   private labelDefs: { key: string; text: string; kind: string; pos: THREE.Vector3; selection: Selection; asset: number; bridge: number; levee: number; important: boolean }[] = [];
@@ -135,6 +146,8 @@ export class Viewport {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = this.quality.shadows;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // image-based lighting renders into half-float cube targets; skip it where they are unsupported
+    this.floatTargets = this.renderer.extensions.has('EXT_color_buffer_float') || this.renderer.extensions.has('EXT_color_buffer_half_float');
     // count every pass of a frame (post-processing would otherwise report only its last quad)
     this.renderer.info.autoReset = false;
     this.renderer.domElement.className = 'viewport-canvas';
@@ -180,7 +193,17 @@ export class Viewport {
     el.addEventListener('pointerup', this.onPointerUp);
     el.addEventListener('pointermove', this.onPointerMove);
     el.addEventListener('pointerleave', () => cb.onHover(null, 0, 0));
+    el.addEventListener('pointercancel', this.onPointerCancel);
+    el.addEventListener('wheel', this.markInteraction, { passive: true });
+    // three.js calls preventDefault on loss so the browser may restore the context
+    el.addEventListener('webglcontextlost', this.onContextLost);
+    el.addEventListener('webglcontextrestored', this.onContextRestored);
     window.addEventListener('resize', this.onResize);
+    // container-driven sizing: iOS rotation/toolbar changes can settle after the resize event
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => this.onResize());
+      this.resizeObserver.observe(container);
+    }
     this.onResize();
     this.raf = requestAnimationFrame(this.loop);
   }
@@ -192,7 +215,10 @@ export class Viewport {
   /** Ends the opening shot (or, when none is running, just signals that the scene is ready). */
   skipIntro() {
     if (this.rig.introPlaying) this.rig.skipIntro();
-    else this.cb.onIntroDone();
+    else {
+      this.rig.resetView(); // aspect-aware default view (the constructor pose predates sizing)
+      this.cb.onIntroDone();
+    }
   }
   get introPlaying() {
     return this.rig.introPlaying;
@@ -244,6 +270,7 @@ export class Viewport {
     this.agents.maxDrawn = this.quality.maxAgents;
     this.stats.quality = level;
     this.stats.autoQuality = this.adaptive.enabled;
+    this.lastSize = ''; // post chain may be new: always resize
     this.onResize();
   }
 
@@ -303,6 +330,7 @@ export class Viewport {
 
   focus(x: number, z: number, radius = 600) {
     if (this.cinematic) return;
+    this.markInteraction();
     this.rig.flyTo({ target: new THREE.Vector3(x, this.hf.at(x, z) + 10, z), distance: Math.max(160, radius * 2.2), polar: 0.95 }, 1.5);
   }
 
@@ -311,11 +339,13 @@ export class Viewport {
   }
 
   overview() {
-    this.rig.flyTo({ target: new THREE.Vector3(0, 20, -250), distance: 4600, polar: 0.95, azimuth: -0.65 }, 1.8);
+    this.markInteraction();
+    this.rig.flyTo({ target: new THREE.Vector3(0, 20, -250), distance: 4600 * this.rig.fitScale, polar: 0.95, azimuth: -0.65 }, 1.8);
   }
 
   topDown() {
-    this.rig.flyTo({ target: new THREE.Vector3(0, 0, 0), distance: 5200, polar: 0.02 }, 1.6);
+    this.markInteraction();
+    this.rig.flyTo({ target: new THREE.Vector3(0, 0, 0), distance: 5200 * this.rig.fitScale, polar: 0.02 }, 1.6);
   }
 
   onEvents(evs: SimEvent[]) {
@@ -335,6 +365,7 @@ export class Viewport {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this.onResize);
+    this.resizeObserver?.disconnect();
     this.rig.controls.dispose();
     this.post?.dispose();
     const textures = new Set<THREE.Texture>();
@@ -364,9 +395,13 @@ export class Viewport {
   }
 
   // ------------------------------------------------------------------ internals
+  private lastSize = '';
   private onResize = () => {
     const w = this.container.clientWidth || window.innerWidth;
     const h = this.container.clientHeight || window.innerHeight;
+    const key = `${w}x${h}x${this.quality.pixelRatio}`;
+    if (key === this.lastSize) return;
+    this.lastSize = key;
     this.renderer.setSize(w, h, false);
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
@@ -425,15 +460,37 @@ export class Viewport {
     return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   }
 
+  private markInteraction = () => {
+    this.lastInteraction = performance.now();
+  };
+
   private onPointerDown = (e: PointerEvent) => {
-    this.pointerDown = { x: e.clientX, y: e.clientY, t: performance.now() };
+    this.markInteraction();
+    this.activePointers.add(e.pointerId);
+    if (this.activePointers.size > 1) this.multiTouch = true;
+    this.pointerDown = { x: e.clientX, y: e.clientY, t: performance.now(), touch: e.pointerType !== 'mouse' };
     if (this.rig.introPlaying) this.rig.skipIntro();
   };
 
-  private onPointerUp = (e: PointerEvent) => {
-    const d = this.pointerDown;
+  private onPointerCancel = (e: PointerEvent) => {
+    this.activePointers.delete(e.pointerId);
+    if (!this.activePointers.size) this.multiTouch = false;
     this.pointerDown = null;
-    if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || e.button !== 0) return;
+  };
+
+  private onPointerUp = (e: PointerEvent) => {
+    this.markInteraction();
+    const d = this.pointerDown;
+    const multi = this.multiTouch;
+    this.activePointers.delete(e.pointerId);
+    if (!this.activePointers.size) {
+      this.multiTouch = false;
+      this.pointerDown = null;
+    }
+    if (!d || multi) return;
+    // fingers wobble more than a mouse: allow a larger slop for touch taps
+    const slop = d.touch ? 12 : 5;
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > slop || e.button !== 0) return;
     const hit = this.pick(this.ndc(e), true);
     if (this.placement) {
       if (hit?.point) {
@@ -447,7 +504,9 @@ export class Viewport {
 
   private onPointerMove = (e: PointerEvent) => {
     const now = performance.now();
-    if (now - this.lastHover < 90 || this.pointerDown) return;
+    if (this.pointerDown) this.lastInteraction = now;
+    // touch has no hover; skip the raycasts while fingers orbit the camera
+    if (e.pointerType === 'touch' || now - this.lastHover < 90 || this.pointerDown) return;
     this.lastHover = now;
     if (this.placement) {
       const hit = this.pick(this.ndc(e), false, true);
@@ -522,6 +581,20 @@ export class Viewport {
     return parts.join(' · ');
   }
 
+  private onContextLost = () => {
+    this.contextLost = true;
+    this.cb.onContextChange?.(false);
+  };
+
+  private onContextRestored = () => {
+    this.contextLost = false;
+    // GPU-side content is gone: re-capture image-based lighting and re-upload overlays
+    this.sky.invalidateEnvironment();
+    this.envTimer = 0;
+    this.overlayDirty = true;
+    this.cb.onContextChange?.(true);
+  };
+
   private applyFrame(f: Frame) {
     const prev = this.prevBState;
     const b = this.city.buildings;
@@ -565,6 +638,14 @@ export class Viewport {
     if (this.disposed) return;
     this.raf = requestAnimationFrame(this.loop);
     const now = performance.now();
+    // phones: while the simulation is paused and nobody is touching the screen, draw every other
+    // frame (~30 fps) to save battery and heat; full rate when playing or interacting
+    const throttled = this.lowPower && !this.rig.introPlaying && !this.cinematic && !this.client.status?.playing && now - this.lastInteraction > 2500;
+    if (throttled !== this.throttled) {
+      this.throttled = throttled;
+      this.adaptive.reset(now); // capped intervals must not read as a slow GPU
+    }
+    if (throttled && this.frameParity++ & 1) return;
     const rawMs = Math.max(0, now - this.last); // real frame time, for diagnostics / adaptive quality
     const dtMs = Math.min(100, rawMs); // clamped step for animation
     const dt = dtMs / 1000;
@@ -641,7 +722,7 @@ export class Viewport {
 
     // IBL refresh on wall-clock time (frame dt is clamped, so slow devices would lag behind)
     if (now >= this.envTimer) {
-      if (this.sky.updateEnvironment(this.renderer, this.quality.envMap)) this.envTimer = now + 2500;
+      if (this.sky.updateEnvironment(this.renderer, this.quality.envMap && this.floatTargets)) this.envTimer = now + 2500;
     }
 
     this.renderer.info.reset();
@@ -665,7 +746,7 @@ export class Viewport {
       this.fpsAcc = 0;
       this.fpsN = 0;
     }
-    if (!this.rig.introPlaying) this.adaptive.frame(Math.min(rawMs, 1000), now);
+    if (!this.rig.introPlaying && !this.throttled) this.adaptive.frame(Math.min(rawMs, 1000), now);
     this.labelTimer -= dt;
     if (this.labelTimer <= 0) {
       this.emitLabels();

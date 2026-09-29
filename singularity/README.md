@@ -37,12 +37,48 @@ On first launch you get an opening camera shot over the bay, then a short guided
 (`H` reopens it). Pick **Scenarios → Showcase — Harbor Quake Cascade** for the
 default demonstration.
 
+### On an iPhone or iPad
+
+The app runs in Safari on iOS/iPadOS 16 or later (WebGL 2, module workers). Phones start at
+the *medium* render preset and adaptive quality raises it when frames allow; an iPhone 17 Pro
+Max class device should settle on *high*. Two ways to open it:
+
+**From a computer on the same Wi‑Fi** (quickest):
+
+```bash
+cd singularity
+npm install
+npm run phone        # builds, then serves on your network
+```
+
+Open the `Network:` address it prints (e.g. `http://192.168.1.20:4173/`) in Safari on the
+phone. Use the IP address, not a `.local` hostname (Vite rejects unknown host names).
+
+**From anywhere, via GitHub Pages** (permanent HTTPS link, works as a Home Screen app):
+
+1. Merge this branch into the repository's default branch (GitHub only offers *Run workflow*
+   for workflows that exist there).
+2. Settings → Pages → Build and deployment → Source: **GitHub Actions**.
+3. Actions → **singularity-pages** → *Run workflow*. The site appears at
+   `https://<owner>.github.io/<repo>/`.
+
+Then, in Safari: Share → **Add to Home Screen** for a full-screen app with its own icon.
+
+On the phone: one finger orbits, two fingers pan and pinch to zoom, tap selects. The speed
+button next to the transport cycles 0.25× → 10×; panels open from the icons on either edge and
+close with their chevron. Exports open the share sheet (Save to Files, AirDrop) when served
+over HTTPS. If you see a message that WebGL 2 is unavailable, Lockdown Mode is the usual cause:
+Settings → Privacy & Security → Lockdown Mode → Configure Web Browsing → exclude the site.
+Low Power Mode caps Safari at 30 fps; the app detects that cap and does not degrade quality for
+it. If iOS drops the graphics context while the app is in the background, the 3D view rebuilds
+itself on return; the simulation is unaffected.
+
 ### URL parameters
 
 | Parameter | Effect |
 |---|---|
 | `scenario=showcase` | Start from a built-in scenario (`baseline`, `showcase`, `hurricane`, `firestorm`, `monsoon`, `mitigated`) |
-| `quality=low\|medium\|high\|ultra` | Initial render quality (default `high`; adaptive quality steps it down if frame rate stays low) |
+| `quality=low\|medium\|high\|ultra` | Initial render quality (default `high`, `medium` on phones; adaptive quality adjusts it to the frame rate) |
 | `autoquality=0` | Disable adaptive quality |
 | `intro=0`, `tour=0` / `tour=1` | Skip the opening shot; suppress / force the tour |
 | `agents=4000` | Population agents (1 agent = 100 residents, max 5000) |
@@ -142,14 +178,17 @@ The goal is plausible, explainable behaviour at city scale, not engineering accu
 * Visual effects (ground sway, rain, smoke volume) are driven by the simulated fields but
   exaggerated for readability.
 * Bit-exact replay is guaranteed for the same browser engine; see *Determinism* above.
-* Rendering targets desktop GPUs; phones get the low preset and a compact layout.
+* Rendering targets desktop GPUs and recent phones; phones start at the medium preset with a
+  compact touch layout. The iPhone checks run in Chromium with iPhone emulation here; real
+  WebKit runs are opt-in (see Tests).
 
 ## Tests and tooling
 
 ```bash
 npm run typecheck    # strict TypeScript
-npm test             # 65 unit/integration tests (vitest, ~1.5 min)
-npm run e2e          # 10 Playwright browser tests against the production build
+npm test             # 70 unit/integration tests (vitest, ~1.5 min)
+npm run e2e          # Playwright browser tests: desktop + iPhone-sized touch emulation
+E2E_WEBKIT=1 npm run e2e   # also run the iPhone checks in real WebKit (npx playwright install webkit)
 npm run headless -- showcase 180 3   # run a scenario headless: timing, events, metrics
 npm run city-map     # render the generated city to city-map.png
 ```
