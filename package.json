@@ -1,46 +1,46 @@
 {
-  "name": "space-runner-saas",
+  "name": "agentrails",
   "version": "0.1.0",
-  "private": true,
+  "description": "One AGENTS.md. Every coding agent. Senior-engineer behavior. Cross-tool rules for Claude Code, Codex, Cursor, Gemini CLI, Copilot, Aider, opencode, and Devin.",
+  "keywords": [
+    "agents-md",
+    "claude-code",
+    "claude",
+    "codex",
+    "cursor",
+    "gemini",
+    "copilot",
+    "aider",
+    "ai",
+    "llm",
+    "coding-agent",
+    "skills",
+    "karpathy"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "agentrails": "./bin/agentrails.mjs"
+  },
+  "files": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    ".cursorrules",
+    "rules/",
+    "bin/",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "prisma generate && next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "e2e": "playwright test",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev"
+    "check": "node bin/agentrails.mjs check",
+    "sync": "node bin/agentrails.mjs sync"
   },
-  "dependencies": {
-    "@auth/prisma-adapter": "2.7.4",
-    "@prisma/client": "5.22.0",
-    "@upstash/ratelimit": "2.0.5",
-    "@upstash/redis": "1.34.3",
-    "next": "14.2.18",
-    "next-auth": "5.0.0-beta.25",
-    "pino": "9.5.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "resend": "4.0.1",
-    "stripe": "17.4.0",
-    "zod": "3.23.8"
-  },
-  "devDependencies": {
-    "@playwright/test": "1.48.2",
-    "@types/node": "22.9.0",
-    "@types/react": "18.3.12",
-    "@types/react-dom": "18.3.1",
-    "eslint": "8.57.1",
-    "eslint-config-next": "14.2.18",
-    "eslint-plugin-security": "3.0.1",
-    "prisma": "5.22.0",
-    "typescript": "5.6.3",
-    "vitest": "2.1.5"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rke6693/build-space-.git"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=18.0.0"
   }
 }

@@ -1,0 +1,38 @@
+name: agentrails
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: Lint AGENTS.md and verify wrappers are in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: agentrails check
+        run: node bin/agentrails.mjs check
+
+      - name: agentrails sync (dry-run)
+        run: |
+          # re-sync to a tmp dir so we don't dirty the workspace
+          tmp=$(mktemp -d)
+          cp AGENTS.md "$tmp/"
+          mkdir -p "$tmp/.github" "$tmp/bin"
+          cp bin/agentrails.mjs "$tmp/bin/"
+          cd "$tmp"
+          node bin/agentrails.mjs sync
+          # diff against checked-in copies
+          for f in CLAUDE.md GEMINI.md .cursorrules .github/copilot-instructions.md; do
+            if ! diff -q "$tmp/$f" "$GITHUB_WORKSPACE/$f" > /dev/null; then
+              echo "::error file=$f::$f is out of sync with AGENTS.md. Run 'npx agentrails sync' and commit."
+              diff "$GITHUB_WORKSPACE/$f" "$tmp/$f" | head -40
+              exit 1
+            fi
+          done
+          echo "all wrapper files in sync with AGENTS.md"
